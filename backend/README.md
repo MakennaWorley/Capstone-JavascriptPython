@@ -39,10 +39,10 @@ python make_msprime_families.py \
   --name families \
   --families 1000 \
   --kids-per-family 3 \
-  --pA 0.4 \
+  --n-markers 4 \
   --penetrance 0.85 \
   --model dominant \
-  --mask-rate 0.7 \
+  --mask-rate 0.5 \
   --base-out trios \
   --seed 1234
 ```
@@ -52,7 +52,7 @@ This produces:
 - `datasets/families_trio_data_masked_out.csv`
 - `datasets/families_trio.txt`
 
-example: `python make_msprime_families.py --name families --families 1000 --kids-per-family 3 --pA 0.4 --penetrance 0.85 --model dominant --mask-rate .5 --base-out trios --seed 1407461548`
+example: `python make_msprime_families.py --name families --families 1000 --kids-per-family 3 --n-markers 4 --penetrance 0.85 --model dominant --mask-rate .5 --base-out trios --seed 1407461548`
 
 ---
 
@@ -113,4 +113,4 @@ This produces:
 - `datasets/full_genotypes.csv`
 - `datasets/full_meta.txt`
 
-example: `python simulate_population.py --name full --N0 500 --generations 5 --children 2 --mask-rate 0.5 --seq-len 1e6 --mu 1e-7 --save-trees yes --seed 2056827191`
+example: `python simulate_population.py --name full --N0 50 --generations 3 --children 2 --mask-rate 0.5 --seq-len 10 --mu 1e-7 --save-trees yes --seed 2056827191`
