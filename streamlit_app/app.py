@@ -22,12 +22,93 @@ st.set_page_config(page_title="Streamlit + FastAPI", layout="wide")
 st.title("Proof of Concept: Probabilistic Ancestral Inference from Incomplete Genetic Data")
 st.caption(f"Backend fastAPI Docker container at: {API_BASE}")
 
-st.text("The core problem in genetics is that we rarely have complete data—sequencing every ancestor "
-"is often impossible due to cost or sample degradation. This leaves critical gaps in our family trees, "
-"limiting our ability to predict hereditary traits and model population history."
-"\n\nMy goal is to develop a computational system to reconstruct these missing ancestral genotypes "
-"using probabilistic machine learning models, creating a rigorous tool for studies that rely on partial "
-"genetic data.")
+col_intro, col_why = st.columns(2)
+
+with col_intro:
+    st.subheader("1. The Problem & The Solution")
+    st.markdown("""
+    The core problem in genetics is **incomplete ancestry data**.
+    * Sequencing every ancestor (parents, grandparents, great-grandparents, etc.) is often impossible due to cost, data degradation, or sample limitations (possibly ethics).
+    * This leaves critical gaps in family trees, limiting our ability to reconstruct inheritance patterns, predict hereditary traits, or model population history with confidence
+    
+    My research question: Can we reconstruct missing ancestral genotypes using probabilistic machine-learning models—**even when large portions of data are missing**?
+    
+    My goal is to develop a computational system to **reconstruct these missing ancestral genotypes** using probabilistic machine learning models.
+    """)
+
+with col_why:
+    st.subheader("Why hasn't this been done before?")
+    st.markdown("""
+    People have tried pieces of this problem, but no one has combined simulation-driven ancestry reconstruction with probabilistic inference models specifically designed to handle severely missing ancestral genotypes.
+    
+    There are methods like STRUCTURE, fastPHASE, Beagle, BEAST, IMa2, COLONY, FRANz, and many classic population-genetics pipelines work very well only when most genotypes are observed.
+    
+    Bayesian, HMM, and GNN exist in genetics, haplotype phasing, and population structure but no one has tried to do ancestry reconstruction.
+    
+    **Real datasets don't have a ground truth** making validation almost impossible.
+    
+    So my approach with simulation and experimentation hopefully allow me to do what real-world genetic studies can't.
+    """)
+
+st.markdown("---")
+st.subheader("2. Research & My Approach")
+
+col_approach, col_goal, col_tech = st.columns(3)
+
+with col_approach:
+    st.markdown("#### Approach")
+    st.markdown("""
+    To ensure rigorous testing, I use a 'ground truth' environment: **simulated populations of *Drosophila melanogaster* (fruit fly)**.
+    * Its genome is fully mapped, deeply studied, and inheritance rules are well-established making it a model organism.
+    * **Data Generation:** I use **simuPOP** and **msprime** for realistic, multi-generational populations.
+    * **Testing Mechanism:** I deliberately **mask ancestral genotypes** to create the uncertainty my models must overcome.
+    """)
+    st.markdown("""
+    **Core Hypothesis:** Probabilistic models (**Bayesian Inference, HMMs**) can effectively recover these missing genotypes and maintain robustness under increasing uncertainty.
+    
+    If successful, this will demonstrate a reproducible method for **genotype reconstruction under uncertainty**, something relevant to research in conservation genetics, biomedical trait prediction, and studies of population history.
+    """)
+
+with col_goal:
+    st.markdown("#### Goals")
+    st.markdown("""
+    1. Whether probabilistic models can reconstruct ancestral genotypes. Chi-square testing, likelihood ratios, PR, and robustness to noise or missing data.
+    
+    2. How different model classes behave under uncertainty.
+        * Bayesian methods (strong interpretability but computationally heavy),
+        * HMMs (efficient for sequential data),
+        * Potentially graph-based neural networks (powerful for large populations).
+    
+    3. The limits of inference when data becomes sparse. A key contribution is understanding when genotype reconstruction breaks down, and why. This has implications for fields where incomplete data is the norm—conservation biology, ancient DNA studies, and medical genetics.
+    """)
+
+with col_tech:
+    st.markdown("#### Technology Stack")
+    st.markdown("""
+    * **Simulation:** **simuPOP** & **msprime** (Proven population genetics tools).
+    * **Modeling:** **PyMC** (Bayesian), **hmmlearn/pomegranate** (HMMs), and potentially **PyTorch Geometric** (GNN).
+    * **Deployment:** **FastAPI** (fast, scalable backend), **React** (interactive visualization), and **Streamlit** (POC dashboard).
+    * **Reproducibility:** The entire system is containerized with **Docker**.
+    """)
+    st.markdown("""
+    * How to calibrate probabilistic models in a biological context
+    * How to design rigorous validation pipelines
+    * How to bridge simulation, AI modeling, and user-facing visualization in a single system
+    """)
+
+st.markdown("---")
+st.subheader("3. Proof of Concept (PoC) & Demo")
+
+st.markdown("""
+I currently have three docker containers running for this PoC. This dashboard demonstrates the end-to-end pipeline:
+* **Data Fetching:** Requesting simulated data from the FastAPI backend.
+* **Data Processing:** Preprocessing and structuring the genotype data for evaluation and visualization.
+* **Model Validation:** Running baseline evaluation models (in the 'Models' tab) to establish model fitness, including **AUC** and **Precision-Recall curves**. Right now the models are for **pipeline validation** not inferring the data.
+
+The full project will migrate this to a more robust and feature rich **React dashboard** and replace the baseline models with the more powerful **Bayesian** and **HMM** probabilistic models to infer missing genotypes with confidence scores.
+""")
+
+st.markdown("---")
 
 # --- Test FastAPI ---
 if st.button("Ping FastAPI"):
@@ -97,7 +178,7 @@ if "unmasked_df" in st.session_state:
 
     st.header("Unmasked Data Analysis & Visualizations")
 
-    data_tab1, data_tab2, data_tab3 = st.tabs(["Data Preprocessing", "Exploratory Data Analysis", "Classification Models"])
+    data_tab1, data_tab2, data_tab3 = st.tabs(["Data Preprocessing", "Exploratory Data Analysis", "Models"])
 
     # --- Preprocessing ---
     with data_tab1:
@@ -121,7 +202,7 @@ if "unmasked_df" in st.session_state:
             st.subheader("Training Data: Scaled Features")
             st.dataframe(X_train)
             
-            st.subheader("Trainging Data: Target Distribution")
+            st.subheader("Training Data: Target Distribution")
             st.dataframe(y_clf_train.value_counts())
 
     # --- EDA ---
@@ -154,6 +235,7 @@ if "unmasked_df" in st.session_state:
                 ("Decision Tree (Entropy)", DecisionTreeClassifier, X_train, y_clf_train, X_test, y_clf_test, {'criterion': 'entropy', 'random_state': SEED}),
                 ("Random Forest", RandomForestClassifier, X_train, y_clf_train, X_test, y_clf_test, {'random_state': SEED}),
                 ("Gradient Boosting", GradientBoostingClassifier, X_train, y_clf_train, X_test, y_clf_test, {'random_state': SEED}),
+                ("Probabilistic Baseline (L2 Regularization)", LogisticRegression, X_train, y_clf_train, X_test, y_clf_test, {'solver': 'liblinear', 'penalty': 'l2', 'C': 0.01}),
             ]
             
             clf_results_display = []

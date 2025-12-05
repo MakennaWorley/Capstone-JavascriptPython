@@ -414,8 +414,15 @@ def train_and_evaluate_clf(model_class, X_train, y_train, X_test, y_test, name, 
         # Use decision_function for models like Perceptron/SVC when they don't have predict_proba
         y_prob_test = model.decision_function(X_test)
         y_prob_train = model.decision_function(X_train)
-        # Decision function outputs need to be normalized for AUC/AP, 
+        # Decision function outputs need to be normalized for AUC/AP,
         # but ROC_AUC_SCORE can handle non-normalized decision scores.
+    elif hasattr(model, 'coef_'):
+                    feature_names = X_train.columns.tolist() 
+                    if model_class in [Perceptron, LogisticRegression, LDA]:
+                        st.write("**Feature Coefficients**:")
+                        # coef_ is 2D for binary classification
+                        coef_unmasked_df = pd.DataFrame(model.coef_[0], index=feature_names, columns=['Coefficient'])
+                        st.dataframe(coef_unmasked_df.sort_values(by='Coefficient', ascending=False), use_container_width=True)
     else:
         # Fallback for models without proba or decision function (rare for classification)
         st.warning(f"Model {name} does not support probability output for AUC/PR calculation.")
