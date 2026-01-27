@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Probabilistic Ancestral Inference — Data Generator (msprime + tskit)
 
