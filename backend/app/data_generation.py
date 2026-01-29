@@ -7,7 +7,7 @@ What this script does:
 3) Extracts genotypes as:
    - Haploid matrix: (sites x sample_genomes)
    - Diploid dosage matrix: (sites x individuals), dosage in {0,1,2} for typical biallelic sites.
-4) Applies controlled missingness (masking) to create "observed" data.
+4) Applies controlled masking to create "observed" data.
 5) Saves:
    - *.trees (tree sequence for ground truth + reproducibility)
    - *.truth_genotypes.csv
@@ -23,7 +23,6 @@ Meta replay features:
 - Merge behavior when both meta and CLI specify params:
     Default: CLI wins (meta provides defaults, CLI overrides)
     Option:  --meta-wins (meta overrides CLI)
-
 """
 
 from __future__ import annotations
@@ -43,7 +42,7 @@ import tskit
 
 
 # -----------------------------
-# Configuration
+# Configs
 # -----------------------------
 
 @dataclass(frozen=True)
@@ -60,7 +59,7 @@ class SimConfig:
 
     # Output control
     seed: int = 42
-    missing_rate: float = 0.10
+    masking_rate: float = 0.20
     output_dir: str = "datasets"
     prefix: str = "run1"
 
@@ -73,7 +72,7 @@ class SimConfig:
 
 
 # -----------------------------
-# Utility helpers
+# Utils
 # -----------------------------
 
 def ensure_dir(path: str) -> None:
@@ -92,7 +91,7 @@ def now_utc_iso() -> str:
 
 
 # -----------------------------
-# Meta replay (make_msprime_families-style)
+# Meta replay
 # -----------------------------
 
 def config_to_dict(cfg: SimConfig) -> Dict[str, Any]:
@@ -128,7 +127,7 @@ def merge_configs(cli_cfg: SimConfig, meta_cfg: SimConfig, *, meta_wins: bool) -
 
 
 # -----------------------------
-# msprime simulation helpers
+# Helpers
 # -----------------------------
 
 def simulate_tree_sequence(cfg: SimConfig) -> tskit.TreeSequence:
@@ -175,7 +174,7 @@ def simulate_with_min_variants(cfg: SimConfig) -> Tuple[tskit.TreeSequence, SimC
 
 
 # -----------------------------
-# Extraction / masking
+# Masking
 # -----------------------------
 
 def genotype_matrix(ts: tskit.TreeSequence) -> np.ndarray:
@@ -193,13 +192,13 @@ def haploid_to_diploid_dosage(G_hap: np.ndarray, ploidy: int) -> np.ndarray:
         raise ValueError("Expected even number of sample genomes for diploids.")
     return G_hap[:, 0::2] + G_hap[:, 1::2]
 
-def mask_missing(X: np.ndarray, missing_rate: float, rng: np.random.Generator) -> Tuple[np.ndarray, np.ndarray]:
+def mask(X: np.ndarray, masking_rate: float, rng: np.random.Generator) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Mask entries randomly at missing_rate; return (masked, observed_mask).
+    Mask entries randomly at masking_rate; return (masked, observed_mask).
     observed_mask=True means value kept (observed).
     """
     Xf = X.astype(float, copy=True)
-    observed_mask = rng.random(Xf.shape) >= missing_rate
+    observed_mask = rng.random(Xf.shape) >= masking_rate
     Xf[~observed_mask] = np.nan
     return Xf, observed_mask
 
@@ -272,7 +271,7 @@ def write_meta_txt(path: str, cfg_used: SimConfig, derived: Dict[str, Any], outp
 
 
 # -----------------------------
-# Core run
+# Simulation
 # -----------------------------
 
 def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: Optional[str] = None) -> Dict[str, str]:
@@ -290,7 +289,7 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
 
     # Mask at diploid-individual level
     rng = np.random.default_rng(cfg_used.seed + 999)
-    G_obs, obs_mask = mask_missing(G_dip, cfg_used.missing_rate, rng=rng)
+    G_obs, obs_mask = mask(G_dip, cfg_used.masking_rate, rng=rng)
 
     # Build tables
     df_sites = sites_table(ts)
@@ -333,8 +332,8 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
         "sequence_length": float(ts.sequence_length),
         "haploid_genotypes_shape": [int(G_hap.shape[0]), int(G_hap.shape[1])],
         "diploid_dosage_shape": [int(G_dip.shape[0]), int(G_dip.shape[1])],
-        "missing_rate": float(cfg_used.missing_rate),
-        "observed_nonmissing_fraction": float(np.isfinite(G_obs).mean()),
+        "masking_rate": float(cfg_used.masking_rate),
+        "observed_nonmasking_fraction": float(np.isfinite(G_obs).mean()),
     }
 
     meta_payload = {
@@ -367,10 +366,10 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
 
 
 # -----------------------------
-# Quick checks (optional)
+# Checks
 # -----------------------------
 
-def quick_checks(truth_csv: str, observed_csv: str) -> None:
+def checks(truth_csv: str, observed_csv: str) -> None:
     truth = pd.read_csv(truth_csv)
     obs = pd.read_csv(observed_csv)
 
@@ -381,8 +380,8 @@ def quick_checks(truth_csv: str, observed_csv: str) -> None:
     truth_vals = truth[genotype_cols].to_numpy()
     obs_vals = obs[genotype_cols].to_numpy()
 
-    missing_fraction = np.isnan(obs_vals).mean()
-    print(f"[check] Observed missing fraction: {missing_fraction:.3f}")
+    masking_fraction = np.isnan(obs_vals).mean()
+    print(f"[check] Observed masking fraction: {masking_fraction:.3f}")
 
     uniq = np.unique(truth_vals)
     print(f"[check] Unique truth dosages (first few): {uniq[:10]} (total unique={len(uniq)})")
@@ -405,7 +404,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--mutation-rate", type=float, default=SimConfig.mutation_rate)
 
     ap.add_argument("--seed", type=int, default=None, help="Random seed; if omitted, a random seed is chosen and recorded in meta.")
-    ap.add_argument("--missing-rate", type=float, default=SimConfig.missing_rate)
+    ap.add_argument("--masking-rate", type=float, default=SimConfig.masking_rate)
     ap.add_argument("--output-dir", type=str, default=SimConfig.output_dir)
     ap.add_argument("--prefix", type=str, default=SimConfig.prefix)
 
@@ -426,7 +425,7 @@ def parse_args() -> argparse.Namespace:
     merge.add_argument("--meta-wins", action="store_true", default=False,
                        help="When using --meta-in, meta overrides CLI.")
 
-    ap.add_argument("--quick-checks", action="store_true", default=False,
+    ap.add_argument("--checks", action="store_true", default=False,
                     help="Run lightweight integrity checks on saved CSVs.")
 
     return ap.parse_args()
@@ -446,7 +445,7 @@ def args_to_config(args: argparse.Namespace) -> SimConfig:
         recombination_rate=args.recombination_rate,
         mutation_rate=args.mutation_rate,
         seed=seed,
-        missing_rate=args.missing_rate,
+        masking_rate=args.masking_rate,
         output_dir=args.output_dir,
         prefix=args.prefix,
         min_variants=args.min_variants,
@@ -476,8 +475,8 @@ def main() -> None:
     outputs = run_generation(cfg, meta_in=meta_in, meta_out=args.meta_out)
 
     # Optional quick checks
-    if args.quick_checks:
-        quick_checks(outputs["truth_csv"], outputs["observed_csv"])
+    if args.checks:
+        checks(outputs["truth_csv"], outputs["observed_csv"])
 
 
 if __name__ == "__main__":
