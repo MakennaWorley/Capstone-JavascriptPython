@@ -1,7 +1,7 @@
 import os
 import io
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pathlib import Path
@@ -20,28 +20,27 @@ app.add_middleware(
 BASE_DIR = Path(__file__).resolve().parent
 DATASETS_DIR = BASE_DIR / "datasets"
 
+# health check
 @app.get("/api/hello")
 def hello():
     return {"message": "Hello from FastAPI"}
 
-@app.get("/poc/data/{file_name}/csv")
-def get_output_csv(file_name: str):
-    csv_path = DATASETS_DIR / f"{file_name}.csv"
+# Create Dataset
+@app.post("/api/create/data")
+async def create_dataset(request: Request):
+    # Print a specific header (recommended)
+    x_api_key = request.headers.get("x-api-key")
+    print("X-API-Key:", x_api_key)
 
-    if not csv_path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"File '{csv_path.name}' not found in '{DATASETS_DIR}' inside the container.",
-        )
+    # Print only headers you care about
+    interesting = ["x-api-key", "content-type", "origin", "referer"]
+    print("=== Selected Headers ===")
+    for h in interesting:
+        print(f"{h}: {request.headers.get(h)}")
 
-    df = pd.read_csv(csv_path)
+    # Print the JSON body you sent from the form
+    body = await request.json()
+    print("=== Body ===")
+    print(body)
 
-    buffer = io.StringIO()
-    df.to_csv(buffer, index=False)
-    buffer.seek(0)
-
-    return StreamingResponse(
-        buffer,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={file_name}.csv"},
-    )
+    return {"message": "Received request (stub)."}

@@ -61,7 +61,7 @@ class SimConfig:
     seed: int = 42
     masking_rate: float = 0.20
     output_dir: str = "datasets"
-    prefix: str = "run1"
+    name: str = "run1"
 
     # Variant filtering
     min_variants: int = 100
@@ -243,7 +243,7 @@ def sample_metadata(ts: tskit.TreeSequence, ploidy: int) -> pd.DataFrame:
 def build_paths(cfg: SimConfig) -> Dict[str, str]:
     """Centralize output naming."""
     ensure_dir(cfg.output_dir)
-    base = os.path.join(cfg.output_dir, cfg.prefix)
+    base = os.path.join(cfg.output_dir, cfg.name)
 
     return {
         "trees": f"{base}.trees",
@@ -407,7 +407,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--seed", type=int, default=None, help="Random seed; if omitted, a random seed is chosen and recorded in meta.")
     ap.add_argument("--masking-rate", type=float, default=SimConfig.masking_rate)
     ap.add_argument("--output-dir", type=str, default=SimConfig.output_dir)
-    ap.add_argument("--prefix", type=str, default=SimConfig.prefix)
+    ap.add_argument("--name", type=str, default=SimConfig.name)
 
     ap.add_argument("--min-variants", type=int, default=SimConfig.min_variants)
     ap.add_argument("--max-retries", type=int, default=SimConfig.max_retries)
@@ -448,14 +448,14 @@ def args_to_config(args: argparse.Namespace) -> SimConfig:
         seed=seed,
         masking_rate=args.masking_rate,
         output_dir=args.output_dir,
-        prefix=args.prefix,
+        name=args.name,
         min_variants=args.min_variants,
         max_retries=args.max_retries,
         write_meta_txt=args.write_meta_txt,
     )
 
 
-def main() -> None:
+def create_data() -> None:
     args = parse_args()
 
     # Build CLI config first
@@ -481,4 +481,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    create_data()
