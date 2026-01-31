@@ -148,6 +148,7 @@ def simulate_tree_sequence(cfg: SimConfig) -> tskit.TreeSequence:
         ts_ancestry,
         rate=cfg.mutation_rate,
         random_seed=cfg.seed + 1,
+        model="binary"
     )
 
     return ts_mut

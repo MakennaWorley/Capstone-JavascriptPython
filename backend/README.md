@@ -52,3 +52,23 @@ Meta Replay (Reproducibility): To recreate an exact dataset using a previous run
 ```bash
 python data_generation.py --meta-in my_simulations/population_run.run_metadata.json
 ```
+
+---
+
+### 🧠 Understanding the Data
+
+| Column Name             | Description  |
+|----------------------------------------------|--------------|
+| **`site_index`**     | A unique, zero-indexed integer assigned to each variant site identified during the simulation. |
+| **`position`**      | The physical location of the mutation along the DNA sequence. This value will be between 0 and your specified `--sequence-length`. |
+| **`ancestral_state`** | The original genetic "letter" (allele) present in the population before any mutations occurred at that specific site. |
+| **`derived_states`** | The new genetic "letter" (allele) that appeared due to a mutation. In these simulations, a "0" usually represents the ancestral state and "1" represents the derived state. |
+| **`ind_0000 - ind_n`** | Each column (e.g., ind_0000, ind_0001) corresponds to a single diploid individual. |
+
+#### Ind_XXXX Values
+
+Dosage Values: The numbers in these columns are genotype dosages. Because these are diploid individuals (having two sets of chromosomes), the values represent the count of the "derived" allele at that site:
+* 0: Homozygous for the ancestral allele (neither chromosome has the mutation).
+* 1: Heterozygous (one chromosome has the mutation, the other does not).
+* 2: Homozygous for the derived allele (both chromosomes have the mutation).
+* NaN: In the observed_genotypes.csv, this indicates a missing value where the data was "masked" or hidden to simulate real-world sequencing gaps.
