@@ -61,7 +61,7 @@ class SimConfig:
     seed: int = 42
     masking_rate: float = 0.20
     output_dir: str = "datasets"
-    prefix: str = "run1"
+    name: str = "run1"
 
     # Variant filtering
     min_variants: int = 100
@@ -89,6 +89,11 @@ def read_json(path: str) -> dict:
 def now_utc_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
 
+def add_to_file(text: str, output_dir: str) -> None:
+    os.makedirs(output_dir, exist_ok=True)
+    path = os.path.join(output_dir, "datasets.txt")
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(text.rstrip("\n") + "\n")
 
 # -----------------------------
 # Meta replay
@@ -148,6 +153,7 @@ def simulate_tree_sequence(cfg: SimConfig) -> tskit.TreeSequence:
         ts_ancestry,
         rate=cfg.mutation_rate,
         random_seed=cfg.seed + 1,
+        model="binary"
     )
 
     return ts_mut
@@ -242,7 +248,7 @@ def sample_metadata(ts: tskit.TreeSequence, ploidy: int) -> pd.DataFrame:
 def build_paths(cfg: SimConfig) -> Dict[str, str]:
     """Centralize output naming."""
     ensure_dir(cfg.output_dir)
-    base = os.path.join(cfg.output_dir, cfg.prefix)
+    base = os.path.join(cfg.output_dir, cfg.name)
 
     return {
         "trees": f"{base}.trees",
@@ -353,7 +359,7 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
         write_meta_txt(outputs["meta_txt"], cfg_used, derived, outputs)
 
     # Console summary
-    print("✅ Generation complete.")
+    print("Generation complete.")
     print(f"   Trees:    {outputs['trees']}")
     print(f"   Truth:    {outputs['truth_csv']}")
     print(f"   Observed: {outputs['observed_csv']}")
@@ -363,7 +369,6 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
     print(f"   Variants: {ts.num_sites}")
 
     return outputs
-
 
 # -----------------------------
 # Checks
@@ -386,7 +391,6 @@ def checks(truth_csv: str, observed_csv: str) -> None:
     uniq = np.unique(truth_vals)
     print(f"[check] Unique truth dosages (first few): {uniq[:10]} (total unique={len(uniq)})")
 
-
 # -----------------------------
 # CLI / main
 # -----------------------------
@@ -406,7 +410,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--seed", type=int, default=None, help="Random seed; if omitted, a random seed is chosen and recorded in meta.")
     ap.add_argument("--masking-rate", type=float, default=SimConfig.masking_rate)
     ap.add_argument("--output-dir", type=str, default=SimConfig.output_dir)
-    ap.add_argument("--prefix", type=str, default=SimConfig.prefix)
+    ap.add_argument("--name", type=str, default=SimConfig.name)
 
     ap.add_argument("--min-variants", type=int, default=SimConfig.min_variants)
     ap.add_argument("--max-retries", type=int, default=SimConfig.max_retries)
@@ -430,7 +434,6 @@ def parse_args() -> argparse.Namespace:
 
     return ap.parse_args()
 
-
 def args_to_config(args: argparse.Namespace) -> SimConfig:
     # If no seed provided, choose random seed and record it
     seed = args.seed
@@ -447,14 +450,13 @@ def args_to_config(args: argparse.Namespace) -> SimConfig:
         seed=seed,
         masking_rate=args.masking_rate,
         output_dir=args.output_dir,
-        prefix=args.prefix,
+        name=args.name,
         min_variants=args.min_variants,
         max_retries=args.max_retries,
         write_meta_txt=args.write_meta_txt,
     )
 
-
-def main() -> None:
+def create_data() -> None:
     args = parse_args()
 
     # Build CLI config first
@@ -474,10 +476,77 @@ def main() -> None:
     # Run generation
     outputs = run_generation(cfg, meta_in=meta_in, meta_out=args.meta_out)
 
-    # Optional quick checks
+    # Add to .txt file
+    add_to_file(args.name, args.output_dir)
+
+    # Optional quick checksgener
     if args.checks:
         checks(outputs["truth_csv"], outputs["observed_csv"])
 
 
 if __name__ == "__main__":
-    main()
+    create_data()
+
+# -----------------------------
+# API
+# -----------------------------
+
+def build_config_from_params(params: Dict[str, Any]) -> "SimConfig":
+    """
+    Builds a SimConfig from incoming params (e.g., API request JSON).
+    - Starts from SimConfig defaults.
+    - Overlays keys from params if they exist on SimConfig.
+    - Ensures we have a seed (generate if missing/None).
+    """
+
+    valid_fields = SimConfig.__dataclass_fields__.keys()
+
+    # 1. Filter the incoming params
+    filtered_params = {k: v for k, v in params.items() if k in valid_fields and v is not None}
+
+    # 2. Check if a seed was provided; if not, generate one (matching CLI behavior)
+    if "seed" not in filtered_params or filtered_params["seed"] is None:
+        filtered_params["seed"] = int(np.random.SeedSequence().entropy % (2**32))
+
+    # 3. Create the frozen object
+    return SimConfig(**filtered_params)
+
+def create_data_from_params(
+    params: Dict[str, Any],
+    *,
+    meta_in: Optional[str] = None,
+    meta_out: Optional[str] = None,
+    meta_wins: bool = False
+) -> Dict[str, Any]:
+    """
+    Programmatic equivalent of create_data(), designed for API usage.
+
+    params: dict from request body
+    meta_in: optional path to a meta JSON to replay
+    meta_out: optional path to write meta JSON (if you do metadata logging)
+    meta_wins: if True and meta_in provided, meta overrides params
+    """
+    if meta_in:
+        loaded = read_json(meta_in)
+        if meta_wins:
+            # meta overwrites request params
+            merged = {**params, **loaded}
+        else:
+            # request params overwrite meta
+            merged = {**loaded, **params}
+        params = merged
+
+    cfg = build_config_from_params(params)
+
+    if meta_out:
+        meta_payload = asdict(cfg) if hasattr(cfg, "__dataclass_fields__") else cfg.__dict__
+        write_json(meta_out, meta_payload)
+
+    outputs = run_generation(cfg)
+
+    add_to_file(cfg.name, cfg.output_dir)
+
+    return {
+        "config": asdict(cfg) if hasattr(cfg, "__dataclass_fields__") else cfg.__dict__,
+        "outputs": outputs,
+    }
