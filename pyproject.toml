@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 150
+indent-width = 4
+target-version = "py311"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "tab"
+line-ending = "auto"
+skip-magic-trailing-comma = true

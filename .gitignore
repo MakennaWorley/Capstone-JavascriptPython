@@ -30,3 +30,4 @@ __pycache__/
 .streamlit/
 backend/app/datasets/
 backend/app/datasets_archive/
+.ruff_cache
