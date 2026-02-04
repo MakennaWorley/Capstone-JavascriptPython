@@ -30,16 +30,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Dict, Optional, Tuple
 
+import msprime
 import numpy as np
 import pandas as pd
-
-import msprime
 import tskit
-
 
 # -----------------------------
 # Configs
@@ -119,6 +117,9 @@ def config_to_dict(cfg: SimConfig) -> Dict[str, Any]:
 
 def dict_to_config(d: Dict[str, Any]) -> SimConfig:
 	"""Dict -> SimConfig, ignoring unknown keys."""
+	if 'prefix' in d and 'name' not in d:
+		d['name'] = d['prefix']
+
 	fields = set(SimConfig.__dataclass_fields__.keys())
 	filtered = {k: v for k, v in d.items() if k in fields}
 	return SimConfig(**filtered)
@@ -220,19 +221,14 @@ def mask(X: np.ndarray, masking_rate: float, rng: np.random.Generator) -> Tuple[
 
 
 def sites_table(ts: tskit.TreeSequence) -> pd.DataFrame:
-	"""Site index + position + ancestral + derived states (for debugging / joins)."""
+	"""Site index + position + ancestral + derived state (for debugging / joins)."""
 	rows = []
 	for site in ts.sites():
-		derived = []
-		for mut in site.mutations:
-			derived.append(mut.derived_state)
+		derived_char = ''
+		if site.mutations:
+			derived_char = site.mutations[0].derived_state
 		rows.append(
-			{
-				'site_index': int(site.id),
-				'position': int(site.position),
-				'ancestral_state': site.ancestral_state,
-				'derived_states': ','.join(sorted(set(derived))) if derived else '',
-			}
+			{'site_index': int(site.id), 'position': int(site.position), 'ancestral_state': site.ancestral_state, 'derived_state': derived_char}
 		)
 	return pd.DataFrame(rows)
 
@@ -277,7 +273,7 @@ def build_paths(cfg: SimConfig) -> Dict[str, str]:
 def write_meta_txt(path: str, cfg_used: SimConfig, derived: Dict[str, Any], outputs: Dict[str, str]) -> None:
 	"""Optional human-readable meta, similar to make_msprime_families style."""
 	with open(path, 'w', encoding='utf-8') as f:
-		f.write(f'# Run metadata (human readable)\n')
+		f.write('# Run metadata (human readable)\n')
 		f.write(f'created_at={now_utc_iso()}\n\n')
 		f.write('[params]\n')
 		for k, v in sorted(config_to_dict(cfg_used).items()):
@@ -477,22 +473,17 @@ def args_to_config(args: argparse.Namespace) -> SimConfig:
 def create_data() -> None:
 	args = parse_args()
 
-	# Build CLI config first
-	cli_cfg = args_to_config(args)
-
 	# If meta-in is provided, load it and merge
-	meta_in = args.meta_in
-	meta_cfg = None
-	if meta_in:
-		meta = read_json(meta_in)
-		meta_cfg = dict_to_config(meta.get('params', meta))
-		# Merge meta with CLI
-		cfg = merge_configs(cli_cfg, meta_cfg, meta_wins=args.meta_wins)
+	if args.meta_in:
+		meta = read_json(args.meta_in)
+		# Handle the case where 'params' might be nested or flat
+		params_dict = meta.get('params', meta)
+		cfg = dict_to_config(params_dict)
 	else:
-		cfg = cli_cfg
+		cfg = args_to_config(args)
 
 	# Run generation
-	outputs = run_generation(cfg, meta_in=meta_in, meta_out=args.meta_out)
+	outputs = run_generation(cfg, meta_in=args.meta_in, meta_out=args.meta_out)
 
 	# Add to .txt file
 	add_to_file(args.name, args.output_dir)

@@ -1,5 +1,5 @@
 # Run metadata (human readable)
-created_at=2026-01-31T20:33:43.499043Z
+created_at=2026-02-04T22:36:46.124462Z
 
 [params]
 Ne=10000
@@ -8,9 +8,9 @@ max_retries=10
 min_variants=100
 mutation_rate=1e-07
 n_diploid_samples=500
+name=public
 output_dir=datasets
 ploidy=2
-prefix=public
 recombination_rate=1e-08
 seed=42
 sequence_length=200000
