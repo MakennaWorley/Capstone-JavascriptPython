@@ -168,6 +168,75 @@ def simulate_with_min_variants(cfg: SimConfig) -> Tuple[tskit.TreeSequence, SimC
 	return last_ts, last_cfg
 
 
+def visualize_ancestry(ts: tskit.TreeSequence, base_path: str, obs_matrix: np.ndarray):
+	"""
+	Generates two SVGs:
+	1. Truth: Shows haplotype ancestry (Blue/Orange).
+	2. Observed: Shows genotypes at the first site (0, 1, 2, or Missing/Grey).
+	"""
+	# Dynamic width: ensures at least 15px per sample node to avoid "Image too small"
+	num_samples = ts.num_samples
+	dynamic_width = max(1200, num_samples * 15)
+
+	# Get actual node IDs for samples
+	sample_ids = ts.samples()
+
+	# --- IMAGE 1: TRUTH (Ancestry) ---
+	# We target each node ID specifically in the CSS style string
+	truth_styles = []
+	for i, node_id in enumerate(sample_ids):
+		# Even sample index -> Blue, Odd -> Orange
+		color = '#3498db' if i % 2 == 0 else '#e67e22'
+		truth_styles.append(f'.node.n{node_id} > .sym {{fill: {color};}}')
+
+	truth_style_str = '\n'.join(truth_styles)
+	svg_truth_path = f'{base_path}.truth.svg'
+
+	# Draw the Truth SVG
+	ts.draw_svg(path=svg_truth_path, size=(dynamic_width, 400), style=truth_style_str, node_labels={})
+
+	# --- IMAGE 2: OBSERVED (Genotypes at Site 0) ---
+	if ts.num_sites == 0:
+		print('   [Warning] No sites simulated; skipping Observed SVG.')
+		return
+
+	# obs_matrix shape is (sites x individuals). We look at the first site.
+	first_site_obs = obs_matrix[0, :]
+
+	obs_styles = []
+	for i, val in enumerate(first_site_obs):
+		# Determine color based on dosage value in {0, 1, 2, NaN}
+		if np.isnan(val):
+			color = '#95a5a6'  # Grey (Missing/Masked)
+		elif val == 0:
+			color = '#2ecc71'  # Green
+		elif val == 1:
+			color = '#f1c40f'  # Yellow
+		elif val == 2:
+			color = '#e74c3c'  # Red
+		else:
+			color = '#95a5a6'  # Fallback
+
+		# Apply color to both haplotypes (nodes) of this diploid individual
+		node_idx_0 = 2 * i
+		node_idx_1 = 2 * i + 1
+
+		if node_idx_1 < len(sample_ids):
+			id0 = sample_ids[node_idx_0]
+			id1 = sample_ids[node_idx_1]
+			obs_styles.append(f'.node.n{id0} > .sym {{fill: {color};}}')
+			obs_styles.append(f'.node.n{id1} > .sym {{fill: {color};}}')
+
+	obs_style_str = '\n'.join(obs_styles)
+	svg_obs_path = f'{base_path}.observed.svg'
+
+	# Draw the Observed SVG
+	ts.draw_svg(path=svg_obs_path, size=(dynamic_width, 400), style=obs_style_str, node_labels={})
+
+	print(f'   Truth SVG:    {svg_truth_path}')
+	print(f'   Observed SVG: {svg_obs_path} (Site 0)')
+
+
 # -----------------------------
 # Masking
 # -----------------------------
@@ -312,6 +381,8 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
 			# only override txt if the default naming convention was used
 			pass
 
+	visualize_ancestry(ts, os.path.join(cfg_used.output_dir, cfg_used.name), G_obs)
+
 	# Persist tree sequence for ground truth
 	ts.dump(outputs['trees'])
 
@@ -338,7 +409,7 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
 		'created_at': now_utc_iso(),
 		'script': os.path.basename(__file__),
 		'meta_in': meta_in,
-		'params': config_to_dict(cfg_used),  # <-- the key round-trip piece
+		'params': config_to_dict(cfg_used),
 		'derived': derived,
 		'outputs': outputs,
 	}
