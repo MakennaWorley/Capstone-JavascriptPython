@@ -68,10 +68,6 @@ class SimConfig:
 	full_data: bool = False
 	name: str = 'DEFAULT_NAME'
 
-	# Variant filtering
-	min_variants: int = 100
-	max_retries: int = 10
-
 
 # -----------------------------
 # Utils
@@ -216,85 +212,6 @@ def simulate_tree_sequence(cfg: SimConfig) -> tskit.TreeSequence:
 	return ts
 
 
-def simulate_with_min_variants(cfg: SimConfig) -> Tuple[tskit.TreeSequence, SimConfig]:
-	"""
-	Retry with shifted seeds until ts.num_sites >= cfg.min_variants, up to max_retries.
-	Returns (ts, cfg_used).
-	"""
-	last_ts = None
-	last_cfg = cfg
-
-	for attempt in range(cfg.max_retries + 1):
-		seed_try = cfg.seed + attempt * 1000
-		cfg_try = dict_to_config({**config_to_dict(cfg), 'seed': seed_try})
-		ts = simulate_tree_sequence(cfg_try)
-		last_ts, last_cfg = ts, cfg_try
-
-		if ts.num_sites >= cfg.min_variants:
-			return ts, cfg_try
-
-	raise RuntimeError(
-		f'Failed to reach min_variants={cfg.min_variants} after max_retries={cfg.max_retries}. '
-		f'Last attempt had num_sites={0 if last_ts is None else last_ts.num_sites}. '
-		'Increase --sequence-length and/or --mutation-rate, or increase --max-retries.'
-	)
-
-
-def visualize_ancestry(ts: tskit.TreeSequence, base_path: str, obs_matrix: np.ndarray):
-	"""
-	Generates a single SVG with improved vertical spacing.
-	- Known: Filled blue circle.
-	- Masked: Outlined dotted blue circle.
-	"""
-	# 1. Select only the first tree
-	tree = ts.first()
-
-	# 2. Dynamic sizing to prevent squishing
-	num_samples = ts.num_samples
-	dynamic_width = max(1200, num_samples * 15)
-	# Increase height to 1000 to give the tree breathing room vertically
-	dynamic_height = 1000
-
-	# 3) Build CSS styles
-	styles = []
-	styles.append(
-		"""
-		/* Make every node visible (ancestors included) */
-		.node > .sym {
-		fill: #ffffff;
-		stroke: #555555;
-		stroke-width: 2;
-		}
-		""".strip()
-	)
-
-	first_site_obs = obs_matrix[0, :]
-
-	for ind in ts.individuals():
-		# ind.id matches the column index in your diploid matrices (G_dip / G_obs)
-		val = first_site_obs[ind.id]
-
-		if np.isnan(val):
-			# Masked: outlined dotted blue
-			style_props = 'fill: none; stroke: #3498db; stroke-width: 2; stroke-dasharray: 4,3;'
-		else:
-			# Known: filled blue
-			style_props = 'fill: #3498db; stroke: #3498db; stroke-width: 2;'
-
-		# IMPORTANT: style the actual sample nodes belonging to this individual
-		# (This works across multiple generations and does not assume sample ordering.)
-		for node_id in ind.nodes:
-			styles.append(f'.node.n{node_id} > .sym {{ {style_props} }}')
-
-	style_str = '\n'.join(styles)
-	svg_path = f'{base_path}.relationship.svg'
-
-	# 4. Draw SVG
-	tree.draw_svg(path=svg_path, size=(dynamic_width, dynamic_height), style=style_str, y_axis=False, y_label='Generations (Rank)', time_scale='rank')
-
-	print(f'   Relationship SVG saved: {svg_path}')
-
-
 def draw_pedigree_svg(ts: tskit.TreeSequence, base_path: str, obs_matrix: np.ndarray) -> None:
 	"""
 	Draw a pedigree-style family tree (individuals as nodes, parent->child edges),
@@ -310,7 +227,16 @@ def draw_pedigree_svg(ts: tskit.TreeSequence, base_path: str, obs_matrix: np.nda
 
 	# Decide styling based on whether the individual's column is masked at site 0
 	# (If you changed observed to nullable ints, handle pd.NA too; but NaN works here.)
-	first_site_obs = obs_matrix[0, :]
+	num_individuals = obs_matrix.shape[1]
+	is_masked = [False] * num_individuals
+
+	if obs_matrix.shape[0] > 0:
+		for ind_id in range(num_individuals):
+			column = obs_matrix[:, ind_id]
+			# An individual is considered masked if their entire column is NaN
+			# We use np.all(np.isnan(...)) to handle the stochastically dropped columns
+			if np.all(np.isnan(column.astype(float))):
+				is_masked[ind_id] = True
 
 	g = Digraph('pedigree', format='svg')
 	g.attr(rankdir='TB', splines='polyline', nodesep='0.35', ranksep='0.75')
@@ -325,18 +251,11 @@ def draw_pedigree_svg(ts: tskit.TreeSequence, base_path: str, obs_matrix: np.nda
 				if ind_time != t:
 					continue
 
-				val = first_site_obs[ind_id]
-				# masked?
-				masked = False
-				try:
-					masked = np.isnan(val)
-				except TypeError:
-					# handles pd.NA
-					masked = val is None
-
-				if masked:
+				if is_masked[ind_id]:
+					# Dotted outline for masked/missing individuals
 					sg.node(f'i{ind_id}', label=str(ind_id), style='dashed', color='#3498db', fontcolor='#3498db')
 				else:
+					# Solid fill for observed individuals
 					sg.node(f'i{ind_id}', label=str(ind_id), style='filled', fillcolor='#3498db', color='#3498db', fontcolor='white')
 
 	# Parent -> child edges
@@ -346,7 +265,7 @@ def draw_pedigree_svg(ts: tskit.TreeSequence, base_path: str, obs_matrix: np.nda
 		if p1 != -1:
 			g.edge(f'i{p1}', f'i{child_id}')
 
-	out_path = f'{base_path}.pedigree.svg'
+	out_path = f'{base_path}.pedigree'
 	g.render(filename=out_path, cleanup=True)
 	print(f'   Pedigree SVG saved: {out_path}')
 
@@ -464,13 +383,13 @@ def build_paths(cfg: SimConfig) -> Dict[str, str]:
 	}
 
 
-def write_meta_txt(path: str, cfg_used: SimConfig, derived: Dict[str, Any], outputs: Dict[str, str]) -> None:
+def write_meta_txt(path: str, cfg: SimConfig, derived: Dict[str, Any], outputs: Dict[str, str]) -> None:
 	"""Optional human-readable meta, similar to make_msprime_families style."""
 	with open(path, 'w', encoding='utf-8') as f:
 		f.write('# Run metadata (human readable)\n')
 		f.write(f'created_at={now_utc_iso()}\n\n')
 		f.write('[params]\n')
-		for k, v in sorted(config_to_dict(cfg_used).items()):
+		for k, v in sorted(config_to_dict(cfg).items()):
 			f.write(f'{k}={v}\n')
 		f.write('\n[derived]\n')
 		for k, v in sorted(derived.items()):
@@ -490,23 +409,21 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
 	Generate a dataset and write outputs.
 	Returns output paths.
 	"""
-
-	# Simulate (retry if too few variants)
-	ts, cfg_used = simulate_with_min_variants(cfg)
+	ts = simulate_tree_sequence(cfg)
 
 	# Extract genotypes
 	G_hap = genotype_matrix(ts)
 	G_dip = haploid_to_diploid_dosage(ts)
 
 	# Mask at diploid-individual level
-	rng = np.random.default_rng(cfg_used.seed + 999)
-	G_obs, obs_mask = mask(G_dip, cfg_used.masking_rate, rng=rng)
-	draw_pedigree_svg(ts, os.path.join(cfg_used.output_dir, cfg_used.name), obs_mask)
+	rng = np.random.default_rng(cfg.seed + 999)
+	G_obs, obs_mask = mask(G_dip, cfg.masking_rate, rng=rng)
+	draw_pedigree_svg(ts, os.path.join(cfg.output_dir, cfg.name), G_obs)
 
 	# Build tables
 	df_sites = sites_table(ts)
 	df_pedigree = pedigree_table(ts)
-	# write_genotypes_by_generation(ts=ts, G_dip=G_dip, df_sites=df_sites, output_dir=cfg_used.output_dir, name_prefix=cfg_used.name)
+	# write_genotypes_by_generation(ts=ts, G_dip=G_dip, df_sites=df_sites, output_dir=cfg.output_dir, name_prefix=cfg.name)
 
 	# DataFrames with consistent column naming
 	individual_cols = [f'ind_{i:04d}' for i in range(G_dip.shape[1])]
@@ -522,15 +439,13 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
 	df_obs = pd.concat([df_sites, df_obs], axis=1)
 
 	# Output paths
-	outputs = build_paths(cfg_used)
+	outputs = build_paths(cfg)
 	if meta_out is not None:
 		outputs['meta_json'] = meta_out
 		# keep txt aligned if user explicitly named json
 		if outputs['meta_txt'].endswith('.run_metadata.txt'):
 			# only override txt if the default naming convention was used
 			pass
-
-	visualize_ancestry(ts, os.path.join(cfg_used.output_dir, cfg_used.name), G_obs)
 
 	# Persist tree sequence for ground truth
 	ts.dump(outputs['trees'])
@@ -550,7 +465,7 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
 		'sequence_length': float(ts.sequence_length),
 		'haploid_genotypes_shape': [int(G_hap.shape[0]), int(G_hap.shape[1])],
 		'diploid_dosage_shape': [int(G_dip.shape[0]), int(G_dip.shape[1])],
-		'masking_rate': float(cfg_used.masking_rate),
+		'masking_rate': float(cfg.masking_rate),
 		'observed_nonmasking_fraction': float(np.isfinite(G_obs).mean()),
 	}
 
@@ -558,14 +473,14 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None, meta_out: O
 		'created_at': now_utc_iso(),
 		'script': os.path.basename(__file__),
 		'meta_in': meta_in,
-		'params': config_to_dict(cfg_used),
+		'params': config_to_dict(cfg),
 		'derived': derived,
 		'outputs': outputs,
 	}
 
 	# Save JSON meta (round-trippable)
 	write_json(outputs['meta_json'], meta_payload)
-	write_meta_txt(outputs['meta_txt'], cfg_used, derived, outputs)
+	write_meta_txt(outputs['meta_txt'], cfg, derived, outputs)
 
 	# Console summary
 	print('Generation complete.')
@@ -629,9 +544,6 @@ def parse_args() -> argparse.Namespace:
 	ap.add_argument('--full-data', action='store_true', help='Generate Train/Val/Test splits.', default=SimConfig.full_data)
 	ap.add_argument('--name', type=str, default=SimConfig.name)
 
-	ap.add_argument('--min-variants', type=int, default=SimConfig.min_variants)
-	ap.add_argument('--max-retries', type=int, default=SimConfig.max_retries)
-
 	ap.add_argument('--meta-in', type=str, default=None, help='JSON meta file to reproduce a previous run.')
 
 	ap.add_argument('--checks', action='store_true', default=False, help='Run lightweight integrity checks on saved CSVs.')
@@ -659,8 +571,6 @@ def args_to_config(args: argparse.Namespace) -> SimConfig:
 		output_dir=args.output_dir,
 		full_data=args.full_data,
 		name=args.name,
-		min_variants=args.min_variants,
-		max_retries=args.max_retries,
 	)
 
 

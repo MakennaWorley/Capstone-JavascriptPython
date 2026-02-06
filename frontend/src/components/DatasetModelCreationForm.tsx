@@ -31,9 +31,10 @@ type SimConfig = {
 	sequence_length: number;
 	recombination_rate: number;
 	mutation_rate: number;
+	n_generations: number;
+	samples_per_generation: number;
 
 	seed?: number;
-	min_variants: number;
 	full_data: boolean;
 };
 
@@ -57,8 +58,9 @@ const DEFAULTS: SimConfig = {
 	sequence_length: NaN,
 	recombination_rate: NaN,
 	mutation_rate: NaN,
+	n_generations: NaN,
+	samples_per_generation: NaN,
 
-	min_variants: NaN,
 	full_data: false
 };
 
@@ -123,8 +125,12 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 				e.push('Mutation rate must be a positive number.');
 			}
 
-			if (Number.isFinite(cfg.min_variants) && (!Number.isInteger(cfg.min_variants) || cfg.min_variants <= 0)) {
-				e.push('Min variants must be a positive integer.');
+			if (Number.isFinite(cfg.n_generations) && (!Number.isInteger(cfg.n_generations) || cfg.n_generations <= 0)) {
+				e.push('Number of generations must be a positive integer.');
+			}
+
+			if (Number.isFinite(cfg.samples_per_generation) && (!Number.isInteger(cfg.samples_per_generation) || cfg.samples_per_generation <= 0)) {
+				e.push('Number of individuals per generation must be a positive integer.');
 			}
 
 			const seedVal = parseOptionalNumber(seedText);
@@ -170,7 +176,8 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 				if (Number.isFinite(cfg.sequence_length)) params.sequence_length = cfg.sequence_length;
 				if (Number.isFinite(cfg.recombination_rate)) params.recombination_rate = cfg.recombination_rate;
 				if (Number.isFinite(cfg.mutation_rate)) params.mutation_rate = cfg.mutation_rate;
-				if (Number.isFinite(cfg.min_variants)) params.min_variants = cfg.min_variants;
+				if (Number.isFinite(cfg.n_generations)) params.n_generations = cfg.n_generations;
+				if (Number.isFinite(cfg.samples_per_generation)) params.samples_per_generation = cfg.samples_per_generation;
 
 				// Seed: only if they touched it AND provided a valid number
 				if (seedDirty && seedVal !== undefined) params.seed = seedVal;
@@ -328,12 +335,25 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 						</label>
 
 						<label>
-							Min variants
+							Number of generations
 							<input
 								type="number"
-								value={Number.isFinite(cfg.min_variants) ? cfg.min_variants : ''}
+								value={Number.isFinite(cfg.n_generations) ? cfg.n_generations : ''}
 								placeholder="100"
-								onChange={(e) => update('min_variants', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
+								onChange={(e) => update('n_generations', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
+								min={1}
+								step={1}
+								style={{ padding: '0.5rem' }}
+							/>
+						</label>
+
+						<label>
+							Number of individuals per generation
+							<input
+								type="number"
+								value={Number.isFinite(cfg.samples_per_generation) ? cfg.samples_per_generation : ''}
+								placeholder="100"
+								onChange={(e) => update('samples_per_generation', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
 								min={1}
 								step={1}
 								style={{ padding: '0.5rem' }}
