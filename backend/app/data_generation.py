@@ -638,9 +638,7 @@ def create_data() -> None:
 			# Create a unique config for each split
 			split_cfg = dict_to_config({**asdict(cfg), 'name': f'{cfg.name}.{split}', 'seed': cfg.seed + (i * 1000)})
 			run_generation(split_cfg)
-
-		# Save only the base name to the tracker file
-		add_to_file(cfg.name, cfg.output_dir)
+			add_to_file(f'{cfg.name}.{split}', cfg.output_dir)
 	else:
 		# Standard single run
 		outputs = run_generation(cfg)
@@ -706,8 +704,8 @@ def create_data_from_params(
 		for i, split in enumerate(splits):
 			split_cfg = dict_to_config({**asdict(cfg), 'name': f'{cfg.name}.{split}', 'seed': cfg.seed + (i * 1000)})
 			run_generation(split_cfg)
+			add_to_file(f'{cfg.name}.{split}', cfg.output_dir)
 
-		add_to_file(cfg.name, cfg.output_dir)
 		return {'config': asdict(cfg), 'outputs': cfg.name, 'mode': 'stratified_triplet'}
 
 	else:
