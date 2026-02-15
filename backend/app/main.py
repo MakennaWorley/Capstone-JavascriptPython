@@ -1,4 +1,3 @@
-import base64
 import os
 import sys
 from pathlib import Path
@@ -10,9 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 current_dir = Path(__file__).resolve().parent
 sys.path.append(str(current_dir))
 
-from api import api_error, api_success  # noqa: E402
 from data_generation import create_data_from_params  # noqa: E402
-from functions import get_dataset_names  # noqa: E402
+from functions import DashboardFilesMissing, api_error, api_success, get_dataset_dashboard_files, get_dataset_names  # noqa: E402
 
 app = FastAPI()
 
@@ -95,55 +93,17 @@ async def list_datasets(request: Request):
 @app.get('/api/dataset/{dataset_name}/dashboard')
 async def dataset_dashboard(dataset_name: str, request: Request):
 	try:
-		trees_path = DATASETS_DIR / f'{dataset_name}.trees'
-		truth_path = DATASETS_DIR / f'{dataset_name}.truth_genotypes.csv'
-		observed_path = DATASETS_DIR / f'{dataset_name}.observed_genotypes.csv'
+		data = get_dataset_dashboard_files(dataset_name, datasets_dir=DATASETS_DIR)
 
-		print('DATASETS_DIR =', DATASETS_DIR.resolve())
-		print('dataset_name =', dataset_name)
-		print('trees_path   =', trees_path.resolve(), 'exists?', trees_path.exists())
-		print('truth_path   =', truth_path.resolve(), 'exists?', truth_path.exists())
-		print('observed_path=', observed_path.resolve(), 'exists?', observed_path.exists())
+		return api_success(message=f"Success: Dashboard files returned for dataset '{dataset_name}'", data=data, status_code=200)
 
-		missing = []
-		if not trees_path.exists():
-			missing.append(trees_path.name)
-		if not truth_path.exists():
-			missing.append(truth_path.name)
-		if not observed_path.exists():
-			missing.append(observed_path.name)
-
-		if missing:
-			return api_error(
-				message=f"Missing required files for dataset '{dataset_name}': {', '.join(missing)}", status_code=404, code='DASHBOARD_FILES_MISSING'
-			)
-
-		# Read CSVs as text
-		truth_csv = truth_path.read_text(encoding='utf-8')
-		observed_csv = observed_path.read_text(encoding='utf-8')
-
-		# Read trees as bytes -> base64
-		trees_bytes = trees_path.read_bytes()
-		trees_b64 = base64.b64encode(trees_bytes).decode('ascii')
-
-		return api_success(
-			message=f"Success: Dashboard files returned for dataset '{dataset_name}'",
-			data={
-				'dataset': dataset_name,
-				'observed_genotypes_csv': observed_csv,
-				'truth_genotypes_csv': truth_csv,
-				'trees_name': trees_path.name,
-				'trees_base64': trees_b64,
-				'trees_byte_length': len(trees_bytes),
-			},
-			status_code=200,
+	except DashboardFilesMissing as e:
+		return api_error(
+			message=f"Missing required files for dataset '{e.dataset_name}': {', '.join(e.missing)}", status_code=404, code='DASHBOARD_FILES_MISSING'
 		)
 
 	except UnicodeDecodeError:
 		return api_error(message='Error: Could not decode one of the CSV files (encoding issue)', status_code=500, code='CSV_DECODE_FAILED')
-
-	except ValueError as ve:
-		return api_error(message=str(ve), status_code=400, code='INVALID_DATASET_NAME')
 
 	except Exception as e:
 		print(f'Error: Dashboard fetch failed: {str(e)}')
