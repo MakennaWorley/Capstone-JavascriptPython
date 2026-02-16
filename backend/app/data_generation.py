@@ -132,14 +132,18 @@ def build_random_pedigree(cfg: SimConfig) -> tskit.TableCollection:
 	Builds an explicit multi-generation pedigree where every non-founder has 2 parents,
 	and the whole cohort shares a small set of founders (so it's one connected family forest,
 	not 200 unrelated people).
+
+	n_diploid_samples is treated as a minimum target for the total population.
+	Each generation has variable size based on reproductive success.
 	"""
 	rng = np.random.default_rng(cfg.seed + 12345)
 
-	# How many individuals per generation
-	n_per_gen = int(cfg.samples_per_generation) if cfg.samples_per_generation is not None else int(cfg.n_diploid_samples)
+	# Target minimum total individuals across all generations
+	target_total = cfg.n_diploid_samples
 
 	# Make the oldest generation SMALL so everyone is related
-	n_founders = max(2, n_per_gen // 10)
+	# Start with a small founder population (2-10% of target)
+	n_founders = max(4, min(20, target_total // 10))
 
 	pb = msprime.PedigreeBuilder()
 
@@ -150,26 +154,49 @@ def build_random_pedigree(cfg: SimConfig) -> tskit.TableCollection:
 	t_oldest = cfg.n_generations - 1
 	generation_ids[t_oldest] = [pb.add_individual(time=float(t_oldest), parents=None, is_sample=False) for _ in range(n_founders)]
 
+	total_individuals = n_founders
+
 	# Work forward toward the present (t decreases)
-	# Each generation has n_per_gen individuals, each with two parents from t+1
+	# Each generation grows naturally with some variation
 	for t in range(t_oldest - 1, -1, -1):
 		parents = generation_ids[t + 1]
 
-		# Create parent pairs (couples). Ensure we have enough pairs.
-		rng.shuffle(parents)
-		couples = []
-		couples = [(parents[i], parents[i + 1]) for i in range(0, len(parents) - 1, 2)]
-		if not couples:
-			couples = [(parents[0], parents[0])]
+		# Calculate how many individuals we need in this generation
+		# If we're behind target, generate more; if ahead, generate fewer
+		generations_left = t + 1  # including this one
+		individuals_needed = max(0, target_total - total_individuals)
 
-		# Make sure every parent is used at least once:
-		# assign children round-robin over couples.
-		k = len(couples)
+		if generations_left > 0:
+			# Target for this generation (with some buffer)
+			base_target = individuals_needed // generations_left
+			# Add growth factor: each generation should be roughly 1.5-2x previous
+			growth_target = int(len(parents) * 1.5)
+			# Use the larger of the two, but cap at reasonable limits
+			n_children = max(len(parents), min(base_target, growth_target))
+			# Add some randomness (±20%)
+			n_children = max(len(parents), int(n_children * rng.uniform(0.8, 1.2)))
+
+			# For the final generation (t=0), ensure we meet minimum
+			if t == 0 and total_individuals + n_children < target_total:
+				n_children = target_total - total_individuals
+		else:
+			n_children = len(parents)
+
+		# Randomly select parents for each child
+		# This allows variable offspring per parent and keeps everyone connected
 		gen_ids = []
-		for i in range(n_per_gen):
-			mom, dad = couples[i % k]
+		for i in range(n_children):
+			# Randomly pick two *different* parents
+			if len(parents) >= 2:
+				parent_pair = rng.choice(parents, size=2, replace=False)
+				mom, dad = parent_pair[0], parent_pair[1]
+			else:
+				# Edge case: only one parent available
+				mom = dad = parents[0]
 			gen_ids.append(pb.add_individual(time=float(t), parents=[mom, dad], is_sample=(t == 0)))
+
 		generation_ids[t] = gen_ids
+		total_individuals += len(gen_ids)
 
 	# Important: give the pedigree a sequence length so sim_ancestry can run
 	return pb.finalise(sequence_length=cfg.sequence_length)
