@@ -25,7 +25,6 @@ export default function App() {
 	const [status, setStatus] = useState('');
 	const [datasets, setDatasets] = useState<string[]>([]);
 
-	// --- Ping FastAPI ---
 	async function pingBackend() {
 		try {
 			setStatus('Pinging...');
@@ -38,7 +37,6 @@ export default function App() {
 		}
 	}
 
-	// --- Fetch dataset list ---
 	async function fetchDatasets() {
 		try {
 			setStatus('Fetching datasets...');
