@@ -122,7 +122,7 @@ class BayesianLinearDosageRegressor:
 	def tag(self) -> str:
 		return 'bayes_linear'
 
-	def fit(self, X: np.ndarray, y: np.ndarray) -> 'BayesianLinearDosageRegressor':
+	def fit(self, X: np.ndarray, y: np.ndarray, groups: np.ndarray) -> 'BayesianLinearDosageRegressor':
 		X = np.asarray(X, dtype=np.float32)
 		y = np.asarray(y, dtype=np.float32)
 
@@ -133,15 +133,21 @@ class BayesianLinearDosageRegressor:
 
 		self.feature_mean_ = mu
 		self.feature_std_ = sd
+		n_groups = len(np.unique(groups))
 
 		n, k = Xz.shape
 
 		with pm.Model() as model:
-			intercept = pm.Normal('intercept', mu=0.0, sigma=1.0)
-			coef = pm.Normal('coef', mu=0.0, sigma=1.0, shape=k)
+			# Hierarchical Priors (Population Level)
+			mu_alpha = pm.Normal('mu_alpha', mu=0.0, sigma=1.0)
+			sigma_alpha = pm.HalfNormal('sigma_alpha', sigma=1.0)
+
+			# Group-specific intercepts (Ancestry branches)
+			intercepts = pm.Normal('intercepts', mu=mu_alpha, sigma=sigma_alpha, shape=n_groups)
+			coef = pm.Normal('coef', mu=0.0, sigma=1.0, shape=Xz.shape[1])
 			sigma = pm.HalfNormal('sigma', sigma=1.0)
 
-			mu_y = intercept + pm.math.dot(Xz, coef)
+			mu_y = intercepts[groups] + pm.math.dot(Xz, coef)
 			pm.Normal('y', mu=mu_y, sigma=sigma, observed=y)
 
 			self.idata = pm.sample(
@@ -150,28 +156,24 @@ class BayesianLinearDosageRegressor:
 				chains=self.chains,
 				target_accept=self.target_accept,
 				random_seed=self.random_seed,
-				progressbar=True,
 				return_inferencedata=True,
 			)
 
-		coef_samples = self.idata.posterior['coef'].values  # (chain, draw, k)
-		intercept_samples = self.idata.posterior['intercept'].values  # (chain, draw)
-		self._coef_mean = coef_samples.mean(axis=(0, 1))
-		self._intercept_mean = float(intercept_samples.mean(axis=(0, 1)))
+		self._coef_mean = self.idata.posterior['coef'].mean(axis=(0, 1)).values
+		self._mu_alpha_mean = float(self.idata.posterior['mu_alpha'].mean())
 		return self
 
 	def predict(self, X: np.ndarray) -> np.ndarray:
-		if self._coef_mean is None or self._intercept_mean is None:
-			raise RuntimeError('Model not fit/loaded yet.')
-		if self.feature_mean_ is None or self.feature_std_ is None:
-			raise RuntimeError('Missing feature scaling params.')
-
-		X = np.asarray(X, dtype=np.float32)
 		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
-		yhat = self._intercept_mean + Xz @ self._coef_mean
-		if self.clip_to_dosage_range:
-			yhat = np.clip(yhat, 0.0, 2.0)
-		return yhat
+		yhat = self._mu_alpha_mean + Xz @ self._coef_mean
+		return np.clip(yhat, 0.0, 2.0) if self.clip_to_dosage_range else yhat
+
+	def get_calibration_data(self):
+		if self.idata is None:
+			raise RuntimeError('Model must be fit first.')
+		with pm.Model():  # Re-create model context for PPC
+			ppc = pm.sample_posterior_predictive(self.idata)
+		return ppc
 
 	def save(self, paths: Dict[str, Path], extra_meta: Dict[str, Any]) -> None:
 		if self.idata is None:
@@ -181,10 +183,9 @@ class BayesianLinearDosageRegressor:
 
 		payload = {
 			'type': 'BayesianLinearDosageRegressor',
-			'tag': self.tag,
 			'feature_mean': self.feature_mean_.tolist(),
 			'feature_std': self.feature_std_.tolist(),
-			'posterior_means': {'coef': self._coef_mean.tolist(), 'intercept': self._intercept_mean},
+			'posterior_means': {'coef': self._coef_mean.tolist(), 'mu_alpha': self._mu_alpha_mean},
 			'params': {
 				'draws': self.draws,
 				'tune': self.tune,
@@ -206,7 +207,7 @@ class BayesianLinearDosageRegressor:
 		m.feature_mean_ = np.array(meta['feature_mean'], dtype=np.float32)
 		m.feature_std_ = np.array(meta['feature_std'], dtype=np.float32)
 		m._coef_mean = np.array(meta['posterior_means']['coef'], dtype=np.float32)
-		m._intercept_mean = float(meta['posterior_means']['intercept'])
+		m._mu_alpha_mean = float(meta['posterior_means']['mu_alpha'])
 		return m
 
 
@@ -243,24 +244,27 @@ class BayesianCategoricalDosageClassifier:
 	def tag(self) -> str:
 		return 'bayes_softmax3'
 
-	def fit(self, X: np.ndarray, y: np.ndarray) -> 'BayesianCategoricalDosageClassifier':
+	def fit(self, X: np.ndarray, y: np.ndarray, groups: np.ndarray) -> 'BayesianCategoricalDosageClassifier':
 		X = np.asarray(X, dtype=np.float32)
 		y_int = coerce_dosage_classes(np.asarray(y, dtype=np.float32))
 
 		Xz, mu, sd = standardize_fit(X)
+
 		self.feature_mean_ = mu
 		self.feature_std_ = sd
-
-		n, k = Xz.shape
+		n_groups = len(np.unique(groups))
 		C = 3
 
 		with pm.Model() as model:
-			# priors
-			b = pm.Normal('b', mu=0.0, sigma=1.0, shape=C)
-			W = pm.Normal('W', mu=0.0, sigma=1.0, shape=(k, C))
+			# Hierarchical Priors for the Intercepts
+			mu_b = pm.Normal('mu_b', mu=0.0, sigma=1.0, shape=C)
+			sigma_b = pm.HalfNormal('sigma_b', sigma=1.0, shape=C)
 
-			logits = b + pm.math.dot(Xz, W)  # (n, C)
+			# Group-level intercepts
+			b = pm.Normal('b', mu=mu_b, sigma=sigma_b, shape=(n_groups, C))
+			W = pm.Normal('W', mu=0.0, sigma=1.0, shape=(Xz.shape[1], C))
 
+			logits = b[groups] + pm.math.dot(Xz, W)
 			pm.Categorical('y', logit_p=logits, observed=y_int)
 
 			self.idata = pm.sample(
@@ -269,30 +273,25 @@ class BayesianCategoricalDosageClassifier:
 				chains=self.chains,
 				target_accept=self.target_accept,
 				random_seed=self.random_seed,
-				progressbar=True,
 				return_inferencedata=True,
 			)
 
-		W_s = self.idata.posterior['W'].values  # (chain, draw, k, C)
-		b_s = self.idata.posterior['b'].values  # (chain, draw, C)
-		self._W_mean = W_s.mean(axis=(0, 1))
-		self._b_mean = b_s.mean(axis=(0, 1))
+		self._W_mean = self.idata.posterior['W'].mean(axis=(0, 1)).values
+		self._mu_b_mean = self.idata.posterior['mu_b'].mean(axis=(0, 1)).values
 		return self
 
 	def predict_proba(self, X: np.ndarray) -> np.ndarray:
-		if self._W_mean is None or self._b_mean is None:
-			raise RuntimeError('Model not fit/loaded yet.')
-		if self.feature_mean_ is None or self.feature_std_ is None:
-			raise RuntimeError('Missing feature scaling params.')
-
-		X = np.asarray(X, dtype=np.float32)
 		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
-		logits = self._b_mean + Xz @ self._W_mean  # (n, 3)
-		# stable softmax
-		z = logits - logits.max(axis=1, keepdims=True)
-		expz = np.exp(z)
-		p = expz / expz.sum(axis=1, keepdims=True)
-		return p.astype(np.float32)
+		logits = self._mu_b_mean + Xz @ self._W_mean
+		expz = np.exp(logits - logits.max(axis=1, keepdims=True))
+		return (expz / expz.sum(axis=1, keepdims=True)).astype(np.float32)
+
+	def get_calibration_data(self):
+		if self.idata is None:
+			raise RuntimeError('Model must be fit first.')
+		with pm.Model():
+			ppc = pm.sample_posterior_predictive(self.idata)
+		return ppc
 
 	def predict_class(self, X: np.ndarray) -> np.ndarray:
 		p = self.predict_proba(X)
@@ -318,7 +317,7 @@ class BayesianCategoricalDosageClassifier:
 			'tag': self.tag,
 			'feature_mean': self.feature_mean_.tolist(),
 			'feature_std': self.feature_std_.tolist(),
-			'posterior_means': {'W': self._W_mean.tolist(), 'b': self._b_mean.tolist()},
+			'posterior_means': {'W': self._W_mean.tolist(), 'mu_b': self._mu_b_mean.tolist()},
 			'params': {
 				'draws': self.draws,
 				'tune': self.tune,
@@ -339,7 +338,7 @@ class BayesianCategoricalDosageClassifier:
 		m.feature_mean_ = np.array(meta['feature_mean'], dtype=np.float32)
 		m.feature_std_ = np.array(meta['feature_std'], dtype=np.float32)
 		m._W_mean = np.array(meta['posterior_means']['W'], dtype=np.float32)
-		m._b_mean = np.array(meta['posterior_means']['b'], dtype=np.float32)
+		m._mu_b_mean = np.array(meta['posterior_means']['mu_b'], dtype=np.float32)
 		return m
 
 
@@ -369,18 +368,21 @@ def _prep_triplet(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 	triplet = data_preparation.prepare_data_triplet(base_name, prep_cfg)
 
-	X_train_3d, y_train_2d = triplet['train']['X'], triplet['train']['y']
-	X_val_3d, y_val_2d = triplet['val']['X'], triplet['val']['y']
-	X_test_3d, y_test_2d = triplet['test']['X'], triplet['test']['y']
+	X_train, y_train = flatten_examples(triplet['train']['X'], triplet['train']['y'])
+	X_val, y_val = flatten_examples(triplet['val']['X'], triplet['val']['y'])
+	X_test, y_test = flatten_examples(triplet['test']['X'], triplet['test']['y'])
 
-	X_train, y_train = flatten_examples(X_train_3d, y_train_2d)
-	X_val, y_val = flatten_examples(X_val_3d, y_val_2d)
-	X_test, y_test = flatten_examples(X_test_3d, y_test_2d)
+	# Extract and flatten the hierarchy/group IDs
+	groups = {}
+	for split, X_set in [('train', X_train), ('val', X_val), ('test', X_test)]:
+		if 'groups' in triplet[split]:
+			groups[split] = triplet[split]['groups'].flatten().astype(int)
+		else:
+			# Fallback: Assign everyone to Group 0 (Non-hierarchical mode)
+			print(f"Warning: 'groups' key missing in {split} split. Using default Group 0.")
+			groups[split] = np.zeros(X_set.shape[0], dtype=int)
 
-	if X_train.shape[0] == 0:
-		raise RuntimeError('No training examples produced. Try PrepConfig.only_predict_masked=False or increase masking_rate during generation.')
-
-	return X_train, y_train, X_val, y_val, X_test, y_test
+	return X_train, y_train, X_val, y_val, X_test, y_test, groups
 
 
 def train_with_cross_val(base_name, model_kind, prep_cfg, n_splits=5, models_dir='models'):
@@ -388,11 +390,12 @@ def train_with_cross_val(base_name, model_kind, prep_cfg, n_splits=5, models_dir
 	Performs K-Fold CV on the combined training and validation sets
 	and returns a model fit on the full combined dataset.
 	"""
-	X_train, y_train, X_val, y_val, X_test, y_test = _prep_triplet(base_name, prep_cfg)
+	X_train, y_train, X_val, y_val, X_test, y_test, groups = _prep_triplet(base_name, prep_cfg)
 
 	# Combine train and val: the model updates on all available non-test data
 	X_all = np.concatenate([X_train, X_val], axis=0)
 	y_all = np.concatenate([y_train, y_val], axis=0)
+	groups_all = np.concatenate([groups['train'], groups['val']], axis=0)
 
 	kf = KFold(n_splits=n_splits, shuffle=True, random_state=123)
 
@@ -401,6 +404,7 @@ def train_with_cross_val(base_name, model_kind, prep_cfg, n_splits=5, models_dir
 	for fold, (train_idx, val_idx) in enumerate(kf.split(X_all)):
 		X_t, X_v = X_all[train_idx], X_all[val_idx]
 		y_t, y_v = y_all[train_idx], y_all[val_idx]
+		g_t = groups_all[train_idx]
 
 		# Temporary model for fold validation
 		if model_kind == 'linear':
@@ -408,7 +412,7 @@ def train_with_cross_val(base_name, model_kind, prep_cfg, n_splits=5, models_dir
 		else:
 			fold_model = BayesianCategoricalDosageClassifier()
 
-		fold_model.fit(X_t, y_t)
+		fold_model.fit(X_t, y_t, groups=g_t)
 
 		# Calculate metrics for monitoring
 		y_pred = fold_model.predict(X_v)
@@ -422,7 +426,7 @@ def train_with_cross_val(base_name, model_kind, prep_cfg, n_splits=5, models_dir
 	else:
 		final_model = BayesianCategoricalDosageClassifier()
 
-	final_model.fit(X_all, y_all)
+	final_model.fit(X_all, y_all, groups=groups_all)
 	return final_model
 
 
@@ -443,7 +447,7 @@ def train_eval_one(
 	if prep_cfg is None:
 		prep_cfg = data_preparation.PrepConfig(dataset_name='unused')
 
-	X_train, y_train, X_val, y_val, X_test, y_test = _prep_triplet(base_name, prep_cfg)
+	X_train, y_train, X_val, y_val, X_test, y_test, groups = _prep_triplet(base_name, prep_cfg)
 
 	if model_kind == 'linear':
 		ModelCls = BayesianLinearDosageRegressor
@@ -463,18 +467,13 @@ def train_eval_one(
 		# Check if we are dealing with validation data to trigger cross-validation
 		if 'validation' in base_name.lower():
 			print(f"Validation detected in '{base_name}'. Updating model using cross-validation...")
-			# We assume train_with_cross_val returns the final fitted model object
-			train_with_cross_val(base_name, model_kind, prep_cfg, models_dir=models_dir)
-			X_pool = np.concatenate([X_train, X_val], axis=0)
-			y_pool = np.concatenate([y_train, y_val], axis=0)
-
-			model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed)
-			model.fit(X_pool, y_pool)
+			model = train_with_cross_val(base_name, model_kind, prep_cfg, models_dir=models_dir)
 		else:
 			model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed)
-			model.fit(X_train, y_train)
+			model.fit(X_train, y_train, groups=groups['train'])
 
 		trained = True
+		model.get_calibration_data()
 		model.save(paths, extra_meta={'base_name': base_name, 'prep_cfg': asdict(prep_cfg)})
 
 	proxy = _NoRefitProxy(model)
@@ -575,7 +574,7 @@ def test_on_new_data(model, dataset_name: str, prep_cfg: Optional[data_preparati
 		prep_cfg = data_preparation.PrepConfig(dataset_name=dataset_name)
 
 	# 1. Load the new data
-	new_data = data_preparation.prepare_data_triplet(dataset_name, prep_cfg)
+	new_data = data_preparation.prepare_data(dataset_name, prep_cfg)
 	X_raw, y_raw = flatten_examples(new_data['test']['X'], new_data['test']['y'])
 
 	# 2. Wrap the model in the NoRefitProxy to ensure .fit() cannot be called
