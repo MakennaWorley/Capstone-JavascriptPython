@@ -18,14 +18,13 @@ type ApiError = {
 };
 
 export default function App() {
-	const API_BASE = 'http://localhost:8000';
-	const API_KEY = 'REACT_FRONTEND_REQUEST';
+	const API_BASE = import.meta.env.VITE_API_BASE;
+	const API_KEY = import.meta.env.VITE_X_API_KEY;
 
 	const [msg, setMsg] = useState<string | null>(null);
 	const [status, setStatus] = useState('');
 	const [datasets, setDatasets] = useState<string[]>([]);
 
-	// --- Ping FastAPI ---
 	async function pingBackend() {
 		try {
 			setStatus('Pinging...');
@@ -38,7 +37,6 @@ export default function App() {
 		}
 	}
 
-	// --- Fetch dataset list ---
 	async function fetchDatasets() {
 		try {
 			setStatus('Fetching datasets...');

@@ -23,10 +23,13 @@ Thumbs.db
 
 node_modules/
 dist/
-.env
+*/.env
 __pycache__/
 *.pyc
 .venv/
 .streamlit/
 backend/app/datasets/
 backend/app/datasets_archive/
+.ruff_cache
+frontend/coverage/
+backend/app/models/

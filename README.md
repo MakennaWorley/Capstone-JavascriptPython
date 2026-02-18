@@ -48,16 +48,31 @@ Models are benchmarked using both quantitative and qualitative dimensions:
 
 The entire system will be containerized with Docker to ensure reproducibility and ease of deployment.
 
-#### How to Run Locally
-
-You can build and run the complete Proof of Concept environment using `docker-compose`.
+#### How to Run Locally (CPU default - Mac Friendly)
 
 ```bash
-docker compose build
-docker compose up
+docker compose up --build
 ```
 
-Once the containers are running, the Streamlit dashboard will be accessible via your web browser.
+Once that finishes, you should see three containers running:
+- FastAPI: `http://localhost:8000`
+- React: `http://localhost:5173`
+- Streamlit: `http://localhost:8501`
+
+#### How to Run Locally (NVIDIA GPU)
+
+If you have an NVIDIA GPU and NVIDIA Container Toolkit installed:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+```
+
+Note: the GPU profile swaps in the GPU-enabled backend container.
+
+Once that finishes, you should see three containers running:
+- FastAPI: `http://localhost:8000`
+- React: `http://localhost:5173`
+- Streamlit: `http://localhost:8501`
 
 #### How to Rebuild Containers (If you mess them up)
 To ensure a clean environment, you can stop, remove, and rebuild your Docker containers:

@@ -6,30 +6,38 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
-		"lint": "eslint .",
 		"preview": "vite preview",
-		"format": "prettier --write .",
-		"format:check": "prettier --check ."
+		"format": "biome format --write .",
+		"format:check": "biome format .",
+		"lint": "biome lint .",
+		"check": "biome check .",
+		"test": "vitest",
+		"test:watch": "vitest",
+		"test:run": "vitest run",
+		"test:cov": "vitest run --coverage"
 	},
 	"dependencies": {
-		"papaparse": "^5.5.3",
-		"react": "^19.2.0",
-		"react-dom": "^19.2.0"
+		"@emotion/react": "11.14.0",
+		"@emotion/styled": "11.14.1",
+		"@mui/material": "7.3.8",
+		"papaparse": "5.5.3",
+		"react": "19.2.0",
+		"react-dom": "19.2.0"
 	},
 	"devDependencies": {
-		"@eslint/js": "^9.39.1",
-		"@types/react": "^19.2.10",
-		"@types/react-dom": "^19.2.3",
-		"@vitejs/plugin-react": "^5.1.1",
-		"eslint": "^9.39.1",
-		"eslint-config-prettier": "^10.1.8",
-		"eslint-plugin-react-hooks": "^7.0.1",
-		"eslint-plugin-react-refresh": "^0.4.24",
-		"globals": "^16.5.0",
-		"prettier": "^3.8.1",
-		"sass": "^1.97.3",
-		"sass-embedded": "^1.97.3",
-		"typescript": "^5.9.3",
-		"vite": "^7.2.4"
+		"@biomejs/biome": "2.4.1",
+		"@testing-library/jest-dom": "6.9.1",
+		"@testing-library/react": "16.3.2",
+		"@testing-library/user-event": "14.6.1",
+		"@types/react": "19.2.10",
+		"@types/react-dom": "19.2.3",
+		"@vitejs/plugin-react": "5.1.1",
+		"@vitest/coverage-v8": "4.0.18",
+		"jsdom": "28.1.0",
+		"sass": "1.97.3",
+		"sass-embedded": "1.97.3",
+		"typescript": "5.9.3",
+		"vite": "7.2.4",
+		"vitest": "4.0.18"
 	}
 }

@@ -1,38 +1,37 @@
 services:
-  backend:
-    container_name: fastapi
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    ports: ["8000:8000"]
-    environment:
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:8501
-    volumes:
-      - ./backend:/app
+    backend:
+        container_name: fastapi
+        build:
+            context: .
+            dockerfile: backend/Dockerfile.cpu
+        ports: ['8000:8000']
+        environment:
+            - CORS_ORIGINS=http://localhost:5173,http://localhost:8501
+        volumes:
+            - ./backend:/app
 
-  frontend:
-    container_name: react
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    platform: linux/arm64
-    ports: ["5173:5173"]
-    environment:
-      - VITE_API_BASE=/fastapi
-      - VITE_PROXY_HOST=http://fastapi:8000
-    depends_on: [backend]
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+    frontend:
+        container_name: react
+        build:
+            context: .
+            dockerfile: frontend/Dockerfile
+        ports: ['5173:5173']
+        environment:
+            - VITE_API_BASE=/fastapi
+            - VITE_PROXY_HOST=http://fastapi:8000
+        depends_on: [backend]
+        volumes:
+            - ./frontend:/app
+            - /app/node_modules
 
-  streamlit:
-    container_name: streamlit
-    build:
-      context: .
-      dockerfile: streamlit_app/Dockerfile
-    ports: ["8501:8501"]
-    environment:
-      - API_BASE=http://fastapi:8000
-    depends_on: [backend]
-    volumes:
-      - ./streamlit_app:/app
+    streamlit:
+        container_name: streamlit
+        build:
+            context: .
+            dockerfile: streamlit_app/Dockerfile
+        ports: ['8501:8501']
+        environment:
+            - API_BASE=http://fastapi:8000
+        depends_on: [backend]
+        volumes:
+            - ./streamlit_app:/app
