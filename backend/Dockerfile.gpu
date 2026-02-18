@@ -1,6 +1,10 @@
-FROM python:3.12
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 
+# Install Python 3.12
 RUN apt-get update && apt-get install -y \
+    python3.12 \
+    python3.12-dev \
+    python3-pip \
     graphviz \
     libgsl-dev \
     libcurl4-openssl-dev \
@@ -8,9 +12,19 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+
 WORKDIR /app
+
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install CUDA torch
+RUN pip install torch==2.9.1 torchvision==0.24.1 torchaudio==2.9.1 \
+    --index-url https://download.pytorch.org/whl/cu124
+
 COPY backend /app
+
 ENV CORS_ORIGINS="http://localhost:5173,http://localhost:8501"
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
