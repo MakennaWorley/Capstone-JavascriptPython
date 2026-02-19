@@ -132,7 +132,7 @@ class BayesianLinearDosageRegressor:
 		self.feature_std_ = sd
 		n_groups = len(np.unique(groups))
 
-		with pm.Model() as model:
+		with pm.Model():
 			# 1. Define Hierarchical Priors (Population Level) FIRST
 			mu_alpha = pm.Normal('mu_alpha', mu=0.0, sigma=1.0)
 			sigma_alpha = pm.HalfNormal('sigma_alpha', sigma=1.0)
@@ -161,9 +161,21 @@ class BayesianLinearDosageRegressor:
 		self._mu_alpha_mean = float(self.idata.posterior['mu_alpha'].mean())
 		return self
 
-	def predict(self, X: np.ndarray) -> np.ndarray:
+	def predict(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
 		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
-		yhat = self._mu_alpha_mean + Xz @ self._coef_mean
+
+		# Extract the group-specific intercepts
+		if self.idata is not None and groups is not None:
+			group_intercepts = self.idata.posterior['intercepts'].mean(axis=(0, 1)).values
+			# Map each input to its specific group intercept
+			intercept = group_intercepts[groups]
+			mask = (groups >= len(group_intercepts)) | (groups < 0)
+			intercept[mask] = self._mu_alpha_mean
+		else:
+			# Fallback to the global population mean (mu_alpha)
+			intercept = self._mu_alpha_mean
+
+		yhat = intercept + Xz @ self._coef_mean
 		return np.clip(yhat, 0.0, 2.0) if self.clip_to_dosage_range else yhat
 
 	def get_calibration_data(self):
@@ -253,7 +265,7 @@ class BayesianCategoricalDosageClassifier:
 		n_groups = len(np.unique(groups))
 		C = 3
 
-		with pm.Model() as model:
+		with pm.Model():
 			# 1. Define Hierarchical Priors for category intercepts
 			mu_b = pm.Normal('mu_b', mu=0.0, sigma=1.0, shape=C)
 			sigma_b = pm.HalfNormal('sigma_b', sigma=1.0, shape=C)
@@ -279,9 +291,20 @@ class BayesianCategoricalDosageClassifier:
 		self._mu_b_mean = self.idata.posterior['mu_b'].mean(axis=(0, 1)).values
 		return self
 
-	def predict_proba(self, X: np.ndarray) -> np.ndarray:
+	def predict_proba(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
 		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
-		logits = self._mu_b_mean + Xz @ self._W_mean
+
+		if self.idata is not None and groups is not None:
+			# b shape is (n_groups, 3)
+			group_b = self.idata.posterior['b'].mean(axis=(0, 1)).values
+			intercept = np.take(group_b, groups, axis=0, mode='clip')
+			mask = (groups >= len(group_b)) | (groups < 0)
+			intercept[mask] = self._mu_b_mean
+		else:
+			# Fallback to global category means
+			intercept = self._mu_b_mean  # shape (3,)
+
+		logits = intercept + Xz @ self._W_mean
 		expz = np.exp(logits - logits.max(axis=1, keepdims=True))
 		return (expz / expz.sum(axis=1, keepdims=True)).astype(np.float32)
 
@@ -292,16 +315,16 @@ class BayesianCategoricalDosageClassifier:
 			ppc = pm.sample_posterior_predictive(self.idata)
 		return ppc
 
-	def predict_class(self, X: np.ndarray) -> np.ndarray:
-		p = self.predict_proba(X)
+	def predict_class(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
+		p = self.predict_proba(X, groups=groups)
 		return np.argmax(p, axis=1).astype(np.int64)
 
-	def predict(self, X: np.ndarray) -> np.ndarray:
+	def predict(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
 		"""
 		Expected dosage E[y] = sum_c c * p(c)
 		This makes it compatible with regression metrics/plots.
 		"""
-		p = self.predict_proba(X)
+		p = self.predict_proba(X, groups=groups)
 		classes = np.array([0.0, 1.0, 2.0], dtype=np.float32)
 		return (p * classes[None, :]).sum(axis=1)
 
@@ -497,9 +520,11 @@ def train_eval_one(
 
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
 	print(f'--- Phase 3: Final Testing on {test_base} ---')
-	X_test, y_test, _ = load_whole_dataset(test_base, prep_cfg)
+	X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
-	test_metrics = model_graph_functions.evaluate_and_graph_reg(model, X_test, y_test, name=f'{model_tag}_Unseen_Test', graph=True)
+	test_metrics = model_graph_functions.evaluate_and_graph_reg(
+		model, X_test, y_test, groups=groups_test, name=f'{model_tag}_Unseen_Test', graph=True
+	)
 
 	if paths['graph_test']:
 		plt.savefig(paths['graph_test'])

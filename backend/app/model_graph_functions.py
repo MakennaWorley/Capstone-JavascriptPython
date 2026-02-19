@@ -5,13 +5,13 @@ import seaborn as sns
 from sklearn.metrics import accuracy_score, average_precision_score, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score, roc_curve
 
 
-def evaluate_and_graph_clf(model, X, y, name, graph):
+def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 	"""
 	Evaluates a pre-trained classifier on the provided data and generates
 	diagnostic plots (ROC and PR curves). No internal splitting or fitting.
 	"""
 	# 1. Predictions and Probabilities
-	y_pred = model.predict_class(X) if hasattr(model, 'predict_class') else model.predict(X)
+	y_pred = model.predict_class(X, **kwargs) if hasattr(model, 'predict_class') else model.predict(X)
 
 	# Handle probability extraction for different model types
 	if hasattr(model, 'predict_proba'):
@@ -67,13 +67,13 @@ def evaluate_and_graph_clf(model, X, y, name, graph):
 	return {'model': name, 'accuracy': acc, 'auc': auc, 'average_precision': ap}
 
 
-def evaluate_and_graph_reg(model, X, y, name, graph):
+def evaluate_and_graph_reg(model, X, y, name, graph, **kwargs):
 	"""
 	Evaluates a pre-trained model on the provided data and generates
 	diagnostic plots. No internal splitting or fitting occurs.
 	"""
 	# 1. Generate Predictions using the pre-trained model
-	y_pred = model.predict(X)
+	y_pred = model.predict(X, **kwargs)
 
 	# 2. Calculate Metrics for the provided data
 	mse = mean_squared_error(y, y_pred)
@@ -89,11 +89,14 @@ def evaluate_and_graph_reg(model, X, y, name, graph):
 		residuals = y - y_pred
 		fig, axs = plt.subplots(2, 2, figsize=(12, 10))
 
-		# 1) Predicted vs True
-		axs[0, 0].scatter(y, y_pred, alpha=0.5)
+		# 1) Predicted vs True (with Jitter for discrete dosage)
+		y_jitter = y + np.random.normal(0, 0.05, size=len(y))
+		axs[0, 0].scatter(y_jitter, y_pred, alpha=0.3, s=10)
+
 		# Add regression line for the provided data
 		slope, intercept = np.polyfit(y, y_pred, 1)
 		axs[0, 0].plot(y, slope * y + intercept, color='blue', label='Regression Line')
+
 		# Identity line (y=x)
 		axs[0, 0].plot([y.min(), y.max()], [y.min(), y.max()], color='red', linestyle='--', label='Identity Line')
 		axs[0, 0].set_xlabel('True Values')
