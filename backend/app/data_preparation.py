@@ -132,7 +132,7 @@ def split_families(components: List[Set[int]], cfg: PrepConfig) -> Dict[str, Lis
 
 
 # -----------------------------
-# Feature engineering: relatives within K hops
+# Feature engineering: relatives within K hops + Random Oversampling
 # -----------------------------
 
 
@@ -240,6 +240,33 @@ def build_split_examples(
 	y_all = np.stack(y_list, axis=0)
 	g_all = np.array(g_list, dtype=int)
 	return X_all, y_all, g_all
+
+
+def resample_training_data(X, y, groups):
+	"""
+	Performs random oversampling on the training data to balance
+	dosage classes (0, 1, 2).
+	"""
+	unique_classes, counts = np.unique(y, return_counts=True)
+	max_count = counts.max()
+
+	X_resampled, y_resampled, groups_resampled = [], [], []
+
+	for cls in unique_classes:
+		# Filter data for the current class
+		idx = np.where(y == cls)[0]
+		X_cls = X[idx]
+		y_cls = y[idx]
+		g_cls = groups[idx]
+
+		# Randomly sample with replacement to match the majority class count
+		resample_idx = np.random.choice(len(idx), size=max_count, replace=True)
+
+		X_resampled.append(X_cls[resample_idx])
+		y_resampled.append(y_cls[resample_idx])
+		groups_resampled.append(g_cls[resample_idx])
+
+	return (np.vstack(X_resampled), np.concatenate(y_resampled), np.concatenate(groups_resampled))
 
 
 # -----------------------------

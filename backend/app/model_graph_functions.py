@@ -2,7 +2,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
 import seaborn as sns
-from sklearn.metrics import accuracy_score, average_precision_score, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score, roc_curve
+from sklearn.metrics import (
+	accuracy_score,
+	average_precision_score,
+	confusion_matrix,
+	mean_squared_error,
+	precision_recall_curve,
+	r2_score,
+	roc_auc_score,
+	roc_curve,
+)
 
 
 def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
@@ -124,3 +133,23 @@ def evaluate_and_graph_reg(model, X, y, name, graph, **kwargs):
 		plt.tight_layout()
 
 	return {'model': name, 'rmse': rmse, 'r2': r2}
+
+
+def plot_confusion_matrix(y_true, y_pred, name, save_path):
+	"""
+	Generates and saves a confusion matrix heatmap for genetic dosage (0, 1, 2).
+	"""
+	y_true_int = np.rint(y_true).astype(int)
+	y_pred_int = np.rint(y_pred).astype(int)
+
+	cm = confusion_matrix(y_true_int, y_pred_int, labels=[0, 1, 2])
+
+	plt.figure(figsize=(8, 6))
+	sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=[0, 1, 2], yticklabels=[0, 1, 2])
+
+	plt.title(f'Confusion Matrix: {name}')
+	plt.xlabel('Predicted Dosage')
+	plt.ylabel('True Dosage')
+	plt.tight_layout()
+	plt.savefig(save_path)
+	plt.close()

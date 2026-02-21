@@ -166,7 +166,9 @@ def get_all_dataset_files(dataset_name: str, datasets_dir: Path = DATASETS_DIR) 
 	}
 
 
-def get_genetic_data_from_id(dataset_name: str, individual_id: int, *, observed_df: Optional[pd.DataFrame] = None) -> List[Optional[int]]:
+def get_genetic_data_from_id(
+	dataset_name: str, individual_id: int, *, observed_df: Optional[pd.DataFrame] = None, datasets_dir: Path = DATASETS_DIR
+) -> List[Optional[int]]:
 	"""
 	Grab the OBSERVED genotype vector for one individual (a single column).
 
@@ -177,8 +179,9 @@ def get_genetic_data_from_id(dataset_name: str, individual_id: int, *, observed_
 	If observed_df is provided, avoids re-reading the CSV (much faster when called repeatedly).
 	"""
 	if observed_df is None:
-		observed_path = DATASETS_DIR / f'{dataset_name}.observed_genotypes.csv'
+		observed_path = datasets_dir / f'{dataset_name}.observed_genotypes.csv'
 		if not observed_path.exists():
+			print('error in get_genetic_data_from_id')
 			raise FileNotFoundError(f'Missing file: {observed_path}')
 		observed_df = pd.read_csv(observed_path)
 
@@ -199,7 +202,7 @@ def get_genetic_data_from_id(dataset_name: str, individual_id: int, *, observed_
 	return out
 
 
-def get_individual_family_tree_data(dataset_name: str, individual_id: int) -> Dict[str, Any]:
+def get_individual_family_tree_data(dataset_name: str, individual_id: int, datasets_dir: Path = DATASETS_DIR) -> Dict[str, Any]:
 	"""
 	Build the family tree (connected component) around `individual_id` using pedigree.csv
 	and attach observed genotype vectors for every individual in that component.
@@ -218,8 +221,12 @@ def get_individual_family_tree_data(dataset_name: str, individual_id: int) -> Di
 			]
 		}
 	"""
-	pedigree_path = DATASETS_DIR / f'{dataset_name}.pedigree.csv'
+	paths = _paths_for_dataset(dataset_name, datasets_dir=datasets_dir)
+	pedigree_path = paths['pedigree_csv']
+
+	print(f'DEBUG: Dashboard says pedigree is at: {pedigree_path}')
 	if not pedigree_path.exists():
+		print('file is missing')
 		raise FileNotFoundError(f'Missing file: {pedigree_path}')
 
 	ped = pd.read_csv(pedigree_path)
@@ -253,6 +260,8 @@ def get_individual_family_tree_data(dataset_name: str, individual_id: int) -> Di
 		if p1 != -1:
 			children_of.setdefault(p1, []).append(child)
 
+	print('finished for loop')
+
 	if individual_id not in time_of:
 		raise KeyError(f'individual_id {individual_id} not found in {pedigree_path.name}')
 
@@ -284,8 +293,10 @@ def get_individual_family_tree_data(dataset_name: str, individual_id: int) -> Di
 		if p1 != -1 and p1 in component:
 			edges.append({'source': p1, 'target': child})
 
+	print('finished the stack for DFS')
+
 	# Read observed genotypes ONCE
-	observed_path = DATASETS_DIR / f'{dataset_name}.observed_genotypes.csv'
+	observed_path = paths['observed_csv']
 	if not observed_path.exists():
 		raise FileNotFoundError(f'Missing file: {observed_path}')
 	observed_df = pd.read_csv(observed_path)
@@ -295,5 +306,7 @@ def get_individual_family_tree_data(dataset_name: str, individual_id: int) -> Di
 	for ind in sorted(component):
 		observed_vec = get_genetic_data_from_id(dataset_name, ind, observed_df=observed_df)
 		nodes.append({'id': ind, 'time': time_of.get(ind, None), 'observed': observed_vec})
+
+	print('ready to return')
 
 	return {'dataset': dataset_name, 'focus_id': individual_id, 'nodes': nodes, 'edges': edges}

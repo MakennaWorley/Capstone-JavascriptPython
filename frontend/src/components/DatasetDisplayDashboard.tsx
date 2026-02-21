@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import FamilyTreeVisualization from './FamilyTreeVisualization.js';
 
 type DatasetDashboardProps = {
 	apiBase: string;
@@ -82,20 +83,13 @@ function clampText(s: string, maxLen = 80): string {
 	return s.slice(0, maxLen - 1) + '…';
 }
 
-function bytesFromBase64(base64: string): Uint8Array {
-	// atob expects pure base64 (no data: prefix)
-	const clean = base64.replace(/^data:.*;base64,/, '');
-	const binStr = atob(clean);
-	const bytes = new Uint8Array(binStr.length);
-	for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
-	return bytes;
-}
-
 export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPreviewRows = 10 }: DatasetDashboardProps) {
 	const [selected, setSelected] = useState<string>('');
 	const [loading, setLoading] = useState(false);
 	const [status, setStatus] = useState<string>('');
 	const [data, setData] = useState<DashboardState>({});
+	const [selectedIndId, setSelectedIndId] = useState<string>('');
+	const [familyTreeData, setFamilyTreeData] = useState<any>(null);
 
 	const canLoad = datasets.length > 0 && selected.trim().length > 0 && !loading;
 	const hasLoadedDashboard = !!(data.observedCsvRaw || data.truthCsvRaw);
@@ -110,6 +104,18 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 		if (!data.truthCsvRaw) return null;
 		return parseCsvPreview(data.truthCsvRaw, maxPreviewRows);
 	}, [data.truthCsvRaw, maxPreviewRows]);
+
+	// Individual selection
+	const availableIds = useMemo(() => {
+		if (!data.observedCsvRaw) return [];
+		const firstLine = data.observedCsvRaw.split('\n')[0] || '';
+		// Match headers like i_0000, i_0001 and convert to "0", "1"
+		return firstLine
+			.split(',')
+			.map((h) => h.trim())
+			.filter((h) => h.startsWith('i_'))
+			.map((h) => h.replace('i_', '').replace(/^0+/, '') || '0');
+	}, [data.observedCsvRaw]);
 
 	async function loadDashboard() {
 		if (!selected) return;
@@ -181,6 +187,29 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 		}
 	}
 
+	async function loadFamilyTree() {
+		if (!selected || !selectedIndId) return;
+
+		setLoading(true);
+		setStatus(`Fetching family tree for ID ${selectedIndId}...`);
+		try {
+			const url = `${apiBase}/api/dataset/${encodeURIComponent(selected)}/tree/${selectedIndId}`;
+			const resp = await fetch(url, {
+				headers: { 'x-api-key': xApiKey }
+			});
+
+			if (!resp.ok) throw new Error(`Tree fetch failed: ${resp.status}`);
+
+			const j = await resp.json();
+			setFamilyTreeData(j.data); // Based on your api_success helper structure
+			setStatus('Tree loaded.');
+		} catch (e: any) {
+			setStatus(e.message);
+		} finally {
+			setLoading(false);
+		}
+	}
+
 	async function downloadAllDatasetZip() {
 		if (!selected) return;
 
@@ -188,7 +217,6 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 		setStatus('Preparing download...');
 
 		try {
-			// CHANGE THIS PATH if your endpoint name differs
 			const url = `${apiBase}/api/dataset/${encodeURIComponent(selected)}/download`;
 
 			const resp = await fetch(url, {
@@ -291,6 +319,35 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 			{observedPreview && <CsvTable title="observed_genotypes.csv (preview)" preview={observedPreview} maxRows={maxPreviewRows} />}
 
 			{truthPreview && <CsvTable title="truth_genotypes.csv (preview)" preview={truthPreview} maxRows={maxPreviewRows} />}
+
+			{/* Family tree */}
+			{data.observedCsvRaw && (
+				<div style={{ marginTop: '1.5rem', padding: '1rem', border: '2px solid #3b82f6', borderRadius: 10 }}>
+					<h4>Family Tree Explorer</h4>
+					<div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
+						<label>
+							<span style={{ display: 'block', fontSize: '0.8rem' }}>Select Individual ID</span>
+							<select
+								value={selectedIndId}
+								onChange={(e) => setSelectedIndId(e.target.value)}
+								style={{ padding: '0.4rem', minWidth: '150px' }}
+							>
+								<option value="">-- Choose ID --</option>
+								{availableIds.map((id) => (
+									<option key={id} value={id}>
+										Individual {id}
+									</option>
+								))}
+							</select>
+						</label>
+						<button onClick={loadFamilyTree} disabled={!selectedIndId || loading}>
+							Visualize Tree
+						</button>
+					</div>
+				</div>
+			)}
+
+			{familyTreeData && <FamilyTreeVisualization data={familyTreeData} />}
 		</div>
 	);
 }

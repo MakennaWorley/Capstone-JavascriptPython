@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import multiprocessing
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -76,6 +77,7 @@ def model_paths(models_dir: str | Path, base_name: str, model_tag: str) -> Dict[
 		'meta': d / f'{base_name}.{model_tag}.meta.json',
 		'graph_val': d / f'{base_name}.{model_tag}.val_plot.png',
 		'graph_test': d / f'{base_name}.{model_tag}.test_plot.png',
+		'graph_cm': d / f'{base_name}.{model_tag}.cm_plot.png',
 	}
 
 
@@ -155,6 +157,9 @@ class BayesianLinearDosageRegressor:
 				target_accept=self.target_accept,
 				random_seed=self.random_seed,
 				return_inferencedata=True,
+				progressbar=True,
+				# Added this to prevent EOFErrror on macbook
+				cores=1,
 			)
 
 		self._coef_mean = self.idata.posterior['coef'].mean(axis=(0, 1)).values
@@ -507,8 +512,12 @@ def train_eval_one(
 		trained = False
 	else:
 		print(f'--- Phase 1: Training on {train_base} ---')
+		X_resampled, y_resampled, groups_resampled = data_preparation.resample_training_data(X_train, y_train, groups_train)
+
 		model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed)
-		model.fit(X_train, y_train, groups=groups_train)
+
+		# Fit using the balanced dataset
+		model.fit(X_resampled, y_resampled, groups=groups_resampled)
 		trained = True
 
 	# 3. PHASE 2: CROSS-VALIDATION UPDATE (Using the entire validation file)
@@ -529,6 +538,17 @@ def train_eval_one(
 	if paths['graph_test']:
 		plt.savefig(paths['graph_test'])
 		plt.close()
+
+	if hasattr(model, 'predict_class'):
+		# For the Softmax classifier
+		y_pred_cm = model.predict_class(X_test, groups=groups_test)
+	else:
+		# For the Linear regressor, round continuous output to nearest {0, 1, 2}
+		raw_pred = model.predict(X_test, groups=groups_test)
+		y_pred_cm = np.rint(raw_pred).astype(int)
+		y_pred_cm = np.clip(y_pred_cm, 0, 2)
+
+	model_graph_functions.plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Confusion Matrix', save_path=paths['graph_cm'])
 
 	return {'model_kind': model_kind, 'trained': trained, 'test_metrics': test_metrics, 'paths': {k: str(v) for k, v in paths.items() if k != 'dir'}}
 
@@ -605,5 +625,6 @@ def test_on_new_data(model, dataset_name: str, prep_cfg: Optional[data_preparati
 
 
 if __name__ == '__main__':
+	multiprocessing.set_start_method('forkserver', force=True)
 	training_file, validation_file, testing_file = 'testing.training', 'testing.validation', 'testing.testing'
 	results = train_eval_both(train_base=training_file, val_base=validation_file, test_base=testing_file, force_retrain=True)
