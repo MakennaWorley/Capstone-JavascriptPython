@@ -18,7 +18,7 @@ class BayesianCategoricalDosageClassifier:
 	  - predict(X): expected dosage E[y] for compatibility with regression plotting
 	"""
 
-	def __init__(self, *, draws: int = 1000, tune: int = 1000, chains: int = 4, target_accept: float = 0.9, random_seed: int = 123, cores: int = 8):
+	def __init__(self, *, draws: int = 1000, tune: int = 1000, chains: int = 4, target_accept: float = 0.95, random_seed: int = 123, cores: int = 8):
 		self.draws = draws
 		self.tune = tune
 		self.chains = chains
@@ -56,7 +56,7 @@ class BayesianCategoricalDosageClassifier:
 
 			# 2. Define Group-level intercepts per category
 			b = pm.Normal('b', mu=mu_b, sigma=sigma_b, shape=(n_groups, C))
-			W = pm.Normal('W', mu=0.0, sigma=1.0, shape=(Xz.shape[1], C))
+			W = pm.Normal('W', mu=0.0, sigma=5.0, shape=(Xz.shape[1], C))
 
 			# 3. Logits calculation using the group indices
 			logits = b[groups] + pm.math.dot(Xz, W)

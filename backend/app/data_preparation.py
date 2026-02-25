@@ -253,20 +253,27 @@ def resample_training_data(X, y, groups):
 	X_resampled, y_resampled, groups_resampled = [], [], []
 
 	for cls in unique_classes:
-		# Filter data for the current class
 		idx = np.where(y == cls)[0]
-		X_cls = X[idx]
-		y_cls = y[idx]
-		g_cls = groups[idx]
+
+		# If a class is completely missing (possible in small masked datasets), skip it
+		if len(idx) == 0:
+			continue
 
 		# Randomly sample with replacement to match the majority class count
 		resample_idx = np.random.choice(len(idx), size=max_count, replace=True)
 
-		X_resampled.append(X_cls[resample_idx])
-		y_resampled.append(y_cls[resample_idx])
-		groups_resampled.append(g_cls[resample_idx])
+		X_resampled.append(X[idx][resample_idx])
+		y_resampled.append(y[idx][resample_idx])
+		groups_resampled.append(groups[idx][resample_idx])
 
-	return (np.vstack(X_resampled), np.concatenate(y_resampled), np.concatenate(groups_resampled))
+	# Combine and Shuffle to break up class-specific blocks
+	X_out = np.vstack(X_resampled)
+	y_out = np.concatenate(y_resampled)
+	g_out = np.concatenate(groups_resampled)
+
+	shuffle_idx = np.random.permutation(len(y_out))
+
+	return X_out[shuffle_idx], y_out[shuffle_idx], g_out[shuffle_idx]
 
 
 # -----------------------------

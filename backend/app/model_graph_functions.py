@@ -2,7 +2,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats
 import seaborn as sns
-from sklearn.metrics import accuracy_score, confusion_matrix, mean_squared_error, precision_recall_curve, r2_score, roc_auc_score, roc_curve
+from sklearn.metrics import (
+	accuracy_score,
+	balanced_accuracy_score,
+	confusion_matrix,
+	f1_score,
+	mean_squared_error,
+	precision_recall_curve,
+	r2_score,
+	roc_auc_score,
+	roc_curve,
+)
 from sklearn.preprocessing import label_binarize
 
 
@@ -13,10 +23,12 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 	"""
 	# 1. Generate Predictions using the pre-trained model
 	y = np.asarray(y)
+	y_int = np.rint(y).astype(int)
 	n_classes = 3
 	classes = [0, 1, 2]
 
 	y_pred = model.predict_class(X, **kwargs) if hasattr(model, 'predict_class') else model.predict(X)
+	y_pred_int = np.rint(y_pred).astype(int)
 
 	# Handle probability extraction for different model types
 	if hasattr(model, 'predict_proba'):
@@ -28,12 +40,20 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 
 	# 2. Calculate Metrics for the provided data
 	acc = accuracy_score(y, y_pred)
+	# Balanced Accuracy is the average of recall obtained on each class
+	bal_acc = balanced_accuracy_score(y_int, y_pred_int)
 
 	# ROC/PR metrics only work out-of-the-box for binary tasks in this implementation
 	auc_macro = roc_auc_score(y, y_score, multi_class='ovr', average='macro')
 
+	# F1-Score (Macro) treats all classes equally regardless of frequency
+	# F1-Score (Weighted) accounts for class imbalance by weighting by support
+	f1_macro = f1_score(y_int, y_pred_int, average='macro')
+	f1_weighted = f1_score(y_int, y_pred_int, average='weighted')
+
 	print(f'--- {name} ---')
-	print(f'Accuracy: {acc:.4f} | Macro-AUC: {auc_macro:.4f}')
+	print(f'Accuracy: {acc:.4f} | Balanced Accuracy: {bal_acc:.4f} | Macro-AUC: {auc_macro:.4f}')
+	print(f'F1-Score (Macro):  {f1_macro:.4f} | F1-Score (Weighted): {f1_weighted:.4f}')
 	print('-' * 30)
 
 	# 3. Diagnostic Plots
@@ -69,7 +89,7 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 
 		plt.tight_layout()
 
-	return {'model': name, 'accuracy': acc, 'auc_macro': auc_macro}
+	return {'model': name, 'accuracy': acc, 'balanced_accuracy': bal_acc, 'f1_macro': f1_macro, 'auc_macro': auc_macro}
 
 
 def evaluate_and_graph_reg(model, X, y, name, graph, **kwargs):

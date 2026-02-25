@@ -14,7 +14,7 @@ class SklearnMultinomialClassifier:
 	"""
 
 	def __init__(self, random_seed=123):
-		self.model = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000, random_state=random_seed)
+		self.model = LogisticRegression(class_weight='balanced', solver='lbfgs', max_iter=1000, random_state=random_seed)
 		self.scaler = StandardScaler()
 
 	@property

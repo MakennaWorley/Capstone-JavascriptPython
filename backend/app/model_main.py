@@ -87,7 +87,7 @@ def train_with_cross_val(base_name, model_label, prep_cfg, n_splits=5):
 	print(f'\n--- Parallel CV on {base_name} for {model_label} ---')
 
 	# Use built-in multiprocessing Pool
-	with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
+	with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
 		results = list(executor.map(_run_fold_parallel, fold_args))
 
 	for fold_idx, mse in sorted(results):
@@ -165,7 +165,7 @@ def train_eval_one(
 	draws: int = 1000,
 	tune: int = 1000,
 	chains: int = 4,
-	target_accept: float = 0.9,
+	target_accept: float = 0.99,
 	seed: int = 123,
 	cores: int = 8,
 ) -> Dict[str, Any]:
