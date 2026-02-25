@@ -11,7 +11,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from .data_generation import create_data_from_params
-from .functions import DashboardFilesMissing, api_error, api_success, get_all_dataset_files, get_dataset_dashboard_files, get_dataset_names
+from .functions import (
+	DashboardFilesMissing,
+	api_error,
+	api_success,
+	get_all_dataset_files,
+	get_dataset_dashboard_files,
+	get_dataset_names,
+	get_individual_family_tree_data,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
@@ -37,6 +45,13 @@ async def show_routes():
 		except Exception:
 			pass
 	print('==============')
+
+
+@app.on_event('startup')
+async def verify_paths():
+	print(f'DEBUG: DATASETS_DIR is resolved to: {DATASETS_DIR}')
+	if not DATASETS_DIR.exists():
+		print('WARNING: DATASETS_DIR does not exist!')
 
 
 # health check
@@ -114,6 +129,29 @@ async def dataset_dashboard(dataset_name: str):
 	except Exception as e:
 		print(f'Error: Dashboard fetch failed: {str(e)}')
 		return api_error(message='Unexpected server error while building dashboard response', status_code=500, code='DASHBOARD_FAILED')
+
+
+@app.get('/api/dataset/{dataset_name}/tree/{individual_id}')
+async def dataset_family_tree(dataset_name: str, individual_id: int):
+	"""
+	Fetch the connected family tree and genetic data for a specific individual.
+	"""
+	print('this is the request', dataset_name, individual_id)
+
+	try:
+		data = get_individual_family_tree_data(dataset_name, individual_id, datasets_dir=DATASETS_DIR)
+
+		return api_success(message=f'Success: Family tree retrieved for individual {individual_id}', data=data, status_code=200)
+
+	except FileNotFoundError as e:
+		return api_error(message=f'Required file not found: {str(e)}', status_code=404, code='FILE_NOT_FOUND')
+
+	except KeyError as e:
+		return api_error(message=str(e).strip("'"), status_code=404, code='INDIVIDUAL_NOT_FOUND')
+
+	except Exception as e:
+		print(f'Error: Family tree fetch failed: {str(e)}')
+		return api_error(message='Unexpected server error while building family tree', status_code=500, code='TREE_BUILD_FAILED')
 
 
 @app.get('/api/dataset/{dataset_name}/download')

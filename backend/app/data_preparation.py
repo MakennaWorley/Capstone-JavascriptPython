@@ -132,7 +132,7 @@ def split_families(components: List[Set[int]], cfg: PrepConfig) -> Dict[str, Lis
 
 
 # -----------------------------
-# Feature engineering: relatives within K hops
+# Feature engineering: relatives within K hops + Random Oversampling
 # -----------------------------
 
 
@@ -206,7 +206,7 @@ def make_example_for_target(
 
 
 def build_split_examples(
-	truth_df: pd.DataFrame, obs_df: pd.DataFrame, adj: Dict[int, Set[int]], families: List[Set[int]], cfg: PrepConfig
+	truth_df: pd.DataFrame, obs_df: pd.DataFrame, adj: Dict[int, Set[int]], families: List[Set[int]], cfg: PrepConfig, ped_df: pd.DataFrame
 ) -> Tuple[np.ndarray, np.ndarray]:
 	"""
 	Returns:
@@ -215,6 +215,7 @@ def build_split_examples(
 	"""
 	X_list: List[np.ndarray] = []
 	y_list: List[np.ndarray] = []
+	g_list: List[np.ndarray] = []
 
 	for fam in families:
 		for target_id in fam:
@@ -227,6 +228,9 @@ def build_split_examples(
 			X_list.append(X)
 			y_list.append(y)
 
+			gen = ped_df.loc[ped_df['individual_id'] == target_id, 'time'].values[0]
+			g_list.append(gen)
+
 	if not X_list:
 		# Return empty arrays with consistent ranks
 		n_sites = truth_df.shape[0]
@@ -234,7 +238,35 @@ def build_split_examples(
 
 	X_all = np.stack(X_list, axis=0)
 	y_all = np.stack(y_list, axis=0)
-	return X_all, y_all
+	g_all = np.array(g_list, dtype=int)
+	return X_all, y_all, g_all
+
+
+def resample_training_data(X, y, groups):
+	"""
+	Performs random oversampling on the training data to balance
+	dosage classes (0, 1, 2).
+	"""
+	unique_classes, counts = np.unique(y, return_counts=True)
+	max_count = counts.max()
+
+	X_resampled, y_resampled, groups_resampled = [], [], []
+
+	for cls in unique_classes:
+		# Filter data for the current class
+		idx = np.where(y == cls)[0]
+		X_cls = X[idx]
+		y_cls = y[idx]
+		g_cls = groups[idx]
+
+		# Randomly sample with replacement to match the majority class count
+		resample_idx = np.random.choice(len(idx), size=max_count, replace=True)
+
+		X_resampled.append(X_cls[resample_idx])
+		y_resampled.append(y_cls[resample_idx])
+		groups_resampled.append(g_cls[resample_idx])
+
+	return (np.vstack(X_resampled), np.concatenate(y_resampled), np.concatenate(groups_resampled))
 
 
 # -----------------------------
@@ -256,9 +288,9 @@ def prepare_data(cfg: PrepConfig) -> Dict[str, np.ndarray]:
 	comps = connected_components(adj)
 
 	# Use ALL components in this dataset
-	X, y = build_split_examples(truth, obs, adj, comps, cfg)
+	X, y, g = build_split_examples(truth, obs, adj, comps, cfg, ped)
 
-	return {'X': X, 'y': y}
+	return {'X': X, 'y': y, 'groups': g}
 
 
 def prepare_data_triplet(base_name: str, cfg: PrepConfig) -> Dict[str, Dict[str, np.ndarray]]:
@@ -276,9 +308,9 @@ def prepare_data_triplet(base_name: str, cfg: PrepConfig) -> Dict[str, Dict[str,
 		adj = build_adjacency_from_pedigree(ped)
 		comps = connected_components(adj)
 
-		X, y = build_split_examples(truth, obs, adj, comps, cfg)
+		X, y, g = build_split_examples(truth, obs, adj, comps, cfg, ped)
 
-		out[split_key] = {'X': X, 'y': y, 'dataset': ds_name}
+		out[split_key] = {'X': X, 'y': y, 'groups': g, 'dataset': ds_name}
 
 	return out
 
