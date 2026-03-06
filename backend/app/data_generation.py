@@ -53,7 +53,7 @@ class SimConfig:
 	mutation_rate: float = 1e-8
 
 	# Initial Diversity
-	founder_recessive_chance: float = 0.05
+	founder_recessive_chance: float = 0.5
 
 	# Ancestry
 	n_generations: int = 5
