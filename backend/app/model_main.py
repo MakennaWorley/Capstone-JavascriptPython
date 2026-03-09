@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import concurrent.futures
 import dataclasses
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
@@ -67,86 +66,29 @@ def _run_fold_parallel(args):
 # -----------------------------
 
 
-def train_with_cross_val(base_name, model_label, prep_cfg, n_splits=5, existing_model=None):
+def evaluate_with_cross_val(val_base_name, model_label, prep_cfg, existing_model, n_splits=5):
 	"""
-	Performs K-Fold CV using the entirety of a single file.
-	If existing_model is provided, updates it with the new data instead of training from scratch.
+	Evaluates an existing model using K-Fold CV on validation data.
+	Returns the validation data (X, y, groups) and average MSE.
 	"""
-	# Load the whole file as one block
-	X_all, y_all, groups_all = load_whole_dataset(base_name, prep_cfg)
+	# Load the validation file
+	X_val, y_val, groups_val = load_whole_dataset(val_base_name, prep_cfg)
 	kf = KFold(n_splits=n_splits, shuffle=True, random_state=123)
 
-	if existing_model is not None:
-		print(f'\n--- Updating existing model with CV on {base_name} ---')
-		# Evaluate existing model performance first
-		fold_mses = []
-		for i, (_, v_idx) in enumerate(kf.split(X_all)):
-			# Test existing model on each fold
-			y_pred_fold = existing_model.predict(X_all[v_idx], groups=groups_all[v_idx])
-			mse_fold = np.mean((y_all[v_idx] - y_pred_fold) ** 2)
-			fold_mses.append(mse_fold)
-			print(f'  Fold {i + 1} Pre-update MSE: {mse_fold:.4f}')
+	print(f'\n--- Cross-Validation Evaluation on {val_base_name} ---')
+	# Evaluate existing model performance using CV
+	fold_mses = []
+	for i, (_, v_idx) in enumerate(kf.split(X_val)):
+		# Test existing model on each fold
+		y_pred_fold = existing_model.predict(X_val[v_idx], groups=groups_val[v_idx])
+		mse_fold = np.mean((y_val[v_idx] - y_pred_fold) ** 2)
+		fold_mses.append(mse_fold)
+		print(f'  Fold {i + 1} Validation MSE: {mse_fold:.4f}')
 
-		avg_mse_before = np.mean(fold_mses)
-		print(f'Average Pre-update MSE: {avg_mse_before:.4f}')
+	avg_mse = np.mean(fold_mses)
+	print(f'Average Validation MSE: {avg_mse:.4f}')
 
-		# Update model with all validation data (resampled)
-		X_update, y_update, g_update = data_preparation.resample_training_data(X_all, y_all, groups_all)
-
-		# Different update strategies based on model type
-		if model_label == 'bayes_softmax3':
-			# For Bayesian models, we need to re-fit with new data
-			# The existing model's posterior could be used as prior, but for now we'll retrain
-			print('  Re-training Bayesian model with validation data...')
-			existing_model.fit(X_update, y_update, groups=g_update)
-		elif hasattr(existing_model, 'partial_fit'):
-			# Incremental update for models that support it (like sklearn online learners)
-			print('  Incrementally updating model...')
-			existing_model.partial_fit(X_update, y_update, groups=g_update)
-		else:
-			# Re-fit with new data for other models
-			print('  Re-fitting model with validation data...')
-			existing_model.fit(X_update, y_update, groups=g_update)
-
-		# Test updated model performance
-		updated_mses = []
-		for i, (_, v_idx) in enumerate(kf.split(X_all)):
-			y_pred_fold = existing_model.predict(X_all[v_idx], groups=groups_all[v_idx])
-			mse_fold = np.mean((y_all[v_idx] - y_pred_fold) ** 2)
-			updated_mses.append(mse_fold)
-			print(f'  Fold {i + 1} Post-update MSE: {mse_fold:.4f}')
-
-		avg_mse_after = np.mean(updated_mses)
-		print(f'Average Post-update MSE: {avg_mse_after:.4f}')
-		print(f'MSE Change: {avg_mse_after - avg_mse_before:.4f}')
-
-		return existing_model
-
-	else:
-		# Original behavior - train new model from scratch
-		fold_args = []
-		for i, (t_idx, v_idx) in enumerate(kf.split(X_all)):
-			# Resample ONLY the training portion of the fold
-			X_fold_train, y_fold_train, g_fold_train = data_preparation.resample_training_data(X_all[t_idx], y_all[t_idx], groups_all[t_idx])
-
-			# Validation portion (v_idx) stays raw to give an honest MSE
-			fold_args.append((i, X_fold_train, X_all[v_idx], y_fold_train, y_all[v_idx], g_fold_train, model_label))
-
-	print(f'\n--- Parallel CV on {base_name} for {model_label} ---')
-
-	# Use built-in multiprocessing Pool
-	with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-		results = list(executor.map(_run_fold_parallel, fold_args))
-
-	for fold_idx, mse in sorted(results):
-		print(f'Fold {fold_idx + 1} MSE: {mse:.4f}')
-
-	# Return model fit on the whole file
-	X_final, y_final, g_final = data_preparation.resample_training_data(X_all, y_all, groups_all)
-	ModelCls, _ = _select_model(model_label)
-	final_model = ModelCls()
-	final_model.fit(X_final, y_final, groups=g_final)
-	return final_model
+	return X_val, y_val, groups_val, avg_mse
 
 
 def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
@@ -295,13 +237,34 @@ def train_eval(
 		model.fit(X_resampled, y_resampled, groups=groups_resampled)
 		trained = True
 
-	# 3. PHASE 2: CROSS-VALIDATION UPDATE (Using the entire validation file)
-	print(f'--- Phase 2: Updating {model_tag} with CV on {val_base} ---')
-	# Pass the existing model to be updated with validation data
-	model = train_with_cross_val(val_base, model_label, prep_cfg, existing_model=model)
+	# 3. PHASE 2: CROSS-VALIDATION EVALUATION + RETRAINING (Using training + validation)
+	print(f'--- Phase 2: Evaluating on {val_base} and retraining with combined data ---')
 
-	# Save immediately after updating
-	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base})
+	# Evaluate the model on validation data using cross-validation
+	X_val, y_val, groups_val, avg_val_mse = evaluate_with_cross_val(val_base, model_label, prep_cfg, existing_model=model)
+
+	# Now combine training + validation data and retrain the model
+	print('  Combining training and validation data for final model training...')
+	X_combined = np.vstack([X_resampled, X_val])
+	y_combined = np.concatenate([y_resampled, y_val])
+	groups_combined = np.concatenate([groups_resampled, groups_val])
+
+	# Resample the combined data
+	X_combined_resampled, y_combined_resampled, groups_combined_resampled = data_preparation.resample_training_data(
+		X_combined, y_combined, groups_combined
+	)
+
+	print(f'  Retraining {model_tag} on combined training + validation data...')
+	# Reinitialize and train on combined data
+	if model_label == 'bayes_softmax3':
+		model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed, cores=cores)
+	else:
+		model = ModelCls(random_seed=seed)
+
+	model.fit(X_combined_resampled, y_combined_resampled, groups=groups_combined_resampled)
+
+	# Save immediately after retraining
+	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': avg_val_mse})
 
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
 	print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
@@ -335,19 +298,18 @@ def train_eval(
 
 
 def test_on_new_data(
-	test_base: str, model_label: str, *, prep_cfg: Optional[data_preparation.PrepConfig] = None, models_dir: str | Path = 'models'
+	test_base: str, model_label: str, train_base: str, *, prep_cfg: Optional[data_preparation.PrepConfig] = None, models_dir: str | Path = 'models'
 ) -> Dict[str, Any]:
 	"""
-	Loads a new dataset, prepares it using the model's original scaling params,
-	and returns predictions and metrics without any training.
+	Loads a new dataset and applies an existing trained model to it.
+	The model must have been previously trained using train_eval() with the specified train_base.
 	"""
 	if prep_cfg is None:
 		prep_cfg = data_preparation.PrepConfig(dataset_name='unused')
 
 	# 1. Setup Model Types and Paths
 	ModelCls, model_tag = _select_model(model_label)
-	# Fix: Need to pass a train_base for path construction
-	paths = _model_paths(models_dir, 'default', model_tag)
+	paths = _model_paths(models_dir, train_base, model_tag)
 
 	# 2. Check if Model Exists
 	exists_check = paths['meta'].exists()
@@ -402,6 +364,6 @@ def train_eval_all(train_f, val_f, test_f):
 
 
 if __name__ == '__main__':
-	# train_eval_all('testing.training', 'testing.validation', 'testing.testing')
-	train_eval_all('bettersample.training', 'bettersample.validation', 'bettersample.testing')
-	# print(test_on_new_data('testing.training', 'testing.testing', 'bayes_softmax3'))
+	train_eval_all('testing.training', 'testing.validation', 'testing.testing')
+	# train_eval_all('bettersample.training', 'bettersample.validation', 'bettersample.testing')
+	# print(test_on_new_data('testing.testing', 'bayes_softmax3', 'testing.training'))
