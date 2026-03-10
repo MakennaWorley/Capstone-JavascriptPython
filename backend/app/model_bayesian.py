@@ -11,17 +11,18 @@ from model_functions import _coerce_dosage_classes, _ensure_dir, _load_meta, _sa
 # Configure PyMC to use JAX backend for GPU acceleration (if available)
 try:
 	import os
+
 	# Configure JAX for multiprocessing compatibility BEFORE importing
 	os.environ.setdefault('XLA_PYTHON_CLIENT_PREALLOCATE', 'false')
 	os.environ.setdefault('JAX_ENABLE_X64', 'false')
-	
+
 	import jax
 	import jax.numpy as jnp
-	
+
 	# Configure JAX for multiprocessing
 	jax.config.update('jax_platform_name', 'cpu')
 	jax.config.update('jax_enable_x64', False)
-	
+
 	# Check if CUDA is available
 	if jax.devices('gpu'):
 		print(f'GPU devices found: {jax.devices("gpu")}')
@@ -54,7 +55,7 @@ class BayesianCategoricalDosageClassifier:
 		random_seed: int = 123,
 		cores: int = 8,
 		use_gpu: bool = True,
-		gpu_strategy: str = 'aggressive'  # 'safe' uses 4 cores, 'aggressive' uses all cores
+		gpu_strategy: str = 'aggressive',  # 'safe' uses 4 cores, 'aggressive' uses all cores
 	):
 		self.draws = draws
 		self.tune = tune
@@ -118,7 +119,7 @@ class BayesianCategoricalDosageClassifier:
 				if self.gpu_strategy == 'safe':
 					# Balanced GPU Mode: Parallel chains + GPU, but fewer chains for stability
 					effective_chains = min(self.chains, 4)  # Keep your original chain count
-					effective_cores = min(self.cores, 4)    # Use multiple cores but not all
+					effective_cores = min(self.cores, 4)  # Use multiple cores but not all
 					print(f'🚀 GPU Balanced Mode: {effective_chains} chains across {effective_cores} cores')
 					print('  → Parallel chains + GPU acceleration (fork warnings are OK)')
 				else:

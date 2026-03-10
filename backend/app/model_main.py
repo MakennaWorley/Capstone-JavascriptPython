@@ -68,7 +68,7 @@ def _run_fold_parallel(args):
 	# 2. Use your selection helper to get the correct Class
 	ModelCls, _ = _select_model(model_label)
 
-		# 3. Dynamic Initialization
+	# 3. Dynamic Initialization
 	if model_label == 'bayes_softmax3':
 		# Bayesian with optimized settings for CV (faster but still accurate)
 		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
@@ -284,4 +284,6 @@ def train_eval_comparison(train_f, val_f, test_f):
 
 
 if __name__ == '__main__':
-	train_eval_comparison('testing.training', 'testing.validation', 'testing.testing')
+	# train_eval_comparison('testing.training', 'testing.validation', 'testing.testing')
+	train_eval_comparison('bettersample.training', 'bettersample.validation', 'bettersample.testing')
+	# print(test_on_new_data('bettersample.testing', 'multi_log_regression', 'model_testing.training'))
