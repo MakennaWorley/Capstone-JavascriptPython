@@ -19,6 +19,7 @@ from .functions import (
 	get_dataset_dashboard_files,
 	get_dataset_names,
 	get_individual_family_tree_data,
+	get_model_list,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -33,6 +34,7 @@ origins_list = [o.strip() for o in origins.split(',') if o.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins_list, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 DATASETS_DIR = Path(os.getenv('DATASETS_DIR')).resolve()
+MODELS_DIR = Path(os.getenv('MODELS_DIR')).resolve()
 
 
 # debugging
@@ -52,6 +54,9 @@ async def verify_paths():
 	print(f'DEBUG: DATASETS_DIR is resolved to: {DATASETS_DIR}')
 	if not DATASETS_DIR.exists():
 		print('WARNING: DATASETS_DIR does not exist!')
+	print(f'DEBUG: MODELS_DIR is resolved to: {MODELS_DIR}')
+	if not MODELS_DIR.exists():
+		print('WARNING: MODELS_DIR does not exist!')
 
 
 # health check
@@ -93,7 +98,6 @@ async def create_dataset(request: Request):
 		return api_error(message='Unexpected server error while generating data', status_code=500, code='DATASET_CREATE_FAILED')
 
 
-# Get Dataset
 @app.get('/api/datasets/list', response_model=List[str])
 async def list_datasets():
 	try:
@@ -187,3 +191,22 @@ async def download_dataset(dataset_name: str):
 	except Exception as e:
 		print(f'Error: Dataset download failed: {str(e)}')
 		return api_error(message='Unexpected server error while building dataset zip', status_code=500, code='DATASET_ZIP_FAILED')
+
+
+@app.get('/api/models/list', response_model=List[dict])
+async def list_models():
+	"""
+	List all trained models from models.csv.
+	Returns an array of objects with model_name and model_type.
+	"""
+	try:
+		models = get_model_list(models_dir=MODELS_DIR)
+
+		return api_success(message='Success: Models retrieved successfully', data={'models': models, 'count': len(models)}, status_code=200)
+
+	except FileNotFoundError:
+		return api_error(message='Error: models.csv not found', status_code=404, code='MODELS_FILE_MISSING')
+
+	except Exception as e:
+		print(f'Error: Could not read models list: {str(e)}')
+		return api_error(message='Unexpected server error while reading models', status_code=500, code='MODELS_LIST_FAILED')
