@@ -3,6 +3,7 @@ import DatasetDashboard from './components/DatasetDisplayDashboard.js';
 import DatasetModelCreationForm from './components/DatasetModelCreationForm.js';
 import DatasetSelector from './components/DatasetSelector.js';
 import ModelSelector from './components/ModelSelector.js';
+import ModelStats from './components/ModelStats.js';
 import ModelTrainer from './components/ModelTrainer.js';
 
 type Model = {
@@ -44,6 +45,12 @@ export default function App() {
 	const [selectedDataset, setSelectedDataset] = useState<string>('');
 	const [models, setModels] = useState<Model[]>([]);
 	const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+	const [testResults, setTestResults] = useState<{
+		log: string;
+		paths: any;
+		testMetrics: any;
+		images: any;
+	} | null>(null);
 
 	async function pingBackend() {
 		try {
@@ -133,8 +140,12 @@ export default function App() {
 				{selectedModel && (
 					<div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'black', borderRadius: '4px' }}>
 						<h4>Selected Model</h4>
-						<p><strong>Model Name:</strong> {selectedModel.model_name}</p>
-						<p><strong>Model Type:</strong> {selectedModel.model_type}</p>
+						<p>
+							<strong>Model Name:</strong> {selectedModel.model_name}
+						</p>
+						<p>
+							<strong>Model Type:</strong> {selectedModel.model_type}
+						</p>
 					</div>
 				)}
 			</div>
@@ -146,6 +157,14 @@ export default function App() {
 				xApiKey={API_KEY}
 				selectedDataset={selectedDataset}
 				selectedModel={selectedModel}
+				onTestComplete={setTestResults}
+			/>
+
+			<ModelStats
+				log={testResults?.log || null}
+				paths={testResults?.paths || null}
+				testMetrics={testResults?.testMetrics || null}
+				images={testResults?.images || null}
 			/>
 		</div>
 	);

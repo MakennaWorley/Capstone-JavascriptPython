@@ -17,12 +17,7 @@ export default function DatasetSelector({ datasets, selected, onSelect, disabled
 	return (
 		<label>
 			<span style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Choose a dataset</span>
-			<select
-				value={selected}
-				onChange={(e) => onSelect(e.target.value)}
-				disabled={disabled}
-				style={{ padding: '0.4rem', minWidth: '260px' }}
-			>
+			<select value={selected} onChange={(e) => onSelect(e.target.value)} disabled={disabled} style={{ padding: '0.4rem', minWidth: '260px' }}>
 				<option value="" disabled>
 					Select…
 				</option>

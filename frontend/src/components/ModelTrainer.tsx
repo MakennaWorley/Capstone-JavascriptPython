@@ -10,6 +10,7 @@ type ModelTrainerProps = {
 	xApiKey: string;
 	selectedDataset: string;
 	selectedModel: Model | null;
+	onTestComplete?: (data: { log: string; paths: any; testMetrics: any; images: any }) => void;
 };
 
 type ApiSuccessTest = {
@@ -23,6 +24,10 @@ type ApiSuccessTest = {
 			graph_cm: string;
 			model_dir: string;
 		};
+		images: {
+			graph_test_base64?: string;
+			graph_cm_base64?: string;
+		};
 	};
 };
 
@@ -32,9 +37,8 @@ type ApiError = {
 	message: string;
 };
 
-export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, selectedModel }: ModelTrainerProps) {
+export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, selectedModel, onTestComplete }: ModelTrainerProps) {
 	const [loading, setLoading] = useState(false);
-	const [testResult, setTestResult] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	const canTest = selectedDataset && selectedModel;
@@ -44,34 +48,38 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 
 		setLoading(true);
 		setError(null);
-		setTestResult(null);
 
 		try {
 			const response = await fetch(`${apiBase}/api/models/test`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'x-api-key': xApiKey,
+					'x-api-key': xApiKey
 				},
 				body: JSON.stringify({
 					dataset_name: selectedDataset,
 					model_name: selectedModel.model_name,
-					model_type: selectedModel.model_type,
-				}),
+					model_type: selectedModel.model_type
+				})
 			});
 
 			const result: ApiSuccessTest | ApiError = await response.json();
 
 			if (result.status === 'success') {
-				setTestResult(result.data.log);
 				setError(null);
+				if (onTestComplete) {
+					onTestComplete({
+						log: result.data.log,
+						paths: result.data.paths,
+						testMetrics: result.data.test_metrics,
+						images: result.data.images
+					});
+				}
 			} else {
 				setError(result.message || 'Failed to test model');
-				setTestResult(null);
 			}
 		} catch (err) {
 			setError(`Error testing model: ${err}`);
-			setTestResult(null);
 		} finally {
 			setLoading(false);
 		}
@@ -107,17 +115,13 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 					border: 'none',
 					borderRadius: '4px',
 					cursor: canTest && !loading ? 'pointer' : 'not-allowed',
-					fontSize: '1rem',
+					fontSize: '1rem'
 				}}
 			>
 				{loading ? 'Testing...' : 'Test Model on Dataset'}
 			</button>
 
-			{!canTest && (
-				<p style={{ marginTop: '1rem', color: '#ff9800' }}>
-					Please select both a dataset and a model to test.
-				</p>
-			)}
+			{!canTest && <p style={{ marginTop: '1rem', color: '#ff9800' }}>Please select both a dataset and a model to test.</p>}
 
 			{error && (
 				<div
@@ -126,31 +130,10 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 						padding: '1rem',
 						backgroundColor: '#3d1a1a',
 						borderLeft: '4px solid #f44336',
-						borderRadius: '4px',
+						borderRadius: '4px'
 					}}
 				>
 					<strong>Error:</strong> {error}
-				</div>
-			)}
-
-			{testResult && (
-				<div style={{ marginTop: '1.5rem' }}>
-					<h4>Test Results</h4>
-					<pre
-						style={{
-							backgroundColor: '#0a0a0a',
-							padding: '1rem',
-							borderRadius: '4px',
-							overflowX: 'auto',
-							fontSize: '0.85rem',
-							lineHeight: '1.5',
-							border: '1px solid #333',
-							maxHeight: '500px',
-							overflowY: 'auto',
-						}}
-					>
-						{testResult}
-					</pre>
 				</div>
 			)}
 		</div>

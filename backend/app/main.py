@@ -256,9 +256,20 @@ async def test_model_on_dataset(request: Request):
 
 		log_content = log_file_path.read_text(encoding='utf-8')
 
+		# Read and encode the images as base64
+		paths_data = result.get('paths', {})
+		graph_test_path = Path(paths_data.get('graph_test', ''))
+		graph_cm_path = Path(paths_data.get('graph_cm', ''))
+
+		image_data = {}
+		if graph_test_path.exists():
+			image_data['graph_test_base64'] = base64.b64encode(graph_test_path.read_bytes()).decode('ascii')
+		if graph_cm_path.exists():
+			image_data['graph_cm_base64'] = base64.b64encode(graph_cm_path.read_bytes()).decode('ascii')
+
 		return api_success(
 			message=f"Success: Model '{model_name}' tested on dataset '{dataset_name}'",
-			data={'log': log_content, 'test_metrics': result.get('test_metrics'), 'paths': result.get('paths')},
+			data={'log': log_content, 'test_metrics': result.get('test_metrics'), 'paths': result.get('paths'), 'images': image_data},
 			status_code=200,
 		)
 
