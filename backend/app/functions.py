@@ -41,12 +41,6 @@ class DashboardFilesMissing(FileNotFoundError):
 # -----------------------------
 
 
-def _col_name(individual_id: int) -> str:
-	if individual_id < 0:
-		raise ValueError('individual_id must be >= 0')
-	return f'i_{individual_id:04d}'
-
-
 def _paths_for_dataset(name: str, datasets_dir: Path = DATASETS_DIR) -> Dict[str, Path]:
 	"""
 	Mirrors data_generation.build_paths(cfg), but from just the dataset name/prefix.
@@ -66,6 +60,12 @@ def _paths_for_dataset(name: str, datasets_dir: Path = DATASETS_DIR) -> Dict[str
 # -----------------------------
 # Functions
 # -----------------------------
+
+
+def col_name(individual_id: int) -> str:
+	if individual_id < 0:
+		raise ValueError('individual_id must be >= 0')
+	return f'i_{individual_id:04d}'
 
 
 def get_dataset_names() -> List[str]:

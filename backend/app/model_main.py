@@ -14,10 +14,11 @@ from sklearn.model_selection import KFold
 
 matplotlib.use('Agg')
 # Imports from this Repo
-from . import data_preparation, model_graph_functions
-from .model_bayesian import BayesianCategoricalDosageClassifier
-from .model_functions import _flatten_examples, _model_paths
-from .model_multi_log_regression import SklearnMultinomialClassifier
+from data_preparation import prepare_data, PrepConfig, resample_training_data
+from model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
+from model_bayesian import BayesianCategoricalDosageClassifier
+from model_functions import _flatten_examples, _model_paths
+from model_multi_log_regression import SklearnMultinomialClassifier
 
 
 def check_gpu_status():
@@ -181,7 +182,7 @@ def evaluate_with_cross_val(val_base_name, model_label, prep_cfg, existing_model
 	return X_val, y_val, groups_val, avg_mse
 
 
-def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
+def load_whole_dataset(base_name: str, prep_cfg: PrepConfig):
 	"""
 	Loads a dataset file and flattens it completely without looking for
 	train/val/test sub-splits.
@@ -190,7 +191,7 @@ def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
 	current_cfg = dataclasses.replace(prep_cfg, dataset_name=base_name)
 
 	# Pass the updated config to prepare_data
-	data = data_preparation.prepare_data(current_cfg)
+	data = prepare_data(current_cfg)
 
 	X_raw = data['X']
 	y_raw = data['y']
@@ -212,7 +213,7 @@ def train_eval(
 	test_base: str,
 	model_label: str,
 	*,
-	prep_cfg: Optional[data_preparation.PrepConfig] = None,
+	prep_cfg: Optional[PrepConfig] = None,
 	models_dir: str | Path = 'models',
 	images_dir: str | Path = 'images',
 	datasets_dir: str | Path = 'datasets',
@@ -225,7 +226,7 @@ def train_eval(
 	cores: int = 8,
 ) -> Dict[str, Any]:
 	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
+		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
 	# 1. Setup Model Types
 	ModelCls, model_tag = _select_model(model_label)
@@ -253,7 +254,7 @@ def train_eval(
 		X_train, y_train, groups_train = load_whole_dataset(train_base, prep_cfg)
 
 		# Apply your resampling logic here for training
-		X_resampled, y_resampled, groups_resampled = data_preparation.resample_training_data(X_train, y_train, groups_train)
+		X_resampled, y_resampled, groups_resampled = resample_training_data(X_train, y_train, groups_train)
 
 		# Handle different constructor signatures
 		if model_label == 'bayes_softmax3':
@@ -277,9 +278,7 @@ def train_eval(
 	groups_combined = np.concatenate([groups_resampled, groups_val])
 
 	# Resample the combined data
-	X_combined_resampled, y_combined_resampled, groups_combined_resampled = data_preparation.resample_training_data(
-		X_combined, y_combined, groups_combined
-	)
+	X_combined_resampled, y_combined_resampled, groups_combined_resampled = resample_training_data(X_combined, y_combined, groups_combined)
 
 	print(f'  Retraining {model_tag} on combined training + validation data...')
 	# Reinitialize and train on combined data
@@ -304,9 +303,7 @@ def train_eval(
 		print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
 		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
-		test_metrics = model_graph_functions.evaluate_and_graph_clf(
-			model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
-		)
+		test_metrics = evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True)
 
 		# Create graph paths based on the test dataset name
 		test_graph_path = images_path / f'{model_tag}_test_{test_base}.png'
@@ -319,9 +316,7 @@ def train_eval(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		model_graph_functions.plot_confusion_matrix(
-			y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
-		)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
@@ -337,7 +332,7 @@ def test_on_new_data(
 	model_type: str,
 	model_name: str,
 	*,
-	prep_cfg: Optional[data_preparation.PrepConfig] = None,
+	prep_cfg: Optional[PrepConfig] = None,
 	models_dir: str | Path = 'models',
 	images_dir: str | Path = 'images',
 	datasets_dir: str | Path = 'datasets',
@@ -347,7 +342,7 @@ def test_on_new_data(
 	The model must have been previously trained using train_eval() with the specified model_name.
 	"""
 	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
+		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
 	# 1. Setup Model Types and Paths
 	ModelCls, model_tag = _select_model(model_type)
@@ -378,9 +373,7 @@ def test_on_new_data(
 		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
 		# 5. Predict and Evaluate
-		test_metrics = model_graph_functions.evaluate_and_graph_clf(
-			model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
-		)
+		test_metrics = evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True)
 
 		# 6. Save Graphs
 		# Create paths for this specific test evaluation
@@ -394,9 +387,7 @@ def test_on_new_data(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		model_graph_functions.plot_confusion_matrix(
-			y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
-		)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
@@ -413,13 +404,13 @@ def train_eval_all(train_f, val_f, test_f):
 	print()
 
 	results = {}
-	for label in ['multi_log_regression']:
+	for label in ['bayes_softmax3', 'multi_log_regression']:
 		results[label] = train_eval(train_f, val_f, test_f, label)
 	return results
 
 
 if __name__ == '__main__':
-	# train_eval_all('testing.training', 'testing.validation', 'testing.testing')
-	# train_eval_all('bettersample.training', 'bettersample.validation', 'bettersample.testing')
-	# train_eval_all('model_testing.training', 'model_testing.validation', 'model_testing.testing')
-	print(test_on_new_data('bettersample.testing', 'multi_log_regression', 'model_testing.training'))
+	train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
+	train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
+	print(test_on_new_data('Batch2.testing', 'bayes_softmax3', 'Batch1.training'))
+	print(test_on_new_data('Batch2.testing', 'multi_log_regression', 'Batch1.training'))

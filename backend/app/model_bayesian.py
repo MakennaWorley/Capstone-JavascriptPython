@@ -7,7 +7,7 @@ import arviz as az
 import numpy as np
 import pymc as pm
 
-from .model_functions import _coerce_dosage_classes, _ensure_dir, _load_meta, _save_common_meta, _standardize_apply, _standardize_fit
+from model_functions import _coerce_dosage_classes, _ensure_dir, _load_meta, _save_common_meta, _standardize_apply, _standardize_fit
 
 # Configure PyMC to use JAX backend for GPU acceleration (if available)
 try:
