@@ -4,7 +4,7 @@ import FamilyTreeVisualization from './FamilyTreeVisualization.js';
 type DatasetDashboardProps = {
 	apiBase: string;
 	xApiKey: string;
-	datasets: string[];
+	selectedDataset: string;
 	maxPreviewRows?: number;
 };
 
@@ -19,7 +19,10 @@ type DashboardState = {
 	truthCsvRaw?: string;
 };
 
-type ApiEnvelope = { status: 'success'; data?: any; files?: any; message?: string } | { status: 'error'; message?: string; code?: string } | any;
+type ApiEnvelope =
+	| { status: 'success'; data?: unknown; files?: unknown; message?: string }
+	| { status: 'error'; message?: string; code?: string }
+	| unknown;
 
 function parseCsvPreview(csvText: string, maxRows: number): CsvPreview {
 	const text = csvText.replace(/^\uFEFF/, ''); // strip BOM if present
@@ -80,18 +83,17 @@ function parseCsvPreview(csvText: string, maxRows: number): CsvPreview {
 
 function clampText(s: string, maxLen = 80): string {
 	if (s.length <= maxLen) return s;
-	return s.slice(0, maxLen - 1) + '…';
+	return `${s.slice(0, maxLen - 1)}…`;
 }
 
-export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPreviewRows = 10 }: DatasetDashboardProps) {
-	const [selected, setSelected] = useState<string>('');
+export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, maxPreviewRows = 10 }: DatasetDashboardProps) {
 	const [loading, setLoading] = useState(false);
 	const [status, setStatus] = useState<string>('');
 	const [data, setData] = useState<DashboardState>({});
 	const [selectedIndId, setSelectedIndId] = useState<string>('');
 	const [familyTreeData, setFamilyTreeData] = useState<any>(null);
 
-	const canLoad = datasets.length > 0 && selected.trim().length > 0 && !loading;
+	const canLoad = selectedDataset.trim().length > 0 && !loading;
 	const hasLoadedDashboard = !!(data.observedCsvRaw || data.truthCsvRaw);
 
 	// Previews
@@ -118,14 +120,14 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 	}, [data.observedCsvRaw]);
 
 	async function loadDashboard() {
-		if (!selected) return;
+		if (!selectedDataset) return;
 
 		setLoading(true);
 		setStatus('Loading dashboard files...');
 		setData({});
 
 		try {
-			const url = `${apiBase}/api/dataset/${encodeURIComponent(selected)}/dashboard`;
+			const url = `${apiBase}/api/dataset/${encodeURIComponent(selectedDataset)}/dashboard`;
 			const resp = await fetch(url, {
 				method: 'GET',
 				headers: {
@@ -186,12 +188,12 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 	}
 
 	async function loadFamilyTree() {
-		if (!selected || !selectedIndId) return;
+		if (!selectedDataset || !selectedIndId) return;
 
 		setLoading(true);
 		setStatus(`Fetching family tree for ID ${selectedIndId}...`);
 		try {
-			const url = `${apiBase}/api/dataset/${encodeURIComponent(selected)}/tree/${selectedIndId}`;
+			const url = `${apiBase}/api/dataset/${encodeURIComponent(selectedDataset)}/tree/${selectedIndId}`;
 			const resp = await fetch(url, {
 				headers: { 'x-api-key': xApiKey }
 			});
@@ -209,13 +211,13 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 	}
 
 	async function downloadAllDatasetZip() {
-		if (!selected) return;
+		if (!selectedDataset) return;
 
 		setLoading(true);
 		setStatus('Preparing download...');
 
 		try {
-			const url = `${apiBase}/api/dataset/${encodeURIComponent(selected)}/download`;
+			const url = `${apiBase}/api/dataset/${encodeURIComponent(selectedDataset)}/download`;
 
 			const resp = await fetch(url, {
 				method: 'GET',
@@ -248,7 +250,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 			// Try to respect Content-Disposition filename=...
 			const dispo = resp.headers.get('content-disposition') || '';
 			const match = dispo.match(/filename\*?=(?:UTF-8''|")?([^\";\n]+)\"?/i);
-			const filename = (match?.[1] ? decodeURIComponent(match[1]) : `${selected}.zip`).replace(/[/\\]/g, '_');
+			const filename = (match?.[1] ? decodeURIComponent(match[1]) : `${selectedDataset}.zip`).replace(/[/\\]/g, '_');
 
 			const href = URL.createObjectURL(blob);
 			const a = document.createElement('a');
@@ -269,32 +271,10 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 
 	return (
 		<div style={{ marginTop: '1.25rem' }}>
-			<h3>Dataset Dashboard</h3>
-
-			{datasets.length === 0 ? (
-				<p style={{ opacity: 0.8 }}>
-					Click <b>List Datasets</b> first.
-				</p>
-			) : (
-				<div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-					<label>
-						<span style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Choose a dataset</span>
-						<select value={selected} onChange={(e) => setSelected(e.target.value)} style={{ padding: '0.4rem', minWidth: '260px' }}>
-							<option value="" disabled>
-								Select…
-							</option>
-							{datasets.map((d) => (
-								<option key={d} value={d}>
-									{d}
-								</option>
-							))}
-						</select>
-					</label>
-
-					<button onClick={loadDashboard} disabled={!canLoad} style={{ height: 'fit-content', padding: '0.55rem 0.9rem' }}>
-						{loading ? 'Loading…' : 'Load Dashboard'}
-					</button>
-				</div>
+			{selectedDataset && (
+				<button type="button" onClick={loadDashboard} disabled={!canLoad} style={{ padding: '0.55rem 0.9rem' }}>
+					{loading ? 'Loading…' : 'Load Dashboard'}
+				</button>
 			)}
 
 			{status && <p style={{ marginTop: '0.75rem' }}>{status}</p>}
@@ -304,10 +284,10 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 				<div style={{ marginTop: '1rem', padding: '0.9rem', border: '1px solid #ddd', borderRadius: 10 }}>
 					<h4 style={{ marginTop: 0 }}>Download</h4>
 					<p style={{ marginTop: 0, opacity: 0.8 }}>
-						Download a zip containing all files for <b>{selected}</b> (trees, truth, observed, pedigree, metadata).
+						Download a zip containing all files for <b>{selectedDataset}</b> (trees, truth, observed, pedigree, metadata).
 					</p>
 
-					<button onClick={downloadAllDatasetZip} disabled={loading || !selected}>
+					<button type="button" onClick={downloadAllDatasetZip} disabled={loading || !selectedDataset}>
 						{loading ? 'Preparing…' : 'Download all data (.zip)'}
 					</button>
 				</div>
@@ -338,7 +318,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 								))}
 							</select>
 						</label>
-						<button onClick={loadFamilyTree} disabled={!selectedIndId || loading}>
+						<button type="button" onClick={loadFamilyTree} disabled={!selectedIndId || loading}>
 							Visualize Tree
 						</button>
 					</div>

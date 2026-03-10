@@ -53,7 +53,7 @@ class SimConfig:
 	mutation_rate: float = 1e-8
 
 	# Initial Diversity
-	founder_recessive_chance: float = 0.05
+	founder_recessive_chance: float = 0.5
 
 	# Ancestry
 	n_generations: int = 5
@@ -572,7 +572,7 @@ def parse_args() -> argparse.Namespace:
 	ap.add_argument('--sequence-length', type=int, default=SimConfig.sequence_length)
 	ap.add_argument('--mutation-rate', type=float, default=SimConfig.mutation_rate)
 
-	ap.add_argument('--founder-recessive-chance', type=float, default=0.05)
+	ap.add_argument('--founder-recessive-chance', type=float, default=SimConfig.founder_recessive_chance)
 
 	ap.add_argument('--n_generations', type=int, default=SimConfig.n_generations)
 	ap.add_argument('--samples_per_generation', type=float, default=SimConfig.samples_per_generation)
