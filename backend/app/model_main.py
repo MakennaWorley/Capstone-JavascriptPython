@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import dataclasses
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
@@ -36,6 +37,39 @@ def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
 			return (SklearnMultinomialClassifier, 'multi_log_regression')
 		case _:
 			raise ValueError(f'Unknown model label: {model_label}')
+
+
+def _update_models_csv(model_name: str, model_type: str, csv_path: str | Path = 'models.csv') -> None:
+	"""
+	Updates the models.csv file with a new model entry.
+	If the combination already exists, it won't add a duplicate.
+	"""
+	csv_file = Path(csv_path)
+	existing_entries = set()
+
+	# Read existing entries if file exists
+	if csv_file.exists():
+		with open(csv_file, 'r', newline='', encoding='utf-8') as f:
+			reader = csv.DictReader(f)
+			for row in reader:
+				existing_entries.add((row['model_name'], row['model_type']))
+
+	# Check if entry already exists
+	if (model_name, model_type) in existing_entries:
+		print(f'Model entry ({model_name}, {model_type}) already exists in {csv_path}')
+		return
+
+	# Add new entry
+	file_exists = csv_file.exists()
+	with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+		writer = csv.DictWriter(f, fieldnames=['model_name', 'model_type'])
+
+		# Write header if file is new
+		if not file_exists:
+			writer.writeheader()
+
+		writer.writerow({'model_name': model_name, 'model_type': model_type})
+		print(f'Added model entry to {csv_path}: ({model_name}, {model_type})')
 
 
 def _run_fold_parallel(args):
@@ -116,78 +150,6 @@ def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
 	return X, y, groups
 
 
-def run_custom_pipeline(
-	train_file: str,
-	val_file: str,
-	test_file: str,
-	model_label: str,
-	*,
-	prep_cfg: Optional[data_preparation.PrepConfig] = None,
-	models_dir: str | Path = 'models',
-	draws: int = 1000,
-	tune: int = 1000,
-	chains: int = 4,
-	target_accept: float = 0.99,
-	seed: int = 123,
-	cores: int = 1,
-) -> Dict[str, Any]:
-	"""
-	Custom 3-phase pipeline: train, validate, test.
-	"""
-	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name='unused')
-
-	# Setup model type
-	ModelCls, model_tag = _select_model(model_label)
-	paths = _model_paths(models_dir, train_file, model_tag)
-
-	# 1. TRAINING: Use all data in the training file and balance counts
-	print(f'Phase 1: Training {model_tag} on {train_file}')
-	X_raw, y_raw, g_raw = load_whole_dataset(train_file, prep_cfg)
-	X_train, y_train, g_train = data_preparation.resample_training_data(X_raw, y_raw, g_raw)
-
-	# Initialize model with appropriate parameters
-	if model_label == 'bayes_softmax3':
-		model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed, cores=cores)
-	else:
-		model = ModelCls(random_seed=seed)
-
-	model.fit(X_train, y_train, groups=g_train)
-
-	# 2. VALIDATION: Use cross-validation on the validation file to update the model
-	print(f'Phase 2: Updating {model_tag} on {val_file}')
-	X_val, y_val, g_val = load_whole_dataset(val_file, prep_cfg)
-
-	kf = KFold(n_splits=5, shuffle=True, random_state=seed)
-	val_mses = []
-	for i, (_, v_idx) in enumerate(kf.split(X_val)):
-		# Predict on the "untouched" validation slice
-		y_pred_fold = model.predict(X_val[v_idx], groups=g_val[v_idx])
-		mse_fold = np.mean((y_val[v_idx] - y_pred_fold) ** 2)
-		val_mses.append(mse_fold)
-		print(f'  Fold {i + 1} Validation MSE: {mse_fold:.4f}')
-
-	avg_mse = np.mean(val_mses)
-	print(f'Average Validation MSE: {avg_mse:.4f}')
-
-	# Save the balanced model now that it's validated
-	model.save(paths, extra_meta={'train_src': train_file, 'val_src': val_file, 'avg_val_mse': avg_mse})
-
-	# 3. TESTING: Purely unseen data
-	print(f'Phase 3: Testing {model_tag} on {test_file}')
-	X_test, y_test, g_test = load_whole_dataset(test_file, prep_cfg)
-
-	# Calculate metrics
-	test_metrics = model_graph_functions.evaluate_and_graph_clf(model, X_test, y_test, groups=g_test, name=f'{model_tag}_custom_pipeline', graph=True)
-
-	# Generate confusion matrix if applicable
-	if hasattr(model, 'predict_class'):
-		y_pred_classes = model.predict_class(X_test, groups=g_test)
-		model_graph_functions.plot_confusion_matrix(y_true=y_test, y_pred=y_pred_classes, name=f'{model_tag} Custom Pipeline Confusion Matrix')
-
-	return {'test_metrics': test_metrics, 'model_type': model_tag, 'avg_val_mse': avg_mse}
-
-
 def train_eval(
 	train_base: str,
 	val_base: str,
@@ -196,6 +158,7 @@ def train_eval(
 	*,
 	prep_cfg: Optional[data_preparation.PrepConfig] = None,
 	models_dir: str | Path = 'models',
+	images_dir: str | Path = 'images',
 	force_retrain: bool = False,
 	draws: int = 1000,
 	tune: int = 1000,
@@ -210,6 +173,13 @@ def train_eval(
 	# 1. Setup Model Types
 	ModelCls, model_tag = _select_model(model_label)
 	paths = _model_paths(models_dir, train_base, model_tag)
+
+	# Create images directory
+	images_path = Path(images_dir)
+	images_path.mkdir(parents=True, exist_ok=True)
+
+	# Setup models.csv path in the models directory
+	models_csv_path = Path(models_dir) / 'models.csv'
 
 	# Logic: Bayesian needs meta AND idata; Sklearn only needs meta
 	exists_check = paths['meta'].exists()
@@ -266,6 +236,9 @@ def train_eval(
 	# Save immediately after retraining
 	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': avg_val_mse})
 
+	# Update models.csv with the trained model
+	_update_models_csv(train_base, model_tag, csv_path=models_csv_path)
+
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
 	print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
 	X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
@@ -275,8 +248,8 @@ def train_eval(
 	)
 
 	# Create graph paths based on the test dataset name
-	test_graph_path = paths['dir'] / f'{model_tag}_test_{test_base}.png'
-	test_cm_path = paths['dir'] / f'{model_tag}_test_{test_base}_confusion.png'
+	test_graph_path = images_path / f'{model_tag}_test_{test_base}.png'
+	test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion.png'
 
 	if test_graph_path:
 		plt.savefig(test_graph_path)
@@ -298,7 +271,13 @@ def train_eval(
 
 
 def test_on_new_data(
-	test_base: str, model_label: str, train_base: str, *, prep_cfg: Optional[data_preparation.PrepConfig] = None, models_dir: str | Path = 'models'
+	test_base: str,
+	model_label: str,
+	train_base: str,
+	*,
+	prep_cfg: Optional[data_preparation.PrepConfig] = None,
+	models_dir: str | Path = 'models',
+	images_dir: str | Path = 'images',
 ) -> Dict[str, Any]:
 	"""
 	Loads a new dataset and applies an existing trained model to it.
@@ -310,6 +289,10 @@ def test_on_new_data(
 	# 1. Setup Model Types and Paths
 	ModelCls, model_tag = _select_model(model_label)
 	paths = _model_paths(models_dir, train_base, model_tag)
+
+	# Create images directory
+	images_path = Path(images_dir)
+	images_path.mkdir(parents=True, exist_ok=True)
 
 	# 2. Check if Model Exists
 	exists_check = paths['meta'].exists()
@@ -334,8 +317,8 @@ def test_on_new_data(
 
 	# 6. Save Graphs
 	# Create paths for this specific test evaluation
-	test_graph_path = paths['dir'] / f'{model_tag}_test_{test_base}_single.png'
-	test_cm_path = paths['dir'] / f'{model_tag}_test_{test_base}_confusion_single.png'
+	test_graph_path = images_path / f'{model_tag}_test_{test_base}_single.png'
+	test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion_single.png'
 
 	if test_graph_path:
 		plt.savefig(test_graph_path)
@@ -358,7 +341,7 @@ def test_on_new_data(
 def train_eval_all(train_f, val_f, test_f):
 	"""Runs both models for the capstone comparison."""
 	results = {}
-	for label in ['bayes_softmax3', 'multi_log_regression']:
+	for label in ['multi_log_regression']:
 		results[label] = train_eval(train_f, val_f, test_f, label)
 	return results
 
@@ -366,4 +349,5 @@ def train_eval_all(train_f, val_f, test_f):
 if __name__ == '__main__':
 	# train_eval_all('testing.training', 'testing.validation', 'testing.testing')
 	# train_eval_all('bettersample.training', 'bettersample.validation', 'bettersample.testing')
-	print(test_on_new_data('bettersample.testing', 'bayes_softmax3', 'testing.training'))
+	train_eval_all('model_testing.training', 'model_testing.validation', 'model_testing.testing')
+	print(test_on_new_data('bettersample.testing', 'multi_log_regression', 'model_testing.training'))

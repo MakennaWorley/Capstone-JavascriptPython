@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import DatasetSelector from './DatasetSelector.js';
 import FamilyTreeVisualization from './FamilyTreeVisualization.js';
 
 type DatasetDashboardProps = {
@@ -271,31 +272,15 @@ export default function DatasetDashboard({ apiBase, xApiKey, datasets, maxPrevie
 		<div style={{ marginTop: '1.25rem' }}>
 			<h3>Dataset Dashboard</h3>
 
-			{datasets.length === 0 ? (
-				<p style={{ opacity: 0.8 }}>
-					Click <b>List Datasets</b> first.
-				</p>
-			) : (
-				<div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-					<label>
-						<span style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Choose a dataset</span>
-						<select value={selected} onChange={(e) => setSelected(e.target.value)} style={{ padding: '0.4rem', minWidth: '260px' }}>
-							<option value="" disabled>
-								Select…
-							</option>
-							{datasets.map((d) => (
-								<option key={d} value={d}>
-									{d}
-								</option>
-							))}
-						</select>
-					</label>
+			<div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+				<DatasetSelector datasets={datasets} selected={selected} onSelect={setSelected} disabled={loading} />
 
+				{datasets.length > 0 && (
 					<button onClick={loadDashboard} disabled={!canLoad} style={{ height: 'fit-content', padding: '0.55rem 0.9rem' }}>
 						{loading ? 'Loading…' : 'Load Dashboard'}
 					</button>
-				</div>
 			)}
+			</div>
 
 			{status && <p style={{ marginTop: '0.75rem' }}>{status}</p>}
 
