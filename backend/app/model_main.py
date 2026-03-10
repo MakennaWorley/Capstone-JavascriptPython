@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import csv
 import dataclasses
+import sys
+from io import StringIO
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
@@ -24,6 +26,42 @@ from model_multi_log_regression import SklearnMultinomialClassifier
 
 
 ModelType = Union[BayesianCategoricalDosageClassifier, SklearnMultinomialClassifier]
+
+
+class OutputLogger:
+	"""
+	Context manager to capture stdout and save it to a file while also printing to terminal.
+	"""
+
+	def __init__(self, log_file_path: str | Path):
+		self.log_file_path = Path(log_file_path)
+		self.terminal = sys.stdout
+		self.log_buffer = StringIO()
+
+	def write(self, message):
+		# Write to both terminal and buffer
+		self.terminal.write(message)
+		self.log_buffer.write(message)
+
+	def flush(self):
+		# Flush both outputs
+		self.terminal.flush()
+		self.log_buffer.flush()
+
+	def __enter__(self):
+		sys.stdout = self
+		return self
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		# Restore original stdout
+		sys.stdout = self.terminal
+
+		# Write buffer contents to file
+		self.log_file_path.parent.mkdir(parents=True, exist_ok=True)
+		with open(self.log_file_path, 'w', encoding='utf-8') as f:
+			f.write(self.log_buffer.getvalue())
+
+		self.log_buffer.close()
 
 
 def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
@@ -240,28 +278,33 @@ def train_eval(
 	_update_models_csv(train_base, model_tag, csv_path=models_csv_path)
 
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
-	print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
-	X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
+	# Setup log file for test output
+	log_file_path = paths['dir'] / f'{train_base}.{model_tag}.test_log.txt'
 
-	test_metrics = model_graph_functions.evaluate_and_graph_clf(
-		model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
-	)
+	with OutputLogger(log_file_path):
+		print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
+		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
-	# Create graph paths based on the test dataset name
-	test_graph_path = images_path / f'{model_tag}_test_{test_base}.png'
-	test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion.png'
+		test_metrics = model_graph_functions.evaluate_and_graph_clf(
+			model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
+		)
 
-	if test_graph_path:
-		plt.savefig(test_graph_path)
-		plt.close()
-		print(f'Saved test graph to {test_graph_path}')
+		# Create graph paths based on the test dataset name
+		test_graph_path = images_path / f'{model_tag}_test_{test_base}.png'
+		test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion.png'
 
-	# Confusion Matrix
-	y_pred_cm = model.predict_class(X_test, groups=groups_test)
-	model_graph_functions.plot_confusion_matrix(
-		y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
-	)
-	print(f'Saved confusion matrix to {test_cm_path}')
+		if test_graph_path:
+			plt.savefig(test_graph_path)
+			plt.close()
+			print(f'Saved test graph to {test_graph_path}')
+
+		# Confusion Matrix
+		y_pred_cm = model.predict_class(X_test, groups=groups_test)
+		model_graph_functions.plot_confusion_matrix(
+			y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
+		)
+		print(f'Saved confusion matrix to {test_cm_path}')
+		print(f'\nTest log saved to {log_file_path}')
 
 	return {
 		'trained': trained,
@@ -306,31 +349,36 @@ def test_on_new_data(
 	print(f'Loading existing {model_tag} from {paths["meta"]}')
 	model = ModelCls.load(paths)
 
-	# 4. Prepare Test Data
-	print(f'--- Testing {model_tag} on {test_base} ---')
-	X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
+	# Setup log file for test output
+	log_file_path = paths['dir'] / f'{train_base}.{model_tag}.test_{test_base}.txt'
 
-	# 5. Predict and Evaluate
-	test_metrics = model_graph_functions.evaluate_and_graph_clf(
-		model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
-	)
+	with OutputLogger(log_file_path):
+		# 4. Prepare Test Data
+		print(f'--- Testing {model_tag} on {test_base} ---')
+		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
-	# 6. Save Graphs
-	# Create paths for this specific test evaluation
-	test_graph_path = images_path / f'{model_tag}_test_{test_base}_single.png'
-	test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion_single.png'
+		# 5. Predict and Evaluate
+		test_metrics = model_graph_functions.evaluate_and_graph_clf(
+			model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
+		)
 
-	if test_graph_path:
-		plt.savefig(test_graph_path)
-		plt.close()
-		print(f'Saved test graph to {test_graph_path}')
+		# 6. Save Graphs
+		# Create paths for this specific test evaluation
+		test_graph_path = images_path / f'{model_tag}_test_{test_base}_single.png'
+		test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion_single.png'
 
-	# Confusion Matrix
-	y_pred_cm = model.predict_class(X_test, groups=groups_test)
-	model_graph_functions.plot_confusion_matrix(
-		y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
-	)
-	print(f'Saved confusion matrix to {test_cm_path}')
+		if test_graph_path:
+			plt.savefig(test_graph_path)
+			plt.close()
+			print(f'Saved test graph to {test_graph_path}')
+
+		# Confusion Matrix
+		y_pred_cm = model.predict_class(X_test, groups=groups_test)
+		model_graph_functions.plot_confusion_matrix(
+			y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
+		)
+		print(f'Saved confusion matrix to {test_cm_path}')
+		print(f'\nTest log saved to {log_file_path}')
 
 	return {
 		'test_metrics': test_metrics,
