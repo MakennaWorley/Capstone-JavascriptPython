@@ -47,9 +47,9 @@ export default function App() {
 	const [selectedModel, setSelectedModel] = useState<Model | null>(null);
 	const [testResults, setTestResults] = useState<{
 		log: string;
-		paths: any;
-		testMetrics: any;
-		images: any;
+		paths: unknown;
+		testMetrics: unknown;
+		images: unknown;
 	} | null>(null);
 
 	async function pingBackend() {
@@ -116,11 +116,13 @@ export default function App() {
 
 	return (
 		<div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
-			<button onClick={pingBackend}>Ping FastAPI</button>
-			<button onClick={fetchDatasets} style={{ marginLeft: '1rem' }}>
+			<button type="button" onClick={pingBackend}>
+				Ping FastAPI
+			</button>
+			<button type="button" onClick={fetchDatasets} style={{ marginLeft: '1rem' }}>
 				List Datasets
 			</button>
-			<button onClick={fetchModels} style={{ marginLeft: '1rem' }}>
+			<button type="button" onClick={fetchModels} style={{ marginLeft: '1rem' }}>
 				List Models
 			</button>
 

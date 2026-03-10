@@ -106,6 +106,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 			</div>
 
 			<button
+				type="button"
 				onClick={handleTestModel}
 				disabled={!canTest || loading}
 				style={{

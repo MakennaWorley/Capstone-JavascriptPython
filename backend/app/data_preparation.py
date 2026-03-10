@@ -124,22 +124,6 @@ def connected_components(adj: Dict[int, Set[int]]) -> List[Set[int]]:
 	return comps
 
 
-def split_families(components: List[Set[int]], cfg: PrepConfig) -> Dict[str, List[Set[int]]]:
-	rng = np.random.default_rng(cfg.seed)
-	comps = components[:]
-	rng.shuffle(comps)
-
-	n = len(comps)
-	n_train = int(n * cfg.train_frac)
-	n_val = int(n * cfg.val_frac)
-	# remainder -> test
-	train = comps[:n_train]
-	val = comps[n_train : n_train + n_val]
-	test = comps[n_train + n_val :]
-
-	return {'train': train, 'val': val, 'test': test}
-
-
 # -----------------------------
 # Feature engineering: relatives within K hops + Random Oversampling
 # -----------------------------
