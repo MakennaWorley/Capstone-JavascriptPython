@@ -19,7 +19,10 @@ type DashboardState = {
 	truthCsvRaw?: string;
 };
 
-type ApiEnvelope = { status: 'success'; data?: any; files?: any; message?: string } | { status: 'error'; message?: string; code?: string } | any;
+type ApiEnvelope =
+	| { status: 'success'; data?: unknown; files?: unknown; message?: string }
+	| { status: 'error'; message?: string; code?: string }
+	| unknown;
 
 function parseCsvPreview(csvText: string, maxRows: number): CsvPreview {
 	const text = csvText.replace(/^\uFEFF/, ''); // strip BOM if present
@@ -80,7 +83,7 @@ function parseCsvPreview(csvText: string, maxRows: number): CsvPreview {
 
 function clampText(s: string, maxLen = 80): string {
 	if (s.length <= maxLen) return s;
-	return s.slice(0, maxLen - 1) + '…';
+	return `${s.slice(0, maxLen - 1)}…`;
 }
 
 export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, maxPreviewRows = 10 }: DatasetDashboardProps) {
@@ -269,7 +272,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 	return (
 		<div style={{ marginTop: '1.25rem' }}>
 			{selectedDataset && (
-				<button onClick={loadDashboard} disabled={!canLoad} style={{ padding: '0.55rem 0.9rem' }}>
+				<button type="button" onClick={loadDashboard} disabled={!canLoad} style={{ padding: '0.55rem 0.9rem' }}>
 					{loading ? 'Loading…' : 'Load Dashboard'}
 				</button>
 			)}
@@ -284,7 +287,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 						Download a zip containing all files for <b>{selectedDataset}</b> (trees, truth, observed, pedigree, metadata).
 					</p>
 
-					<button onClick={downloadAllDatasetZip} disabled={loading || !selectedDataset}>
+					<button type="button" onClick={downloadAllDatasetZip} disabled={loading || !selectedDataset}>
 						{loading ? 'Preparing…' : 'Download all data (.zip)'}
 					</button>
 				</div>
@@ -315,7 +318,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 								))}
 							</select>
 						</label>
-						<button onClick={loadFamilyTree} disabled={!selectedIndId || loading}>
+						<button type="button" onClick={loadFamilyTree} disabled={!selectedIndId || loading}>
 							Visualize Tree
 						</button>
 					</div>

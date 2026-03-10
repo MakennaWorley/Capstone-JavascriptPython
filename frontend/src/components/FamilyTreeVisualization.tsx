@@ -82,7 +82,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 
 			<div style={{ position: 'relative' }}>
 				<div style={{ overflowX: 'auto' }}>
-					<svg width={WIDTH} height={HEIGHT} style={{ border: '1px solid #eee', background: '#fff' }}>
+					<svg width={WIDTH} height={HEIGHT} style={{ border: '1px solid #eee', background: '#fff' }} aria-label="Family tree image">
 						{/* Draw Edges */}
 						{data.edges.map((edge, i) => {
 							const start = layout.get(edge.source);
