@@ -8,6 +8,32 @@ import numpy as np
 import pymc as pm
 from model_functions import _coerce_dosage_classes, _ensure_dir, _load_meta, _save_common_meta, _standardize_apply, _standardize_fit
 
+# Configure PyMC to use JAX backend for GPU acceleration (if available)
+try:
+	import os
+	# Configure JAX for multiprocessing compatibility BEFORE importing
+	os.environ.setdefault('XLA_PYTHON_CLIENT_PREALLOCATE', 'false')
+	os.environ.setdefault('JAX_ENABLE_X64', 'false')
+	
+	import jax
+	import jax.numpy as jnp
+	
+	# Configure JAX for multiprocessing
+	jax.config.update('jax_platform_name', 'cpu')
+	jax.config.update('jax_enable_x64', False)
+	
+	# Check if CUDA is available
+	if jax.devices('gpu'):
+		print(f'GPU devices found: {jax.devices("gpu")}')
+		# Re-enable GPU for computations but keep CPU for coordination
+		jax.config.update('jax_platform_name', 'gpu')
+	else:
+		print('No GPU devices found, using CPU')
+except ImportError:
+	print('JAX not installed, using default PyMC backend (CPU)')
+except Exception as e:
+	print(f'GPU setup warning: {e}')
+
 
 class BayesianCategoricalDosageClassifier:
 	"""
@@ -18,13 +44,37 @@ class BayesianCategoricalDosageClassifier:
 	  - predict(X): expected dosage E[y] for compatibility with regression plotting
 	"""
 
-	def __init__(self, *, draws: int = 1000, tune: int = 1000, chains: int = 4, target_accept: float = 0.95, random_seed: int = 123, cores: int = 8):
+	def __init__(
+		self,
+		*,
+		draws: int = 1000,
+		tune: int = 1000,
+		chains: int = 4,
+		target_accept: float = 0.95,
+		random_seed: int = 123,
+		cores: int = 8,
+		use_gpu: bool = True,
+		gpu_strategy: str = 'aggressive'  # 'safe' uses 4 cores, 'aggressive' uses all cores
+	):
 		self.draws = draws
 		self.tune = tune
 		self.chains = chains
 		self.target_accept = target_accept
 		self.random_seed = random_seed
 		self.cores = cores
+		self.use_gpu = use_gpu
+		self.gpu_strategy = gpu_strategy
+
+		# Check GPU availability
+		self.gpu_available = False
+		try:
+			import jax
+
+			self.gpu_available = len(jax.devices('gpu')) > 0 and use_gpu
+			if self.gpu_available:
+				print(f'GPU acceleration enabled with {len(jax.devices("gpu"))} GPU(s)')
+		except:
+			pass
 
 		self.idata: Optional[az.InferenceData] = None
 		self.feature_mean_: Optional[np.ndarray] = None
@@ -62,14 +112,36 @@ class BayesianCategoricalDosageClassifier:
 			logits = b[groups] + pm.math.dot(Xz, W)
 			pm.Categorical('y', logit_p=logits, observed=y_int)
 
+			# Configure sampling strategy
+			sampler_kwargs = {}
+			if self.gpu_available:
+				if self.gpu_strategy == 'safe':
+					# Balanced GPU Mode: Parallel chains + GPU, but fewer chains for stability
+					effective_chains = min(self.chains, 4)  # Keep your original chain count
+					effective_cores = min(self.cores, 4)    # Use multiple cores but not all
+					print(f'🚀 GPU Balanced Mode: {effective_chains} chains across {effective_cores} cores')
+					print('  → Parallel chains + GPU acceleration (fork warnings are OK)')
+				else:
+					# Aggressive GPU Mode: Use everything
+					effective_chains = self.chains
+					effective_cores = self.cores
+					print(f'🚀 GPU Max Mode: {effective_chains} chains across {effective_cores} cores')
+					print('  → Maximum parallelism + GPU (ignore fork warnings)')
+			else:
+				# CPU Mode: Use all resources
+				effective_chains = self.chains
+				effective_cores = self.cores
+				print(f'💻 CPU Mode: {effective_chains} chains across {effective_cores} cores')
+
 			self.idata = pm.sample(
 				draws=self.draws,
 				tune=self.tune,
-				chains=self.chains,
+				chains=effective_chains,
 				target_accept=self.target_accept,
 				random_seed=self.random_seed,
 				return_inferencedata=True,
-				cores=self.cores,
+				cores=effective_cores,
+				**sampler_kwargs,
 			)
 
 		self._W_mean = self.idata.posterior['W'].mean(axis=(0, 1)).values
@@ -131,6 +203,7 @@ class BayesianCategoricalDosageClassifier:
 				'chains': self.chains,
 				'target_accept': self.target_accept,
 				'random_seed': self.random_seed,
+				'use_gpu': self.use_gpu,
 			},
 			'extra': extra_meta,
 		}

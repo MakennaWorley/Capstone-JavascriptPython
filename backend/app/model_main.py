@@ -18,6 +18,25 @@ from model_bayesian import BayesianCategoricalDosageClassifier
 from model_functions import _flatten_examples, _model_paths, _NoRefitProxy
 from model_multi_log_regression import SklearnMultinomialClassifier
 
+
+def check_gpu_status():
+	"""Check and report GPU availability for models."""
+	try:
+		import jax
+
+		gpu_devices = jax.devices('gpu')
+		if gpu_devices:
+			print(f'🚀 GPU acceleration available: {len(gpu_devices)} GPU(s) detected')
+			for i, device in enumerate(gpu_devices):
+				print(f'  GPU {i}: {device}')
+		else:
+			print('💻 Running on CPU (no GPU devices found)')
+	except ImportError:
+		print('💻 Running on CPU (JAX not installed)')
+	except Exception as e:
+		print(f'💻 Running on CPU (GPU check failed: {e})')
+
+
 # -----------------------------
 # Utilities
 # -----------------------------
@@ -49,10 +68,10 @@ def _run_fold_parallel(args):
 	# 2. Use your selection helper to get the correct Class
 	ModelCls, _ = _select_model(model_label)
 
-	# 3. Dynamic Initialization
+		# 3. Dynamic Initialization
 	if model_label == 'bayes_softmax3':
-		# Bayesian needs specific MCMC parameters for parallel stability
-		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=1)
+		# Bayesian with optimized settings for CV (faster but still accurate)
+		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
 	else:
 		# Sklearn model uses standard defaults
 		fold_model = ModelCls()
@@ -254,6 +273,10 @@ def test_on_new_data(model, dataset_name: str, prep_cfg: Optional[data_preparati
 
 def train_eval_comparison(train_f, val_f, test_f):
 	"""Runs both models for the capstone comparison."""
+	print('=== Model Training Comparison ===')
+	check_gpu_status()
+	print()
+
 	results = {}
 	for label in ['bayes_softmax3', 'multi_log_regression']:
 		results[label] = train_eval_one(train_f, val_f, test_f, label)

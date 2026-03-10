@@ -33,3 +33,6 @@ backend/app/datasets_archive/
 .ruff_cache
 frontend/coverage/
 backend/app/models/
+
+# Windows WSL
+.python-version

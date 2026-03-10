@@ -17,11 +17,15 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
 WORKDIR /app
 
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install -r requirements.txt
 
 # Install CUDA torch
-RUN pip install torch==2.9.1 torchvision==0.24.1 torchaudio==2.9.1 \
-    --index-url https://download.pytorch.org/whl/cu124
+RUN python -m pip install torch torchvisio torchaudio \
+    --index-url https://download.pytorch.org/whl/cu128
+
+# Install JAX with CUDA 12 support
+RUN python -m pip install "jax[cuda12]" \
+    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 COPY backend /app
 
