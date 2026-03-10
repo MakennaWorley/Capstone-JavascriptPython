@@ -4,9 +4,10 @@ from dataclasses import dataclass
 from io import StringIO
 from typing import Dict, List, Optional, Set, Tuple
 
-import functions
 import numpy as np
 import pandas as pd
+
+from . import functions
 
 # -----------------------------
 # Classes
@@ -27,17 +28,25 @@ class PrepConfig:
 	# If True, only create targets for individuals whose observed column is fully missing
 	only_predict_masked: bool = True
 
+	# Optional: directory where datasets are stored
+	datasets_dir: Optional[str] = None
+
 
 # -----------------------------
 # IO
 # -----------------------------
 
 
-def load_dataset_frames(dataset_name: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_dataset_frames(dataset_name: str, datasets_dir=None) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 	"""
 	Load truth, observed, pedigree CSVs for a dataset prefix using functions.py helpers.
 	"""
-	files = functions.get_all_dataset_files(dataset_name)  # raises DashboardFilesMissing if anything missing
+	if datasets_dir:
+		from pathlib import Path
+
+		files = functions.get_all_dataset_files(dataset_name, datasets_dir=Path(datasets_dir))
+	else:
+		files = functions.get_all_dataset_files(dataset_name)  # raises DashboardFilesMissing if anything missing
 
 	truth = pd.read_csv(StringIO(files['truth_genotypes_csv']))
 	obs = pd.read_csv(StringIO(files['observed_genotypes_csv']))
@@ -288,7 +297,7 @@ def prepare_data(cfg: PrepConfig) -> Dict[str, np.ndarray]:
 	Loads ONE dataset (e.g. "test1.testing") and returns model-ready arrays.
 	No train/val/test splitting here.
 	"""
-	truth, obs, ped = load_dataset_frames(cfg.dataset_name)
+	truth, obs, ped = load_dataset_frames(cfg.dataset_name, datasets_dir=cfg.datasets_dir)
 
 	# Families/components for context
 	adj = build_adjacency_from_pedigree(ped)
@@ -310,7 +319,7 @@ def prepare_data_triplet(base_name: str, cfg: PrepConfig) -> Dict[str, Dict[str,
 	for split_key, suffix in [('train', 'training'), ('val', 'validation'), ('test', 'testing')]:
 		ds_name = f'{base_name}.{suffix}'
 
-		truth, obs, ped = load_dataset_frames(ds_name)
+		truth, obs, ped = load_dataset_frames(ds_name, datasets_dir=cfg.datasets_dir)
 
 		adj = build_adjacency_from_pedigree(ped)
 		comps = connected_components(adj)
@@ -325,7 +334,6 @@ def prepare_data_triplet(base_name: str, cfg: PrepConfig) -> Dict[str, Dict[str,
 if __name__ == '__main__':
 	dataset = 'testing'
 
-	# If it's something like "test1.training", strip suffix to get base_name
 	if dataset.endswith(('.training', '.validation', '.testing')):
 		base_name = dataset.rsplit('.', 1)[0]
 	else:

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-import concurrent.futures
+import csv
 import dataclasses
+import sys
+from io import StringIO
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
@@ -12,11 +14,10 @@ from sklearn.model_selection import KFold
 
 matplotlib.use('Agg')
 # Imports from this Repo
-import data_preparation
-import model_graph_functions
-from model_bayesian import BayesianCategoricalDosageClassifier
-from model_functions import _flatten_examples, _model_paths, _NoRefitProxy
-from model_multi_log_regression import SklearnMultinomialClassifier
+from . import data_preparation, model_graph_functions
+from .model_bayesian import BayesianCategoricalDosageClassifier
+from .model_functions import _flatten_examples, _model_paths
+from .model_multi_log_regression import SklearnMultinomialClassifier
 
 # -----------------------------
 # Utilities
@@ -26,8 +27,46 @@ from model_multi_log_regression import SklearnMultinomialClassifier
 ModelType = Union[BayesianCategoricalDosageClassifier, SklearnMultinomialClassifier]
 
 
+class OutputLogger:
+	"""
+	Context manager to capture stdout and save it to a file while also printing to terminal.
+	"""
+
+	def __init__(self, log_file_path: str | Path):
+		self.log_file_path = Path(log_file_path)
+		self.terminal = sys.stdout
+		self.log_buffer = StringIO()
+
+	def write(self, message):
+		# Write to both terminal and buffer
+		self.terminal.write(message)
+		self.log_buffer.write(message)
+
+	def flush(self):
+		# Flush both outputs
+		self.terminal.flush()
+		self.log_buffer.flush()
+
+	def __enter__(self):
+		sys.stdout = self
+		return self
+
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		# Restore original stdout
+		sys.stdout = self.terminal
+
+		# Write buffer contents to file
+		self.log_file_path.parent.mkdir(parents=True, exist_ok=True)
+		with open(self.log_file_path, 'w', encoding='utf-8') as f:
+			f.write(self.log_buffer.getvalue())
+
+		self.log_buffer.close()
+
+
 def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
-	"""Returns the Model Class and a human-readable tag."""
+	"""
+	Returns the Model Class and a human-readable tag.
+	"""
 	match model_label:
 		case 'bayes_softmax3':
 			return (BayesianCategoricalDosageClassifier, 'bayes_softmax3')
@@ -37,28 +76,54 @@ def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
 			raise ValueError(f'Unknown model label: {model_label}')
 
 
+def _update_models_csv(model_name: str, model_type: str, csv_path: str | Path = 'models.csv') -> None:
+	"""
+	Updates the models.csv file with a new model entry.
+	If the combination already exists, it won't add a duplicate.
+	"""
+	csv_file = Path(csv_path)
+	existing_entries = set()
+
+	# Read existing entries if file exists
+	if csv_file.exists():
+		with open(csv_file, 'r', newline='', encoding='utf-8') as f:
+			reader = csv.DictReader(f)
+			for row in reader:
+				existing_entries.add((row['model_name'], row['model_type']))
+
+	# Check if entry already exists
+	if (model_name, model_type) in existing_entries:
+		print(f'Model entry ({model_name}, {model_type}) already exists in {csv_path}')
+		return
+
+	# Add new entry
+	file_exists = csv_file.exists()
+	with open(csv_file, 'a', newline='', encoding='utf-8') as f:
+		writer = csv.DictWriter(f, fieldnames=['model_name', 'model_type'])
+
+		# Write header if file is new
+		if not file_exists:
+			writer.writeheader()
+
+		writer.writerow({'model_name': model_name, 'model_type': model_type})
+		print(f'Added model entry to {csv_path}: ({model_name}, {model_type})')
+
+
 def _run_fold_parallel(args):
-	"""Helper function to run a single fold in a separate process."""
-	fold_idx, train_idx, val_idx, X_all, y_all, groups_all, model_label = args
+	"""
+	Helper function to run a single fold in a separate process.
+	"""
+	fold_idx, X_t, X_v, y_t, y_v, g_t, model_label = args
 
-	# 1. Slice the data for this specific fold
-	X_t, X_v = X_all[train_idx], X_all[val_idx]
-	y_t, y_v = y_all[train_idx], y_all[val_idx]
-	g_t = groups_all[train_idx]
-
-	# 2. Use your selection helper to get the correct Class
 	ModelCls, _ = _select_model(model_label)
 
-	# 3. Dynamic Initialization
 	if model_label == 'bayes_softmax3':
-		# Bayesian needs specific MCMC parameters for parallel stability
+		# Reduced chains/draws for faster CV iterations
 		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=1)
 	else:
-		# Sklearn model uses standard defaults
 		fold_model = ModelCls()
 
-	# 4. Fit and Evaluate
-	# Note: groups=g_t is passed to both; Sklearn ignores it safely
+	# X_t and y_t are already resampled by the caller
 	fold_model.fit(X_t, y_t, groups=g_t)
 
 	y_pred = fold_model.predict(X_v)
@@ -72,32 +137,29 @@ def _run_fold_parallel(args):
 # -----------------------------
 
 
-def train_with_cross_val(base_name, model_label, prep_cfg, n_splits=5):
+def evaluate_with_cross_val(val_base_name, model_label, prep_cfg, existing_model, n_splits=5):
 	"""
-	Performs K-Fold CV using the entirety of a single file.
+	Evaluates an existing model using K-Fold CV on validation data.
+	Returns the validation data (X, y, groups) and average MSE.
 	"""
-	# Load the whole file as one block
-	X_all, y_all, groups_all = load_whole_dataset(base_name, prep_cfg)
+	# Load the validation file
+	X_val, y_val, groups_val = load_whole_dataset(val_base_name, prep_cfg)
 	kf = KFold(n_splits=n_splits, shuffle=True, random_state=123)
 
-	fold_args = []
-	for i, (t_idx, v_idx) in enumerate(kf.split(X_all)):
-		fold_args.append((i, t_idx, v_idx, X_all, y_all, groups_all, model_label))
+	print(f'\n--- Cross-Validation Evaluation on {val_base_name} ---')
+	# Evaluate existing model performance using CV
+	fold_mses = []
+	for i, (_, v_idx) in enumerate(kf.split(X_val)):
+		# Test existing model on each fold
+		y_pred_fold = existing_model.predict(X_val[v_idx], groups=groups_val[v_idx])
+		mse_fold = np.mean((y_val[v_idx] - y_pred_fold) ** 2)
+		fold_mses.append(mse_fold)
+		print(f'  Fold {i + 1} Validation MSE: {mse_fold:.4f}')
 
-	print(f'\n--- Parallel CV on {base_name} for {model_label} ---')
+	avg_mse = np.mean(fold_mses)
+	print(f'Average Validation MSE: {avg_mse:.4f}')
 
-	# Use built-in multiprocessing Pool
-	with concurrent.futures.ProcessPoolExecutor(max_workers=4) as executor:
-		results = list(executor.map(_run_fold_parallel, fold_args))
-
-	for fold_idx, mse in sorted(results):
-		print(f'Fold {fold_idx + 1} MSE: {mse:.4f}')
-
-	# Return model fit on the whole file
-	ModelCls, _ = _select_model(model_label)
-	final_model = ModelCls()
-	final_model.fit(X_all, y_all, groups=groups_all)
-	return final_model
+	return X_val, y_val, groups_val, avg_mse
 
 
 def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
@@ -105,8 +167,7 @@ def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
 	Loads a dataset file and flattens it completely without looking for
 	train/val/test sub-splits.
 	"""
-	# Create a NEW config instance because the original is frozen
-	# This copies all settings from prep_cfg but updates the dataset_name
+	# Copies all settings from prep_cfg but updates the dataset_name
 	current_cfg = dataclasses.replace(prep_cfg, dataset_name=base_name)
 
 	# Pass the updated config to prepare_data
@@ -126,34 +187,7 @@ def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
 	return X, y, groups
 
 
-# this needs to be updated to work with _select_model
-def run_custom_pipeline(train_file, val_file, test_file):
-	prep_cfg = data_preparation.PrepConfig()
-
-	# 1. TRAINING: Use all data in the training file
-	X_train, y_train, g_train = load_whole_dataset(train_file, prep_cfg)
-	model = BayesianCategoricalDosageClassifier(cores=1)
-
-	print(f'Phase 1: Training on {train_file}')
-	model.fit(X_train, y_train, groups=g_train)
-
-	# 2. VALIDATION: Use cross-validation on the validation file to update the model
-	print(f'Phase 2: Updating model with CV on {val_file}')
-	# Pass the existing model or refit using the logic in train_with_cross_val
-	X_val, y_val, g_val = load_whole_dataset(val_file, prep_cfg)
-	model.fit(X_val, y_val, groups=g_val)
-
-	# 3. TESTING: Purely unseen data
-	X_test, y_test, _ = load_whole_dataset(test_file, prep_cfg)
-	print(f'Phase 3: Testing on {test_file}')
-	predictions = model.predict(X_test)
-
-	# Calculate final metrics...
-	return predictions
-
-
-# this needs to be updated to work with _select_model
-def train_eval_one(
+def train_eval(
 	train_base: str,
 	val_base: str,
 	test_base: str,
@@ -161,6 +195,8 @@ def train_eval_one(
 	*,
 	prep_cfg: Optional[data_preparation.PrepConfig] = None,
 	models_dir: str | Path = 'models',
+	images_dir: str | Path = 'images',
+	datasets_dir: str | Path = 'datasets',
 	force_retrain: bool = False,
 	draws: int = 1000,
 	tune: int = 1000,
@@ -170,14 +206,18 @@ def train_eval_one(
 	cores: int = 8,
 ) -> Dict[str, Any]:
 	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name='unused')
+		prep_cfg = data_preparation.PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
 	# 1. Setup Model Types
 	ModelCls, model_tag = _select_model(model_label)
 	paths = _model_paths(models_dir, train_base, model_tag)
 
-	# 2. PHASE 1: INITIAL TRAINING (Using the entire training file)
-	X_train, y_train, groups_train = load_whole_dataset(train_base, prep_cfg)
+	# Create images directory
+	images_path = Path(images_dir)
+	images_path.mkdir(parents=True, exist_ok=True)
+
+	# Setup models.csv path in the models directory
+	models_csv_path = Path(models_dir) / 'models.csv'
 
 	# Logic: Bayesian needs meta AND idata; Sklearn only needs meta
 	exists_check = paths['meta'].exists()
@@ -190,6 +230,10 @@ def train_eval_one(
 		trained = False
 	else:
 		print(f'--- Phase 1: Training {model_tag} on {train_base} ---')
+		# 2. PHASE 1: INITIAL TRAINING (Using the entire training file)
+		X_train, y_train, groups_train = load_whole_dataset(train_base, prep_cfg)
+
+		# Apply your resampling logic here for training
 		X_resampled, y_resampled, groups_resampled = data_preparation.resample_training_data(X_train, y_train, groups_train)
 
 		# Handle different constructor signatures
@@ -201,64 +245,158 @@ def train_eval_one(
 		model.fit(X_resampled, y_resampled, groups=groups_resampled)
 		trained = True
 
-	# 3. PHASE 2: CROSS-VALIDATION UPDATE (Using the entire validation file)
-	print(f'--- Phase 2: Updating {model_tag} with CV on {val_base} ---')
-	# This calls your KFold logic on the dedicated validation file
-	model = train_with_cross_val(val_base, model_label, prep_cfg)
+	# 3. PHASE 2: CROSS-VALIDATION EVALUATION + RETRAINING (Using training + validation)
+	print(f'--- Phase 2: Evaluating on {val_base} and retraining with combined data ---')
 
-	# Save immediately after updating
-	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base})
+	# Evaluate the model on validation data using cross-validation
+	X_val, y_val, groups_val, avg_val_mse = evaluate_with_cross_val(val_base, model_label, prep_cfg, existing_model=model)
+
+	# Now combine training + validation data and retrain the model
+	print('  Combining training and validation data for final model training...')
+	X_combined = np.vstack([X_resampled, X_val])
+	y_combined = np.concatenate([y_resampled, y_val])
+	groups_combined = np.concatenate([groups_resampled, groups_val])
+
+	# Resample the combined data
+	X_combined_resampled, y_combined_resampled, groups_combined_resampled = data_preparation.resample_training_data(
+		X_combined, y_combined, groups_combined
+	)
+
+	print(f'  Retraining {model_tag} on combined training + validation data...')
+	# Reinitialize and train on combined data
+	if model_label == 'bayes_softmax3':
+		model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed, cores=cores)
+	else:
+		model = ModelCls(random_seed=seed)
+
+	model.fit(X_combined_resampled, y_combined_resampled, groups=groups_combined_resampled)
+
+	# Save immediately after retraining
+	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': avg_val_mse})
+
+	# Update models.csv with the trained model
+	_update_models_csv(train_base, model_tag, csv_path=models_csv_path)
 
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
-	print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
-	X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
+	# Setup log file for test output
+	log_file_path = paths['dir'] / f'{train_base}.{model_tag}.test_log.txt'
 
-	test_metrics = model_graph_functions.evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}', graph=True)
+	with OutputLogger(log_file_path):
+		print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
+		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
-	if paths['graph_test']:
-		plt.savefig(paths['graph_test'])
-		plt.close()
+		test_metrics = model_graph_functions.evaluate_and_graph_clf(
+			model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
+		)
 
-	# Confusion Matrix
-	y_pred_cm = model.predict_class(X_test, groups=groups_test)
-	model_graph_functions.plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Confusion Matrix', save_path=paths['graph_cm'])
+		# Create graph paths based on the test dataset name
+		test_graph_path = images_path / f'{model_tag}_test_{test_base}.png'
+		test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion.png'
 
-	return {'trained': trained, 'test_metrics': test_metrics, 'paths': {k: str(v) for k, v in paths.items() if k != 'dir'}}
+		if test_graph_path:
+			plt.savefig(test_graph_path)
+			plt.close()
+			print(f'Saved test graph to {test_graph_path}')
+
+		# Confusion Matrix
+		y_pred_cm = model.predict_class(X_test, groups=groups_test)
+		model_graph_functions.plot_confusion_matrix(
+			y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
+		)
+		print(f'Saved confusion matrix to {test_cm_path}')
+		print(f'\nTest log saved to {log_file_path}')
+
+	return {
+		'trained': trained,
+		'test_metrics': test_metrics,
+		'paths': {'meta': str(paths['meta']), 'graph_test': str(test_graph_path), 'graph_cm': str(test_cm_path), 'model_dir': str(paths['dir'])},
+	}
 
 
-def test_on_new_data(model, dataset_name: str, prep_cfg: Optional[data_preparation.PrepConfig] = None):
+def test_on_new_data(
+	test_base: str,
+	model_type: str,
+	model_name: str,
+	*,
+	prep_cfg: Optional[data_preparation.PrepConfig] = None,
+	models_dir: str | Path = 'models',
+	images_dir: str | Path = 'images',
+	datasets_dir: str | Path = 'datasets',
+) -> Dict[str, Any]:
 	"""
-	Loads a new dataset, prepares it using the model's original scaling params,
-	and returns predictions and metrics without any training.
+	Loads a new dataset and applies an existing trained model to it.
+	The model must have been previously trained using train_eval() with the specified model_name.
 	"""
 	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name=dataset_name)
+		prep_cfg = data_preparation.PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
-	# 1. Load the new data
-	new_data = data_preparation.prepare_data(dataset_name, prep_cfg)
-	X_raw, y_raw = _flatten_examples(new_data['test']['X'], new_data['test']['y'])
+	# 1. Setup Model Types and Paths
+	ModelCls, model_tag = _select_model(model_type)
+	paths = _model_paths(models_dir, model_name, model_tag)
 
-	# 2. Wrap the model in the NoRefitProxy to ensure .fit() cannot be called
-	proxy = _NoRefitProxy(model)
+	# Create images directory
+	images_path = Path(images_dir)
+	images_path.mkdir(parents=True, exist_ok=True)
 
-	print(f'\n=== Testing on New Dataset: {dataset_name} ===')
+	# 2. Check if Model Exists
+	exists_check = paths['meta'].exists()
+	if model_type == 'bayes_softmax3':
+		exists_check = exists_check and paths['idata'].exists()
 
-	# 3. Use the existing evaluation utility to get metrics and plots
-	# This uses model.predict() internally, which applies stored feature_mean_ and feature_std_
-	if hasattr(model, 'predict_class'):
-		metrics = model_graph_functions.evaluate_and_graph_clf(proxy, X_raw, y_raw, name=f'External_Test_{dataset_name}', graph=True)
-	else:
-		metrics = model_graph_functions.evaluate_and_graph_reg(proxy, X_raw, y_raw, name=f'External_Test_{dataset_name}', graph=True)
-	return metrics
+	if not exists_check:
+		raise FileNotFoundError(f'Model not found. Expected files at {paths["meta"]}. Please train the model first using train_eval().')
+
+	# 3. Load the Pre-trained Model
+	print(f'Loading existing {model_tag} from {paths["meta"]}')
+	model = ModelCls.load(paths)
+
+	# Setup log file for test output
+	log_file_path = paths['dir'] / f'{model_name}.{model_tag}.test_{test_base}.txt'
+
+	with OutputLogger(log_file_path):
+		# 4. Prepare Test Data
+		print(f'--- Testing {model_tag} on {test_base} ---')
+		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
+
+		# 5. Predict and Evaluate
+		test_metrics = model_graph_functions.evaluate_and_graph_clf(
+			model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
+		)
+
+		# 6. Save Graphs
+		# Create paths for this specific test evaluation
+		test_graph_path = images_path / f'{model_tag}_test_{test_base}_single.png'
+		test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion_single.png'
+
+		if test_graph_path:
+			plt.savefig(test_graph_path)
+			plt.close()
+			print(f'Saved test graph to {test_graph_path}')
+
+		# Confusion Matrix
+		y_pred_cm = model.predict_class(X_test, groups=groups_test)
+		model_graph_functions.plot_confusion_matrix(
+			y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
+		)
+		print(f'Saved confusion matrix to {test_cm_path}')
+		print(f'\nTest log saved to {log_file_path}')
+
+	return {
+		'test_metrics': test_metrics,
+		'paths': {'graph_test': str(test_graph_path), 'graph_cm': str(test_cm_path), 'model_dir': str(paths['dir'])},
+	}
 
 
-def train_eval_comparison(train_f, val_f, test_f):
+def train_eval_all(train_f, val_f, test_f):
 	"""Runs both models for the capstone comparison."""
 	results = {}
-	for label in ['bayes_softmax3', 'multi_log_regression']:
-		results[label] = train_eval_one(train_f, val_f, test_f, label)
+	for label in ['multi_log_regression']:
+		results[label] = train_eval(train_f, val_f, test_f, label)
 	return results
 
 
 if __name__ == '__main__':
-	train_eval_comparison('testing.training', 'testing.validation', 'testing.testing')
+	# train_eval_all('testing.training', 'testing.validation', 'testing.testing')
+	# train_eval_all('bettersample.training', 'bettersample.validation', 'bettersample.testing')
+	# train_eval_all('model_testing.training', 'model_testing.validation', 'model_testing.testing')
+	print(test_on_new_data('bettersample.testing', 'multi_log_regression', 'model_testing.training'))

@@ -19,7 +19,9 @@ from .functions import (
 	get_dataset_dashboard_files,
 	get_dataset_names,
 	get_individual_family_tree_data,
+	get_model_list,
 )
+from .model_main import test_on_new_data
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
@@ -33,6 +35,7 @@ origins_list = [o.strip() for o in origins.split(',') if o.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=origins_list, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
 DATASETS_DIR = Path(os.getenv('DATASETS_DIR')).resolve()
+MODELS_DIR = Path(os.getenv('MODELS_DIR')).resolve()
 
 
 # debugging
@@ -52,6 +55,9 @@ async def verify_paths():
 	print(f'DEBUG: DATASETS_DIR is resolved to: {DATASETS_DIR}')
 	if not DATASETS_DIR.exists():
 		print('WARNING: DATASETS_DIR does not exist!')
+	print(f'DEBUG: MODELS_DIR is resolved to: {MODELS_DIR}')
+	if not MODELS_DIR.exists():
+		print('WARNING: MODELS_DIR does not exist!')
 
 
 # health check
@@ -93,7 +99,6 @@ async def create_dataset(request: Request):
 		return api_error(message='Unexpected server error while generating data', status_code=500, code='DATASET_CREATE_FAILED')
 
 
-# Get Dataset
 @app.get('/api/datasets/list', response_model=List[str])
 async def list_datasets():
 	try:
@@ -187,3 +192,96 @@ async def download_dataset(dataset_name: str):
 	except Exception as e:
 		print(f'Error: Dataset download failed: {str(e)}')
 		return api_error(message='Unexpected server error while building dataset zip', status_code=500, code='DATASET_ZIP_FAILED')
+
+
+@app.get('/api/models/list', response_model=List[dict])
+async def list_models():
+	"""
+	List all trained models from models.csv.
+	Returns an array of objects with model_name and model_type.
+	"""
+	try:
+		models = get_model_list(models_dir=MODELS_DIR)
+
+		return api_success(message='Success: Models retrieved successfully', data={'models': models, 'count': len(models)}, status_code=200)
+
+	except FileNotFoundError:
+		return api_error(message='Error: models.csv not found', status_code=404, code='MODELS_FILE_MISSING')
+
+	except Exception as e:
+		print(f'Error: Could not read models list: {str(e)}')
+		return api_error(message='Unexpected server error while reading models', status_code=500, code='MODELS_LIST_FAILED')
+
+
+@app.post('/api/models/test')
+async def test_model_on_dataset(request: Request):
+	"""
+	Test a trained model on a new dataset.
+	Expects JSON body with:
+		- dataset_name: str (the test dataset)
+		- model_name: str (the trained model name)
+		- model_type: str (e.g., 'multi_log_regression' or 'bayes_softmax3')
+
+	Returns the test log content as raw text.
+	"""
+	try:
+		body = await request.json()
+	except Exception:
+		return api_error(message='Error: Request body must be valid JSON', status_code=400, code='INVALID_JSON')
+
+	try:
+		dataset_name = body.get('dataset_name')
+		model_name = body.get('model_name')
+		model_type = body.get('model_type')
+
+		if not dataset_name or not model_name or not model_type:
+			return api_error(message='Error: Missing required fields (dataset_name, model_name, model_type)', status_code=400, code='INVALID_PARAMS')
+
+		# Call test_on_new_data with the appropriate directories
+		result = test_on_new_data(
+			test_base=dataset_name,
+			model_type=model_type,
+			model_name=model_name,
+			models_dir=str(MODELS_DIR),
+			images_dir=str(MODELS_DIR.parent / 'images'),
+			datasets_dir=str(DATASETS_DIR),
+		)
+
+		# Read the log file that was just created
+		# The log file is saved in paths['dir'] from model_main.py
+		log_file_path = MODELS_DIR / f'{model_name}.{model_type}.test_{dataset_name}.txt'
+
+		if not log_file_path.exists():
+			return api_error(message='Error: Test log file was not created', status_code=500, code='LOG_FILE_MISSING')
+
+		log_content = log_file_path.read_text(encoding='utf-8')
+
+		# Read and encode the images as base64
+		paths_data = result.get('paths', {})
+		graph_test_path = Path(paths_data.get('graph_test', ''))
+		graph_cm_path = Path(paths_data.get('graph_cm', ''))
+
+		image_data = {}
+		if graph_test_path.exists():
+			image_data['graph_test_base64'] = base64.b64encode(graph_test_path.read_bytes()).decode('ascii')
+		if graph_cm_path.exists():
+			image_data['graph_cm_base64'] = base64.b64encode(graph_cm_path.read_bytes()).decode('ascii')
+
+		return api_success(
+			message=f"Success: Model '{model_name}' tested on dataset '{dataset_name}'",
+			data={'log': log_content, 'test_metrics': result.get('test_metrics'), 'paths': result.get('paths'), 'images': image_data},
+			status_code=200,
+		)
+
+	except FileNotFoundError as e:
+		return api_error(message=f'Error: Model not found - {str(e)}', status_code=404, code='MODEL_NOT_FOUND')
+
+	except ValueError as e:
+		return api_error(message=f'Error: Invalid model type - {str(e)}', status_code=400, code='INVALID_MODEL_TYPE')
+
+	except Exception as e:
+		print(f'Error: Model testing failed: {str(e)}')
+		import traceback
+
+		traceback.print_exc()
+		return api_error(message=f'Unexpected server error while testing model: {str(e)}', status_code=500, code='MODEL_TEST_FAILED')

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import csv
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
@@ -8,6 +9,7 @@ import pandas as pd
 from fastapi.responses import JSONResponse
 
 DATASETS_DIR = Path('./datasets')
+MODELS_DIR = Path('./models')
 
 # -----------------------------
 # API
@@ -92,6 +94,32 @@ def get_dataset_names() -> List[str]:
 			names.append(line)
 
 	return names
+
+
+def get_model_list(models_dir: Path = MODELS_DIR) -> List[Dict[str, str]]:
+	"""
+	Reads trained models from models.csv in the models directory.
+	Returns a list of dictionaries with 'model_name' and 'model_type' keys.
+
+	Example return:
+		[
+			{'model_name': 'testing.training', 'model_type': 'bayes_softmax3'},
+			{'model_name': 'testing.training', 'model_type': 'multi_log_regression'},
+		]
+	"""
+	csv_path = models_dir / 'models.csv'
+
+	if not csv_path.exists():
+		raise FileNotFoundError(f'models.csv not found at {csv_path}')
+
+	models: List[Dict[str, str]] = []
+
+	with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+		reader = csv.DictReader(f)
+		for row in reader:
+			models.append({'model_name': row['model_name'], 'model_type': row['model_type']})
+
+	return models
 
 
 def get_file(path: Path, *, mode: Literal['text', 'base64'] = 'text', encoding: str = 'utf-8') -> Dict[str, Any]:
