@@ -14,11 +14,10 @@ from sklearn.model_selection import KFold
 
 matplotlib.use('Agg')
 # Imports from this Repo
-import data_preparation
-import model_graph_functions
-from model_bayesian import BayesianCategoricalDosageClassifier
-from model_functions import _flatten_examples, _model_paths
-from model_multi_log_regression import SklearnMultinomialClassifier
+from . import data_preparation, model_graph_functions
+from .model_bayesian import BayesianCategoricalDosageClassifier
+from .model_functions import _flatten_examples, _model_paths
+from .model_multi_log_regression import SklearnMultinomialClassifier
 
 # -----------------------------
 # Utilities
@@ -197,6 +196,7 @@ def train_eval(
 	prep_cfg: Optional[data_preparation.PrepConfig] = None,
 	models_dir: str | Path = 'models',
 	images_dir: str | Path = 'images',
+	datasets_dir: str | Path = 'datasets',
 	force_retrain: bool = False,
 	draws: int = 1000,
 	tune: int = 1000,
@@ -206,7 +206,7 @@ def train_eval(
 	cores: int = 8,
 ) -> Dict[str, Any]:
 	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name='unused')
+		prep_cfg = data_preparation.PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
 	# 1. Setup Model Types
 	ModelCls, model_tag = _select_model(model_label)
@@ -315,23 +315,24 @@ def train_eval(
 
 def test_on_new_data(
 	test_base: str,
-	model_label: str,
-	train_base: str,
+	model_type: str,
+	model_name: str,
 	*,
 	prep_cfg: Optional[data_preparation.PrepConfig] = None,
 	models_dir: str | Path = 'models',
 	images_dir: str | Path = 'images',
+	datasets_dir: str | Path = 'datasets',
 ) -> Dict[str, Any]:
 	"""
 	Loads a new dataset and applies an existing trained model to it.
-	The model must have been previously trained using train_eval() with the specified train_base.
+	The model must have been previously trained using train_eval() with the specified model_name.
 	"""
 	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name='unused')
+		prep_cfg = data_preparation.PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
 	# 1. Setup Model Types and Paths
-	ModelCls, model_tag = _select_model(model_label)
-	paths = _model_paths(models_dir, train_base, model_tag)
+	ModelCls, model_tag = _select_model(model_type)
+	paths = _model_paths(models_dir, model_name, model_tag)
 
 	# Create images directory
 	images_path = Path(images_dir)
@@ -339,7 +340,7 @@ def test_on_new_data(
 
 	# 2. Check if Model Exists
 	exists_check = paths['meta'].exists()
-	if model_label == 'bayes_softmax3':
+	if model_type == 'bayes_softmax3':
 		exists_check = exists_check and paths['idata'].exists()
 
 	if not exists_check:
@@ -350,7 +351,7 @@ def test_on_new_data(
 	model = ModelCls.load(paths)
 
 	# Setup log file for test output
-	log_file_path = paths['dir'] / f'{train_base}.{model_tag}.test_{test_base}.txt'
+	log_file_path = paths['dir'] / f'{model_name}.{model_tag}.test_{test_base}.txt'
 
 	with OutputLogger(log_file_path):
 		# 4. Prepare Test Data
@@ -397,5 +398,5 @@ def train_eval_all(train_f, val_f, test_f):
 if __name__ == '__main__':
 	# train_eval_all('testing.training', 'testing.validation', 'testing.testing')
 	# train_eval_all('bettersample.training', 'bettersample.validation', 'bettersample.testing')
-	train_eval_all('model_testing.training', 'model_testing.validation', 'model_testing.testing')
+	# train_eval_all('model_testing.training', 'model_testing.validation', 'model_testing.testing')
 	print(test_on_new_data('bettersample.testing', 'multi_log_regression', 'model_testing.training'))

@@ -3,6 +3,7 @@ import DatasetDashboard from './components/DatasetDisplayDashboard.js';
 import DatasetModelCreationForm from './components/DatasetModelCreationForm.js';
 import DatasetSelector from './components/DatasetSelector.js';
 import ModelSelector from './components/ModelSelector.js';
+import ModelTrainer from './components/ModelTrainer.js';
 
 type Model = {
 	model_name: string;
@@ -139,6 +140,13 @@ export default function App() {
 			</div>
 
 			<DatasetModelCreationForm apiBase={API_BASE} xApiKey={API_KEY} />
+
+			<ModelTrainer
+				apiBase={API_BASE}
+				xApiKey={API_KEY}
+				selectedDataset={selectedDataset}
+				selectedModel={selectedModel}
+			/>
 		</div>
 	);
 }
