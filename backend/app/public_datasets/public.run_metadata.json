@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-02-16T19:08:32.849367Z",
+  "created_at": "2026-03-11T03:47:53.857570Z",
   "derived": {
     "diploid_dosage_shape": [
       100,
@@ -8,7 +8,7 @@
     "masking_rate": 0.2,
     "observed_nonmasking_fraction": 0.804,
     "sequence_length": 100.0,
-    "ts_num_mutations": 185,
+    "ts_num_mutations": 1601,
     "ts_num_samples": 168,
     "ts_num_sites": 100,
     "ts_num_trees": 1
@@ -23,7 +23,7 @@
   },
   "params": {
     "Ne": 500,
-    "founder_recessive_chance": 0.05,
+    "founder_recessive_chance": 0.4,
     "full_data": false,
     "masking_rate": 0.2,
     "mutation_rate": 1e-08,

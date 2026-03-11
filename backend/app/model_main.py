@@ -289,8 +289,8 @@ def train_eval(
 
 	model.fit(X_combined_resampled, y_combined_resampled, groups=groups_combined_resampled)
 
-	# Save immediately after retraining
-	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': avg_val_mse})
+		# Save immediately after retraining
+	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': float(avg_val_mse)})
 
 	# Update models.csv with the trained model
 	_update_models_csv(train_base, model_tag, csv_path=models_csv_path)
@@ -410,7 +410,9 @@ def train_eval_all(train_f, val_f, test_f):
 
 
 if __name__ == '__main__':
-	train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
-	train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
-	print(test_on_new_data('Batch2.testing', 'bayes_softmax3', 'Batch1.training'))
-	print(test_on_new_data('Batch2.testing', 'multi_log_regression', 'Batch1.training'))
+	# train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
+	# train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
+	# print(test_on_new_data('Batch2.testing', 'bayes_softmax3', 'Batch1.training'))
+	# print(test_on_new_data('Batch2.testing', 'multi_log_regression', 'Batch1.training'))
+	print(test_on_new_data('Batch1.testing', 'bayes_softmax3', 'Batch2.training'))
+	print(test_on_new_data('Batch1.testing', 'multi_log_regression', 'Batch2.training'))

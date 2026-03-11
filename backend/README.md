@@ -43,10 +43,6 @@ run `source .venv/bin/activate` to activate the python environment.
 ```bash
 python data_generation.py \
   --name public \
-  --n-diploid-samples 250 \
-  --sequence-length 100 \
-  --mutation-rate 1e-8 \
-  --masking-rate 0.20 \
   --seed 21
 ```
 
