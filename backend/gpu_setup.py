@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 GPU Setup and Testing Script for PyMC Models
 

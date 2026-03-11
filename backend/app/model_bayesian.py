@@ -20,17 +20,23 @@ try:
 	import jax
 	import jax.numpy as jnp
 
-	# Configure JAX for multiprocessing
-	jax.config.update('jax_platform_name', 'cpu')
-	jax.config.update('jax_enable_x64', False)
+	# Configure JAX for optimal performance
+	jax.config.update('jax_enable_x64', False)  # Use float32 for speed
+
+	# Memory optimization
+	os.environ.setdefault('XLA_PYTHON_CLIENT_MEM_FRACTION', '0.8')  # Use 80% of GPU memory
+	os.environ.setdefault('TF_FORCE_GPU_ALLOW_GROWTH', 'true')
 
 	# Check if CUDA is available
 	if jax.devices('gpu'):
 		print(f'GPU devices found: {jax.devices("gpu")}')
-		# Re-enable GPU for computations but keep CPU for coordination
+		# Enable GPU for computations
 		jax.config.update('jax_platform_name', 'gpu')
+		# Enable memory preallocation for better performance
+		os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'true'
 	else:
 		print('No GPU devices found, using CPU')
+		jax.config.update('jax_platform_name', 'cpu')
 except ImportError:
 	print('JAX not installed, using default PyMC backend (CPU)')
 except Exception as e:

@@ -39,6 +39,71 @@ def check_gpu_status():
 		print(f'💻 Running on CPU (GPU check failed: {e})')
 
 
+def get_optimal_training_config():
+	"""Auto-detect system specs and return optimal training configuration."""
+	import os
+
+	try:
+		import psutil
+	except ImportError:
+		print('Warning: psutil not installed. Using conservative defaults.')
+		psutil = None
+
+	if psutil:
+		# Detect CPU cores
+		physical_cores = psutil.cpu_count(logical=False)
+		logical_cores = psutil.cpu_count(logical=True)
+
+		# Detect RAM
+		total_ram_gb = psutil.virtual_memory().total / (1024**3)
+	else:
+		# Fallback to os module
+		logical_cores = os.cpu_count() or 4
+		physical_cores = logical_cores // 2  # Estimate
+		total_ram_gb = 16  # Conservative estimate
+
+	# Detect GPU
+	has_gpu = False
+	try:
+		import jax
+
+		has_gpu = len(jax.devices('gpu')) > 0
+	except:
+		pass
+
+	print(f'\n=== System Configuration ===')
+	print(f'CPU: {physical_cores} physical cores, {logical_cores} logical cores')
+	print(f'RAM: {total_ram_gb:.1f} GB')
+	print(f'GPU: {"Available" if has_gpu else "Not available"}')
+
+	if has_gpu and total_ram_gb >= 32:  # High-end system
+		optimal_chains = min(8, physical_cores)  # More chains for GPU
+		optimal_cores = min(logical_cores - 2, 20)  # Use most cores but leave some for system
+		optimal_draws = 1500  # More samples for better accuracy
+		optimal_tune = 1500
+		strategy = 'aggressive'
+		print('🚀 High-end system detected: Using aggressive optimization')
+	elif has_gpu:  # GPU but less RAM
+		optimal_chains = min(6, physical_cores)
+		optimal_cores = min(logical_cores - 1, 12)
+		optimal_draws = 1200
+		optimal_tune = 1200
+		strategy = 'aggressive'
+		print('🚀 GPU system detected: Using moderate optimization')
+	else:  # CPU only
+		optimal_chains = min(4, physical_cores)
+		optimal_cores = min(logical_cores, 8)
+		optimal_draws = 1000
+		optimal_tune = 1000
+		strategy = 'safe'
+		print('💻 CPU-only system: Using conservative settings')
+
+	config = {'chains': optimal_chains, 'cores': optimal_cores, 'draws': optimal_draws, 'tune': optimal_tune, 'gpu_strategy': strategy}
+
+	print(f'Optimal config: {config}')
+	return config
+
+
 # -----------------------------
 # Utilities
 # -----------------------------
@@ -224,9 +289,19 @@ def train_eval(
 	target_accept: float = 0.99,
 	seed: int = 123,
 	cores: int = 8,
+	optimize_system_resources: bool = True,
 ) -> Dict[str, Any]:
 	if prep_cfg is None:
 		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
+
+	# Optimize system resources if requested (and not already done)
+	if optimize_system_resources and model_label == 'bayes_softmax3':
+		try:
+			from optimize_system import set_environment_variables
+
+			set_environment_variables()
+		except ImportError:
+			pass  # Continue without optimization
 
 	# 1. Setup Model Types
 	ModelCls, model_tag = _select_model(model_label)
@@ -256,9 +331,18 @@ def train_eval(
 		# Apply your resampling logic here for training
 		X_resampled, y_resampled, groups_resampled = resample_training_data(X_train, y_train, groups_train)
 
-		# Handle different constructor signatures
+		# Handle different constructor signatures with auto-optimized settings
 		if model_label == 'bayes_softmax3':
-			model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed, cores=cores)
+			optimal_config = get_optimal_training_config()
+			model = ModelCls(
+				draws=optimal_config['draws'],
+				tune=optimal_config['tune'],
+				chains=optimal_config['chains'],
+				target_accept=target_accept,
+				random_seed=seed,
+				cores=optimal_config['cores'],
+				gpu_strategy=optimal_config['gpu_strategy'],
+			)
 		else:
 			model = ModelCls(random_seed=seed)
 
@@ -281,15 +365,24 @@ def train_eval(
 	X_combined_resampled, y_combined_resampled, groups_combined_resampled = resample_training_data(X_combined, y_combined, groups_combined)
 
 	print(f'  Retraining {model_tag} on combined training + validation data...')
-	# Reinitialize and train on combined data
+	# Reinitialize and train on combined data with auto-optimized settings
 	if model_label == 'bayes_softmax3':
-		model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed, cores=cores)
+		optimal_config = get_optimal_training_config()
+		model = ModelCls(
+			draws=optimal_config['draws'],
+			tune=optimal_config['tune'],
+			chains=optimal_config['chains'],
+			target_accept=target_accept,
+			random_seed=seed,
+			cores=optimal_config['cores'],
+			gpu_strategy=optimal_config['gpu_strategy'],
+		)
 	else:
 		model = ModelCls(random_seed=seed)
 
 	model.fit(X_combined_resampled, y_combined_resampled, groups=groups_combined_resampled)
 
-		# Save immediately after retraining
+	# Save immediately after retraining
 	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': float(avg_val_mse)})
 
 	# Update models.csv with the trained model
@@ -400,7 +493,16 @@ def test_on_new_data(
 def train_eval_all(train_f, val_f, test_f):
 	"""Runs both models for the capstone comparison."""
 	print('=== Model Training Comparison ===')
-	check_gpu_status()
+
+	# Import and run system optimization
+	try:
+		from optimize_system import optimize_system
+
+		optimize_system()
+	except ImportError:
+		print('Warning: optimize_system.py not found. Continuing with default settings.')
+		check_gpu_status()
+
 	print()
 
 	results = {}
