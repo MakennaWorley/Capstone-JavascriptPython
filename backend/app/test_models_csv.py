@@ -4,10 +4,10 @@ Test script to verify models.csv functionality
 
 from pathlib import Path
 
-from model_main import _update_models_csv
+from model_main import update_models_csv
 
 # Test the CSV update function
-print('Testing _update_models_csv function...\n')
+print('Testing update_models_csv function...\n')
 
 # Create a test models directory
 test_models_dir = Path('test_models_dir')
@@ -21,20 +21,20 @@ if test_csv.exists():
 
 # Test 1: Create new CSV with first entry
 print('Test 1: Adding first entry')
-_update_models_csv('testing.training', 'bayes_softmax3', csv_path=test_csv)
+update_models_csv('testing.training', 'bayes_softmax3', csv_path=test_csv)
 
 # Test 2: Add another entry
 print('\nTest 2: Adding second entry')
-_update_models_csv('testing.training', 'multi_log_regression', csv_path=test_csv)
+update_models_csv('testing.training', 'multi_log_regression', csv_path=test_csv)
 
 # Test 3: Add entries for different training set
 print('\nTest 3: Adding entries for different training set')
-_update_models_csv('bettersample.training', 'bayes_softmax3', csv_path=test_csv)
-_update_models_csv('bettersample.training', 'multi_log_regression', csv_path=test_csv)
+update_models_csv('bettersample.training', 'bayes_softmax3', csv_path=test_csv)
+update_models_csv('bettersample.training', 'multi_log_regression', csv_path=test_csv)
 
 # Test 4: Try to add duplicate (should skip)
 print('\nTest 4: Attempting to add duplicate entry')
-_update_models_csv('testing.training', 'bayes_softmax3', csv_path=test_csv)
+update_models_csv('testing.training', 'bayes_softmax3', csv_path=test_csv)
 
 # Display the final CSV contents
 print('\n' + '=' * 60)

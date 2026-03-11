@@ -10,7 +10,7 @@ import numpy as np
 matplotlib.use('Agg')
 
 
-class _NoRefitProxy:
+class NoRefitProxy:
 	"""
 	graph_model_functions.evaluate_and_graph_clf calls .fit().
 	We wrap a fitted model so fit() is a no-op.
@@ -26,11 +26,11 @@ class _NoRefitProxy:
 		return self._m.predict(X)
 
 
-def _ensure_dir(path: str | Path) -> None:
+def ensure_dir(path: str | Path) -> None:
 	Path(path).mkdir(parents=True, exist_ok=True)
 
 
-def _flatten_examples(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def flatten_examples(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 	"""
 	X: (n_examples, n_sites, n_features)
 	y: (n_examples, n_sites)
@@ -48,18 +48,18 @@ def _flatten_examples(X: np.ndarray, y: np.ndarray) -> Tuple[np.ndarray, np.ndar
 	return Xf, yf
 
 
-def _standardize_fit(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def standardize_fit(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 	mu = X.mean(axis=0)
 	sd = X.std(axis=0)
 	sd = np.where(sd == 0, 1.0, sd)
 	return (X - mu) / sd, mu, sd
 
 
-def _standardize_apply(X: np.ndarray, mu: np.ndarray, sd: np.ndarray) -> np.ndarray:
+def standardize_apply(X: np.ndarray, mu: np.ndarray, sd: np.ndarray) -> np.ndarray:
 	return (X - mu) / sd
 
 
-def _coerce_dosage_classes(y: np.ndarray) -> np.ndarray:
+def coerce_dosage_classes(y: np.ndarray) -> np.ndarray:
 	"""
 	y can be float-ish dosage; this coerces to int {0,1,2}.
 	"""
@@ -68,7 +68,7 @@ def _coerce_dosage_classes(y: np.ndarray) -> np.ndarray:
 	return y_int
 
 
-def _model_paths(models_dir: str | Path, base_name: str, model_tag: str) -> Dict[str, Path]:
+def model_paths(models_dir: str | Path, base_name: str, model_tag: str) -> Dict[str, Path]:
 	d = Path(models_dir)
 	return {
 		'dir': d,
@@ -79,10 +79,10 @@ def _model_paths(models_dir: str | Path, base_name: str, model_tag: str) -> Dict
 	}
 
 
-def _save_common_meta(paths: Dict[str, Path], payload: Dict[str, Any]) -> None:
-	_ensure_dir(paths['dir'])
+def save_common_meta(paths: Dict[str, Path], payload: Dict[str, Any]) -> None:
+	ensure_dir(paths['dir'])
 	paths['meta'].write_text(json.dumps(payload, indent=2, sort_keys=True), encoding='utf-8')
 
 
-def _load_meta(paths: Dict[str, Path]) -> Dict[str, Any]:
+def load_meta(paths: Dict[str, Path]) -> Dict[str, Any]:
 	return json.loads(paths['meta'].read_text(encoding='utf-8'))

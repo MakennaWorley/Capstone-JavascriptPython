@@ -14,10 +14,10 @@ from sklearn.model_selection import KFold
 
 matplotlib.use('Agg')
 # Imports from this Repo
-from data_preparation import prepare_data, PrepConfig, resample_training_data
-from model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
+from data_preparation import PrepConfig, prepare_data, resample_training_data
 from model_bayesian import BayesianCategoricalDosageClassifier
-from model_functions import _flatten_examples, _model_paths
+from model_functions import flatten_examples, model_paths
+from model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
 from model_multi_log_regression import SklearnMultinomialClassifier
 
 
@@ -71,7 +71,7 @@ def get_optimal_training_config():
 	except:
 		pass
 
-	print(f'\n=== System Configuration ===')
+	print('\n=== System Configuration ===')
 	print(f'CPU: {physical_cores} physical cores, {logical_cores} logical cores')
 	print(f'RAM: {total_ram_gb:.1f} GB')
 	print(f'GPU: {"Available" if has_gpu else "Not available"}')
@@ -161,7 +161,35 @@ def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
 			raise ValueError(f'Unknown model label: {model_label}')
 
 
-def _update_models_csv(model_name: str, model_type: str, csv_path: str | Path = 'models.csv') -> None:
+def _run_fold_parallel(args):
+	"""
+	Helper function to run a single fold in a separate process.
+	"""
+	fold_idx, X_t, X_v, y_t, y_v, g_t, model_label = args
+
+	ModelCls, _ = _select_model(model_label)
+
+	if model_label == 'bayes_softmax3':
+		# Bayesian with optimized settings for CV (faster but still accurate)
+		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
+	else:
+		fold_model = ModelCls()
+
+	# X_t and y_t are already resampled by the caller
+	fold_model.fit(X_t, y_t, groups=g_t)
+
+	y_pred = fold_model.predict(X_v)
+	mse = np.mean((y_v - y_pred) ** 2)
+
+	return fold_idx, mse
+
+
+# -----------------------------
+# Pipeline
+# -----------------------------
+
+
+def update_models_csv(model_name: str, model_type: str, csv_path: str | Path = 'models.csv') -> None:
 	"""
 	Updates the models.csv file with a new model entry.
 	If the combination already exists, it won't add a duplicate.
@@ -192,34 +220,6 @@ def _update_models_csv(model_name: str, model_type: str, csv_path: str | Path = 
 
 		writer.writerow({'model_name': model_name, 'model_type': model_type})
 		print(f'Added model entry to {csv_path}: ({model_name}, {model_type})')
-
-
-def _run_fold_parallel(args):
-	"""
-	Helper function to run a single fold in a separate process.
-	"""
-	fold_idx, X_t, X_v, y_t, y_v, g_t, model_label = args
-
-	ModelCls, _ = _select_model(model_label)
-
-	if model_label == 'bayes_softmax3':
-		# Bayesian with optimized settings for CV (faster but still accurate)
-		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
-	else:
-		fold_model = ModelCls()
-
-	# X_t and y_t are already resampled by the caller
-	fold_model.fit(X_t, y_t, groups=g_t)
-
-	y_pred = fold_model.predict(X_v)
-	mse = np.mean((y_v - y_pred) ** 2)
-
-	return fold_idx, mse
-
-
-# -----------------------------
-# Pipeline
-# -----------------------------
 
 
 def evaluate_with_cross_val(val_base_name, model_label, prep_cfg, existing_model, n_splits=5):
@@ -261,7 +261,7 @@ def load_whole_dataset(base_name: str, prep_cfg: PrepConfig):
 	X_raw = data['X']
 	y_raw = data['y']
 
-	X, y = _flatten_examples(X_raw, y_raw)
+	X, y = flatten_examples(X_raw, y_raw)
 
 	if 'groups' in data:
 		n_sites = X_raw.shape[1]
@@ -305,7 +305,7 @@ def train_eval(
 
 	# 1. Setup Model Types
 	ModelCls, model_tag = _select_model(model_label)
-	paths = _model_paths(models_dir, train_base, model_tag)
+	paths = model_paths(models_dir, train_base, model_tag)
 
 	# Create images directory
 	images_path = Path(images_dir)
@@ -386,7 +386,7 @@ def train_eval(
 	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': float(avg_val_mse)})
 
 	# Update models.csv with the trained model
-	_update_models_csv(train_base, model_tag, csv_path=models_csv_path)
+	update_models_csv(train_base, model_tag, csv_path=models_csv_path)
 
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
 	# Setup log file for test output
@@ -439,7 +439,7 @@ def test_on_new_data(
 
 	# 1. Setup Model Types and Paths
 	ModelCls, model_tag = _select_model(model_type)
-	paths = _model_paths(models_dir, model_name, model_tag)
+	paths = model_paths(models_dir, model_name, model_tag)
 
 	# Create images directory
 	images_path = Path(images_dir)

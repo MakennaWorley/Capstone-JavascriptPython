@@ -6,8 +6,7 @@ from typing import Any, Dict, Optional
 import arviz as az
 import numpy as np
 import pymc as pm
-
-from model_functions import _coerce_dosage_classes, _ensure_dir, _load_meta, _save_common_meta, _standardize_apply, _standardize_fit
+from model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
 # Configure PyMC to use JAX backend for GPU acceleration (if available)
 try:
@@ -98,9 +97,9 @@ class BayesianCategoricalDosageClassifier:
 
 	def fit(self, X: np.ndarray, y: np.ndarray, groups: np.ndarray) -> 'BayesianCategoricalDosageClassifier':
 		X = np.asarray(X, dtype=np.float32)
-		y_int = _coerce_dosage_classes(np.asarray(y, dtype=np.float32))
+		y_int = coerce_dosage_classes(np.asarray(y, dtype=np.float32))
 
-		Xz, mu, sd = _standardize_fit(X)
+		Xz, mu, sd = standardize_fit(X)
 
 		self.feature_mean_ = mu
 		self.feature_std_ = sd
@@ -157,7 +156,7 @@ class BayesianCategoricalDosageClassifier:
 		return self
 
 	def predict_proba(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
-		Xz = _standardize_apply(X, self.feature_mean_, self.feature_std_)
+		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
 
 		if self.idata is not None and groups is not None:
 			# b shape is (n_groups, 3)
@@ -196,7 +195,7 @@ class BayesianCategoricalDosageClassifier:
 	def save(self, paths: Dict[str, Path], extra_meta: Dict[str, Any]) -> None:
 		if self.idata is None:
 			raise RuntimeError('No idata to save.')
-		_ensure_dir(paths['dir'])
+		ensure_dir(paths['dir'])
 		az.to_netcdf(self.idata, paths['idata'])
 
 		payload = {
@@ -215,11 +214,11 @@ class BayesianCategoricalDosageClassifier:
 			},
 			'extra': extra_meta,
 		}
-		_save_common_meta(paths, payload)
+		save_common_meta(paths, payload)
 
 	@classmethod
 	def load(cls, paths: Dict[str, Path]) -> 'BayesianCategoricalDosageClassifier':
-		meta = _load_meta(paths)
+		meta = load_meta(paths)
 		m = cls(**meta['params'])
 		m.idata = az.from_netcdf(paths['idata'])
 
