@@ -1,6 +1,7 @@
 fastapi==0.129.0
 uvicorn[standard]==0.41.0
 python-dotenv==1.0.1
+psutil==7.2.2
 
 # Core scientific stack (Py3.12 compatible versions)
 numpy==2.1.3

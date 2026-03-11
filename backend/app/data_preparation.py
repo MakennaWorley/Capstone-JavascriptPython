@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import numpy as np
 import pandas as pd
 
-from . import functions
+from functions import get_all_dataset_files, col_name
 
 # -----------------------------
 # Classes
@@ -44,9 +44,9 @@ def load_dataset_frames(dataset_name: str, datasets_dir=None) -> Tuple[pd.DataFr
 	if datasets_dir:
 		from pathlib import Path
 
-		files = functions.get_all_dataset_files(dataset_name, datasets_dir=Path(datasets_dir))
+		files = get_all_dataset_files(dataset_name, datasets_dir=Path(datasets_dir))
 	else:
-		files = functions.get_all_dataset_files(dataset_name)  # raises DashboardFilesMissing if anything missing
+		files = get_all_dataset_files(dataset_name)  # raises DashboardFilesMissing if anything missing
 
 	truth = pd.read_csv(StringIO(files['truth_genotypes_csv']))
 	obs = pd.read_csv(StringIO(files['observed_genotypes_csv']))
@@ -151,7 +151,7 @@ def k_hop_neighborhood(adj: Dict[int, Set[int]], start: int, k: int) -> Set[int]
 
 
 def is_fully_missing_individual(obs_df: pd.DataFrame, ind_id: int) -> bool:
-	col = functions._col_name(ind_id)
+	col = col_name(ind_id)
 	if col not in obs_df.columns:
 		return False  # not in data -> don't treat as masked target
 	return obs_df[col].isna().all()
@@ -172,12 +172,12 @@ def make_example_for_target(
 	geno_cols_truth = genotype_columns(truth_df)
 	geno_cols_obs = genotype_columns(obs_df)
 
-	tcol = functions._col_name(target_id)
+	tcol = col_name(target_id)
 	if tcol not in geno_cols_truth:
 		return None
 
 	relatives = sorted(k_hop_neighborhood(adj, target_id, max_hops))
-	rel_cols = [functions._col_name(r) for r in relatives if functions._col_name(r) in geno_cols_obs]
+	rel_cols = [col_name(r) for r in relatives if col_name(r) in geno_cols_obs]
 
 	if len(rel_cols) == 0:
 		return None

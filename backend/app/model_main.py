@@ -14,10 +14,95 @@ from sklearn.model_selection import KFold
 
 matplotlib.use('Agg')
 # Imports from this Repo
-from . import data_preparation, model_graph_functions
-from .model_bayesian import BayesianCategoricalDosageClassifier
-from .model_functions import _flatten_examples, _model_paths
-from .model_multi_log_regression import SklearnMultinomialClassifier
+from data_preparation import PrepConfig, prepare_data, resample_training_data
+from model_bayesian import BayesianCategoricalDosageClassifier
+from model_functions import flatten_examples, model_paths
+from model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
+from model_multi_log_regression import SklearnMultinomialClassifier
+
+
+def check_gpu_status():
+	"""Check and report GPU availability for models."""
+	try:
+		import jax
+
+		gpu_devices = jax.devices('gpu')
+		if gpu_devices:
+			print(f'🚀 GPU acceleration available: {len(gpu_devices)} GPU(s) detected')
+			for i, device in enumerate(gpu_devices):
+				print(f'  GPU {i}: {device}')
+		else:
+			print('💻 Running on CPU (no GPU devices found)')
+	except ImportError:
+		print('💻 Running on CPU (JAX not installed)')
+	except Exception as e:
+		print(f'💻 Running on CPU (GPU check failed: {e})')
+
+
+def get_optimal_training_config():
+	"""Auto-detect system specs and return optimal training configuration."""
+	import os
+
+	try:
+		import psutil
+	except ImportError:
+		print('Warning: psutil not installed. Using conservative defaults.')
+		psutil = None
+
+	if psutil:
+		# Detect CPU cores
+		physical_cores = psutil.cpu_count(logical=False)
+		logical_cores = psutil.cpu_count(logical=True)
+
+		# Detect RAM
+		total_ram_gb = psutil.virtual_memory().total / (1024**3)
+	else:
+		# Fallback to os module
+		logical_cores = os.cpu_count() or 4
+		physical_cores = logical_cores // 2  # Estimate
+		total_ram_gb = 16  # Conservative estimate
+
+	# Detect GPU
+	has_gpu = False
+	try:
+		import jax
+
+		has_gpu = len(jax.devices('gpu')) > 0
+	except:
+		pass
+
+	print('\n=== System Configuration ===')
+	print(f'CPU: {physical_cores} physical cores, {logical_cores} logical cores')
+	print(f'RAM: {total_ram_gb:.1f} GB')
+	print(f'GPU: {"Available" if has_gpu else "Not available"}')
+
+	if has_gpu and total_ram_gb >= 32:  # High-end system
+		optimal_chains = min(8, physical_cores)  # More chains for GPU
+		optimal_cores = min(logical_cores - 2, 20)  # Use most cores but leave some for system
+		optimal_draws = 1500  # More samples for better accuracy
+		optimal_tune = 1500
+		strategy = 'aggressive'
+		print('🚀 High-end system detected: Using aggressive optimization')
+	elif has_gpu:  # GPU but less RAM
+		optimal_chains = min(6, physical_cores)
+		optimal_cores = min(logical_cores - 1, 12)
+		optimal_draws = 1200
+		optimal_tune = 1200
+		strategy = 'aggressive'
+		print('🚀 GPU system detected: Using moderate optimization')
+	else:  # CPU only
+		optimal_chains = min(4, physical_cores)
+		optimal_cores = min(logical_cores, 8)
+		optimal_draws = 1000
+		optimal_tune = 1000
+		strategy = 'safe'
+		print('💻 CPU-only system: Using conservative settings')
+
+	config = {'chains': optimal_chains, 'cores': optimal_cores, 'draws': optimal_draws, 'tune': optimal_tune, 'gpu_strategy': strategy}
+
+	print(f'Optimal config: {config}')
+	return config
+
 
 # -----------------------------
 # Utilities
@@ -76,7 +161,35 @@ def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
 			raise ValueError(f'Unknown model label: {model_label}')
 
 
-def _update_models_csv(model_name: str, model_type: str, csv_path: str | Path = 'models.csv') -> None:
+def _run_fold_parallel(args):
+	"""
+	Helper function to run a single fold in a separate process.
+	"""
+	fold_idx, X_t, X_v, y_t, y_v, g_t, model_label = args
+
+	ModelCls, _ = _select_model(model_label)
+
+	if model_label == 'bayes_softmax3':
+		# Bayesian with optimized settings for CV (faster but still accurate)
+		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
+	else:
+		fold_model = ModelCls()
+
+	# X_t and y_t are already resampled by the caller
+	fold_model.fit(X_t, y_t, groups=g_t)
+
+	y_pred = fold_model.predict(X_v)
+	mse = np.mean((y_v - y_pred) ** 2)
+
+	return fold_idx, mse
+
+
+# -----------------------------
+# Pipeline
+# -----------------------------
+
+
+def update_models_csv(model_name: str, model_type: str, csv_path: str | Path = 'models.csv') -> None:
 	"""
 	Updates the models.csv file with a new model entry.
 	If the combination already exists, it won't add a duplicate.
@@ -109,34 +222,6 @@ def _update_models_csv(model_name: str, model_type: str, csv_path: str | Path = 
 		print(f'Added model entry to {csv_path}: ({model_name}, {model_type})')
 
 
-def _run_fold_parallel(args):
-	"""
-	Helper function to run a single fold in a separate process.
-	"""
-	fold_idx, X_t, X_v, y_t, y_v, g_t, model_label = args
-
-	ModelCls, _ = _select_model(model_label)
-
-	if model_label == 'bayes_softmax3':
-		# Reduced chains/draws for faster CV iterations
-		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=1)
-	else:
-		fold_model = ModelCls()
-
-	# X_t and y_t are already resampled by the caller
-	fold_model.fit(X_t, y_t, groups=g_t)
-
-	y_pred = fold_model.predict(X_v)
-	mse = np.mean((y_v - y_pred) ** 2)
-
-	return fold_idx, mse
-
-
-# -----------------------------
-# Pipeline
-# -----------------------------
-
-
 def evaluate_with_cross_val(val_base_name, model_label, prep_cfg, existing_model, n_splits=5):
 	"""
 	Evaluates an existing model using K-Fold CV on validation data.
@@ -162,7 +247,7 @@ def evaluate_with_cross_val(val_base_name, model_label, prep_cfg, existing_model
 	return X_val, y_val, groups_val, avg_mse
 
 
-def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
+def load_whole_dataset(base_name: str, prep_cfg: PrepConfig):
 	"""
 	Loads a dataset file and flattens it completely without looking for
 	train/val/test sub-splits.
@@ -171,12 +256,12 @@ def load_whole_dataset(base_name: str, prep_cfg: data_preparation.PrepConfig):
 	current_cfg = dataclasses.replace(prep_cfg, dataset_name=base_name)
 
 	# Pass the updated config to prepare_data
-	data = data_preparation.prepare_data(current_cfg)
+	data = prepare_data(current_cfg)
 
 	X_raw = data['X']
 	y_raw = data['y']
 
-	X, y = _flatten_examples(X_raw, y_raw)
+	X, y = flatten_examples(X_raw, y_raw)
 
 	if 'groups' in data:
 		n_sites = X_raw.shape[1]
@@ -193,7 +278,7 @@ def train_eval(
 	test_base: str,
 	model_label: str,
 	*,
-	prep_cfg: Optional[data_preparation.PrepConfig] = None,
+	prep_cfg: Optional[PrepConfig] = None,
 	models_dir: str | Path = 'models',
 	images_dir: str | Path = 'images',
 	datasets_dir: str | Path = 'datasets',
@@ -204,13 +289,23 @@ def train_eval(
 	target_accept: float = 0.99,
 	seed: int = 123,
 	cores: int = 8,
+	optimize_system_resources: bool = True,
 ) -> Dict[str, Any]:
 	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
+		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
+
+	# Optimize system resources if requested (and not already done)
+	if optimize_system_resources and model_label == 'bayes_softmax3':
+		try:
+			from optimize_system import set_environment_variables
+
+			set_environment_variables()
+		except ImportError:
+			pass  # Continue without optimization
 
 	# 1. Setup Model Types
 	ModelCls, model_tag = _select_model(model_label)
-	paths = _model_paths(models_dir, train_base, model_tag)
+	paths = model_paths(models_dir, train_base, model_tag)
 
 	# Create images directory
 	images_path = Path(images_dir)
@@ -234,11 +329,20 @@ def train_eval(
 		X_train, y_train, groups_train = load_whole_dataset(train_base, prep_cfg)
 
 		# Apply your resampling logic here for training
-		X_resampled, y_resampled, groups_resampled = data_preparation.resample_training_data(X_train, y_train, groups_train)
+		X_resampled, y_resampled, groups_resampled = resample_training_data(X_train, y_train, groups_train)
 
-		# Handle different constructor signatures
+		# Handle different constructor signatures with auto-optimized settings
 		if model_label == 'bayes_softmax3':
-			model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed, cores=cores)
+			optimal_config = get_optimal_training_config()
+			model = ModelCls(
+				draws=optimal_config['draws'],
+				tune=optimal_config['tune'],
+				chains=optimal_config['chains'],
+				target_accept=target_accept,
+				random_seed=seed,
+				cores=optimal_config['cores'],
+				gpu_strategy=optimal_config['gpu_strategy'],
+			)
 		else:
 			model = ModelCls(random_seed=seed)
 
@@ -258,24 +362,31 @@ def train_eval(
 	groups_combined = np.concatenate([groups_resampled, groups_val])
 
 	# Resample the combined data
-	X_combined_resampled, y_combined_resampled, groups_combined_resampled = data_preparation.resample_training_data(
-		X_combined, y_combined, groups_combined
-	)
+	X_combined_resampled, y_combined_resampled, groups_combined_resampled = resample_training_data(X_combined, y_combined, groups_combined)
 
 	print(f'  Retraining {model_tag} on combined training + validation data...')
-	# Reinitialize and train on combined data
+	# Reinitialize and train on combined data with auto-optimized settings
 	if model_label == 'bayes_softmax3':
-		model = ModelCls(draws=draws, tune=tune, chains=chains, target_accept=target_accept, random_seed=seed, cores=cores)
+		optimal_config = get_optimal_training_config()
+		model = ModelCls(
+			draws=optimal_config['draws'],
+			tune=optimal_config['tune'],
+			chains=optimal_config['chains'],
+			target_accept=target_accept,
+			random_seed=seed,
+			cores=optimal_config['cores'],
+			gpu_strategy=optimal_config['gpu_strategy'],
+		)
 	else:
 		model = ModelCls(random_seed=seed)
 
 	model.fit(X_combined_resampled, y_combined_resampled, groups=groups_combined_resampled)
 
 	# Save immediately after retraining
-	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': avg_val_mse})
+	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': float(avg_val_mse)})
 
 	# Update models.csv with the trained model
-	_update_models_csv(train_base, model_tag, csv_path=models_csv_path)
+	update_models_csv(train_base, model_tag, csv_path=models_csv_path)
 
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
 	# Setup log file for test output
@@ -285,9 +396,7 @@ def train_eval(
 		print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
 		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
-		test_metrics = model_graph_functions.evaluate_and_graph_clf(
-			model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
-		)
+		test_metrics = evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True)
 
 		# Create graph paths based on the test dataset name
 		test_graph_path = images_path / f'{model_tag}_test_{test_base}.png'
@@ -300,9 +409,7 @@ def train_eval(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		model_graph_functions.plot_confusion_matrix(
-			y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
-		)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
@@ -318,7 +425,7 @@ def test_on_new_data(
 	model_type: str,
 	model_name: str,
 	*,
-	prep_cfg: Optional[data_preparation.PrepConfig] = None,
+	prep_cfg: Optional[PrepConfig] = None,
 	models_dir: str | Path = 'models',
 	images_dir: str | Path = 'images',
 	datasets_dir: str | Path = 'datasets',
@@ -328,11 +435,11 @@ def test_on_new_data(
 	The model must have been previously trained using train_eval() with the specified model_name.
 	"""
 	if prep_cfg is None:
-		prep_cfg = data_preparation.PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
+		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
 	# 1. Setup Model Types and Paths
 	ModelCls, model_tag = _select_model(model_type)
-	paths = _model_paths(models_dir, model_name, model_tag)
+	paths = model_paths(models_dir, model_name, model_tag)
 
 	# Create images directory
 	images_path = Path(images_dir)
@@ -359,9 +466,7 @@ def test_on_new_data(
 		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
 		# 5. Predict and Evaluate
-		test_metrics = model_graph_functions.evaluate_and_graph_clf(
-			model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True
-		)
+		test_metrics = evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True)
 
 		# 6. Save Graphs
 		# Create paths for this specific test evaluation
@@ -375,9 +480,7 @@ def test_on_new_data(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		model_graph_functions.plot_confusion_matrix(
-			y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path
-		)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
@@ -389,14 +492,29 @@ def test_on_new_data(
 
 def train_eval_all(train_f, val_f, test_f):
 	"""Runs both models for the capstone comparison."""
+	print('=== Model Training Comparison ===')
+
+	# Import and run system optimization
+	try:
+		from optimize_system import optimize_system
+
+		optimize_system()
+	except ImportError:
+		print('Warning: optimize_system.py not found. Continuing with default settings.')
+		check_gpu_status()
+
+	print()
+
 	results = {}
-	for label in ['multi_log_regression']:
+	for label in ['bayes_softmax3', 'multi_log_regression']:
 		results[label] = train_eval(train_f, val_f, test_f, label)
 	return results
 
 
 if __name__ == '__main__':
-	# train_eval_all('testing.training', 'testing.validation', 'testing.testing')
-	# train_eval_all('bettersample.training', 'bettersample.validation', 'bettersample.testing')
-	# train_eval_all('model_testing.training', 'model_testing.validation', 'model_testing.testing')
-	print(test_on_new_data('bettersample.testing', 'multi_log_regression', 'model_testing.training'))
+	# train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
+	# train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
+	# print(test_on_new_data('Batch2.testing', 'bayes_softmax3', 'Batch1.training'))
+	# print(test_on_new_data('Batch2.testing', 'multi_log_regression', 'Batch1.training'))
+	print(test_on_new_data('Batch1.testing', 'bayes_softmax3', 'Batch2.training'))
+	print(test_on_new_data('Batch1.testing', 'multi_log_regression', 'Batch2.training'))

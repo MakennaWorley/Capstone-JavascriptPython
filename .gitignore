@@ -34,3 +34,6 @@ backend/app/datasets_archive/
 frontend/coverage/
 backend/app/models/
 backend/app/images/
+
+# Windows WSL
+.python-version
