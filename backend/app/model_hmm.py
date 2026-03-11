@@ -157,6 +157,31 @@ class HMMDosageClassifier:
 			print(f'Samples: {X.shape[0]}, Features: {X.shape[1]}')
 			print(f'Dosage distribution: {np.bincount(y_int, minlength=3)}')
 
+		def create_sequences(X_data, min_seq_length=10, max_seq_length=100):
+			"""Create sequences of appropriate length for HMM training."""
+			n_samples = len(X_data)
+			
+			if n_samples <= min_seq_length:
+				# If too few samples, create one sequence
+				return [n_samples]
+			
+			# Create sequences of varying lengths between min and max
+			sequences = []
+			remaining = n_samples
+			
+			while remaining > 0:
+				if remaining <= max_seq_length:
+					sequences.append(remaining)
+					break
+				
+				# Create a sequence of random length between min and max
+				seq_len = np.random.randint(min_seq_length, 
+											min(max_seq_length + 1, remaining + 1))
+				sequences.append(seq_len)
+				remaining -= seq_len
+			
+			return sequences
+
 		# Check if we should use hierarchical group structure
 		if groups is not None and len(np.unique(groups)) > 1:
 			self.use_groups = True
@@ -171,22 +196,22 @@ class HMMDosageClassifier:
 				X_group = Xz[group_mask]
 				y_group = y_int[group_mask]
 
-				if len(X_group) < 10:  # Skip groups with too few samples
+				if len(X_group) < 30:  # Increased minimum samples for meaningful sequences
 					if self.verbose:
-						print(f'  Skipping group {group_id} (only {len(X_group)} samples)')
+						print(f'  Skipping group {group_id} (only {len(X_group)} samples, need at least 30)')
 					continue
 
 				group_model = self._create_hmm_model()
 
-				# Create sequence lengths (treat each sample as a single observation sequence)
-				lengths = np.ones(len(X_group), dtype=int)
+				# Create meaningful sequence lengths
+				lengths = create_sequences(X_group, min_seq_length=10, max_seq_length=50)
 
 				try:
 					group_model.fit(X_group, lengths)
 					self.group_models[int(group_id)] = group_model
 
 					if self.verbose:
-						print(f'  Group {group_id}: {len(X_group)} samples, score={group_model.score(X_group, lengths):.2f}')
+						print(f'  Group {group_id}: {len(X_group)} samples in {len(lengths)} sequences')
 				except Exception as e:
 					if self.verbose:
 						print(f'  Warning: Failed to train group {group_id}: {e}')
@@ -196,14 +221,15 @@ class HMMDosageClassifier:
 			print('Training global HMM model')
 
 		self.model = self._create_hmm_model()
-		lengths = np.ones(len(Xz), dtype=int)
+		
+		# Create meaningful sequences for the global model
+		lengths = create_sequences(Xz, min_seq_length=20, max_seq_length=200)
 
 		try:
 			self.model.fit(Xz, lengths)
 
 			if self.verbose:
-				score = self.model.score(Xz, lengths)
-				print(f'Global model score: {score:.2f}')
+				print(f'Global model trained with {len(Xz)} samples in {len(lengths)} sequences')
 		except Exception as e:
 			print(f'Error training global HMM model: {e}')
 			raise
@@ -245,9 +271,10 @@ class HMMDosageClassifier:
 		"""
 		Predict probabilities using a single HMM model.
 
-		Uses the forward algorithm to compute the probability of each state
-		at each time step, then averages over time.
+		For prediction, we treat each sample as an individual sequence,
+		since we want individual predictions for each sample.
 		"""
+		# For prediction, treat each sample as a sequence of length 1
 		lengths = np.ones(len(X), dtype=int)
 
 		try:
@@ -255,11 +282,13 @@ class HMMDosageClassifier:
 			log_prob, posteriors = model.score_samples(X, lengths)
 
 			# posteriors has shape (n_samples, n_components)
-			# Average over time if needed (for sequence data)
 			probs = posteriors
 
 			# Ensure probabilities sum to 1 (numerical stability)
-			probs = probs / probs.sum(axis=1, keepdims=True)
+			row_sums = probs.sum(axis=1, keepdims=True)
+			# Avoid division by zero
+			row_sums = np.where(row_sums == 0, 1, row_sums)
+			probs = probs / row_sums
 
 			return probs.astype(np.float32)
 		except Exception as e:

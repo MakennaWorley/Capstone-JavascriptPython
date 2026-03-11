@@ -315,8 +315,8 @@ class GNNDosageClassifier:
 
 		optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
 
-		# Learning rate scheduler
-		scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=self.verbose)
+				# Learning rate scheduler
+		scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
 		# Training loop
 		best_val_loss = float('inf')

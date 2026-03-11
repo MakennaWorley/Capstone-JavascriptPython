@@ -532,9 +532,9 @@ def train_eval_all(train_f, val_f, test_f):
 
 
 if __name__ == '__main__':
-	# train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
-	# train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
+	train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
+	train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
 	# print(test_on_new_data('Batch2.testing', 'bayes_softmax3', 'Batch1.training'))
 	# print(test_on_new_data('Batch2.testing', 'multi_log_regression', 'Batch1.training'))
-	print(test_on_new_data('Batch1.testing', 'bayes_softmax3', 'Batch2.training'))
-	print(test_on_new_data('Batch1.testing', 'multi_log_regression', 'Batch2.training'))
+	# print(test_on_new_data('Batch1.testing', 'bayes_softmax3', 'Batch2.training'))
+	# print(test_on_new_data('Batch1.testing', 'multi_log_regression', 'Batch2.training'))
