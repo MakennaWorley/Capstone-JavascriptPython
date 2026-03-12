@@ -20,7 +20,7 @@ for ind in ts.individuals():
 	if len(ind.nodes) == 2:
 		all_nodes.extend([int(ind.nodes[0]), int(ind.nodes[1])])
 
-G = ts.genotype_matrix(samples=all_nodes)
+G = ts.genotype_matrix(samples=all_nodes, isolated_as_missing=False)
 print(f'Genotype matrix shape: {G.shape}')
 print()
 

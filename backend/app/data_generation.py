@@ -351,7 +351,7 @@ def haploid_to_diploid_dosage(ts: tskit.TreeSequence, cfg: SimConfig) -> np.ndar
 			all_nodes.extend([int(ind.nodes[0]), int(ind.nodes[1])])
 
 	# Genotype matrix for *these* nodes (sites x chosen_nodes)
-	G_hap = ts.genotype_matrix(samples=all_nodes)
+	G_hap = ts.genotype_matrix(samples=all_nodes, isolated_as_missing=False)
 	num_inds = ts.num_individuals
 	G_dip_full = np.zeros((cfg.sequence_length, num_inds), dtype=np.int8)
 

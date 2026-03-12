@@ -6,7 +6,8 @@ from typing import Any, Dict, Optional
 import arviz as az
 import numpy as np
 import pymc as pm
-from model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
+
+from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
 # Configure PyMC to use JAX backend for GPU acceleration (if available)
 try:

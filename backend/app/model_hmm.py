@@ -5,8 +5,9 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 from hmmlearn import hmm
-from model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 from pycm import ConfusionMatrix
+
+from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
 # Configure GPU acceleration for HMM if available
 try:
@@ -160,26 +161,25 @@ class HMMDosageClassifier:
 		def create_sequences(X_data, min_seq_length=10, max_seq_length=100):
 			"""Create sequences of appropriate length for HMM training."""
 			n_samples = len(X_data)
-			
+
 			if n_samples <= min_seq_length:
 				# If too few samples, create one sequence
 				return [n_samples]
-			
+
 			# Create sequences of varying lengths between min and max
 			sequences = []
 			remaining = n_samples
-			
+
 			while remaining > 0:
 				if remaining <= max_seq_length:
 					sequences.append(remaining)
 					break
-				
+
 				# Create a sequence of random length between min and max
-				seq_len = np.random.randint(min_seq_length, 
-											min(max_seq_length + 1, remaining + 1))
+				seq_len = np.random.randint(min_seq_length, min(max_seq_length + 1, remaining + 1))
 				sequences.append(seq_len)
 				remaining -= seq_len
-			
+
 			return sequences
 
 		# Check if we should use hierarchical group structure
@@ -221,7 +221,7 @@ class HMMDosageClassifier:
 			print('Training global HMM model')
 
 		self.model = self._create_hmm_model()
-		
+
 		# Create meaningful sequences for the global model
 		lengths = create_sequences(Xz, min_seq_length=20, max_seq_length=200)
 

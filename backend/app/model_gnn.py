@@ -7,9 +7,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 from pycm import ConfusionMatrix
 from torch.utils.data import DataLoader, TensorDataset
+
+from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
 # Configure GPU acceleration for PyTorch
 try:
@@ -20,7 +21,7 @@ try:
 		DEVICE = torch.device('cuda')
 		GPU_AVAILABLE = True
 	elif torch.backends.mps.is_available():
-		print(f'🚀 Apple Metal GPU available')
+		print('🚀 Apple Metal GPU available')
 		DEVICE = torch.device('mps')
 		GPU_AVAILABLE = True
 	else:
@@ -217,7 +218,7 @@ class GNNDosageClassifier:
 		if self.use_gpu:
 			print(f'🚀 GNN GPU acceleration enabled on {self.device}')
 		else:
-			print(f'💻 GNN running on CPU')
+			print('💻 GNN running on CPU')
 
 	@property
 	def tag(self) -> str:
@@ -265,7 +266,7 @@ class GNNDosageClassifier:
 		self.feature_std_ = sd
 
 		if self.verbose:
-			print(f'\n=== Training GNN Dosage Classifier ===')
+			print('\n=== Training GNN Dosage Classifier ===')
 			print(f'Samples: {X.shape[0]}, Features: {X.shape[1]}')
 			print(f'Dosage distribution: {np.bincount(y_int, minlength=3)}')
 			print(f'Device: {self.device}')
@@ -315,7 +316,7 @@ class GNNDosageClassifier:
 
 		optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
 
-				# Learning rate scheduler
+		# Learning rate scheduler
 		scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
 		# Training loop

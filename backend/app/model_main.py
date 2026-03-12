@@ -14,13 +14,13 @@ from sklearn.model_selection import KFold
 
 matplotlib.use('Agg')
 # Imports from this Repo
-from data_preparation import PrepConfig, prepare_data, resample_training_data
-from model_bayesian import BayesianCategoricalDosageClassifier
-from model_functions import flatten_examples, model_paths
-from model_gnn import GNNDosageClassifier
-from model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
-from model_hmm import HMMDosageClassifier
-from model_multi_log_regression import SklearnMultinomialClassifier
+from .data_preparation import PrepConfig, prepare_data, resample_training_data
+from .model_bayesian import BayesianCategoricalDosageClassifier
+from .model_functions import flatten_examples, model_paths
+from .model_gnn import GNNDosageClassifier
+from .model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
+from .model_hmm import HMMDosageClassifier
+from .model_multi_log_regression import SklearnMultinomialClassifier
 
 
 def check_gpu_status():
@@ -532,9 +532,9 @@ def train_eval_all(train_f, val_f, test_f):
 
 
 if __name__ == '__main__':
-	train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
-	train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
+	# train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
+	# train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
 	# print(test_on_new_data('Batch2.testing', 'bayes_softmax3', 'Batch1.training'))
 	# print(test_on_new_data('Batch2.testing', 'multi_log_regression', 'Batch1.training'))
 	# print(test_on_new_data('Batch1.testing', 'bayes_softmax3', 'Batch2.training'))
-	# print(test_on_new_data('Batch1.testing', 'multi_log_regression', 'Batch2.training'))
+	print(test_on_new_data('Batch1.testing', 'multi_log_regression', 'Batch2.training'))

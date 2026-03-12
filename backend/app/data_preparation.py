@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Set, Tuple
 import numpy as np
 import pandas as pd
 
-from functions import get_all_dataset_files, col_name
+from .functions import col_name, get_all_dataset_files
 
 # -----------------------------
 # Classes

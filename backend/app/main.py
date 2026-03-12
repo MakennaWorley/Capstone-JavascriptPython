@@ -10,8 +10,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
-from data_generation import create_data_from_params
-from functions import (
+from .data_generation import create_data_from_params
+from .functions import (
 	DashboardFilesMissing,
 	api_error,
 	api_success,
@@ -21,7 +21,7 @@ from functions import (
 	get_individual_family_tree_data,
 	get_model_list,
 )
-from model_main import test_on_new_data
+from .model_main import test_on_new_data
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent

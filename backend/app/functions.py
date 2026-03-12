@@ -213,7 +213,7 @@ def get_genetic_data_from_id(
 			raise FileNotFoundError(f'Missing file: {observed_path}')
 		observed_df = pd.read_csv(observed_path)
 
-	col = _col_name(individual_id)
+	col = col_name(individual_id)
 	if col not in observed_df.columns:
 		available = [c for c in observed_df.columns if c.startswith('i_')]
 		raise KeyError(f"Column '{col}' not found. Available individual columns: {available[:5]}{'...' if len(available) > 5 else ''}")
