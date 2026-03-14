@@ -16,6 +16,7 @@ matplotlib.use('Agg')
 # Imports from this Repo
 from .data_preparation import PrepConfig, prepare_data, resample_training_data
 from .model_bayesian import BayesianCategoricalDosageClassifier
+from .model_dnn import DNNDosageClassifier
 from .model_functions import flatten_examples, model_paths
 from .model_gnn import GNNDosageClassifier
 from .model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
@@ -161,6 +162,8 @@ def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
 			return (SklearnMultinomialClassifier, 'multi_log_regression')
 		case 'hmm_dosage':
 			return (HMMDosageClassifier, 'hmm_dosage')
+		case 'dnn_dosage':
+			return (DNNDosageClassifier, 'dnn_dosage')
 		case 'gnn_dosage':
 			return (GNNDosageClassifier, 'gnn_dosage')
 		case _:
@@ -181,6 +184,9 @@ def _run_fold_parallel(args):
 	elif model_label == 'hmm_dosage':
 		# HMM with optimized settings for CV
 		fold_model = ModelCls(n_iter=50, verbose=False)
+	elif model_label == 'dnn_dosage':
+		# DNN with optimized settings for CV
+		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
 	elif model_label == 'gnn_dosage':
 		# GNN with optimized settings for CV
 		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
@@ -357,6 +363,8 @@ def train_eval(
 			)
 		elif model_label == 'hmm_dosage':
 			model = ModelCls(n_iter=100, random_seed=seed, use_gpu=True, verbose=True)
+		elif model_label == 'dnn_dosage':
+			model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 		elif model_label == 'gnn_dosage':
 			model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 		else:
@@ -395,6 +403,8 @@ def train_eval(
 		)
 	elif model_label == 'hmm_dosage':
 		model = ModelCls(n_iter=100, random_seed=seed, use_gpu=True, verbose=True)
+	elif model_label == 'dnn_dosage':
+		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	elif model_label == 'gnn_dosage':
 		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	else:
@@ -526,7 +536,7 @@ def train_eval_all(train_f, val_f, test_f):
 	print()
 
 	results = {}
-	for label in ['bayes_softmax3', 'multi_log_regression', 'hmm_dosage', 'gnn_dosage']:
+	for label in ['bayes_softmax3', 'multi_log_regression', 'hmm_dosage', 'dnn_dosage', 'gnn_dosage']:
 		results[label] = train_eval(train_f, val_f, test_f, label)
 	return results
 

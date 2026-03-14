@@ -267,19 +267,33 @@ class HMMDosageClassifier:
 
 		return self
 
+	def _create_sequences(X_data, min_seq_length=20, max_seq_length=100):
+		n_samples = len(X_data)
+		if n_samples <= min_seq_length:
+			return [n_samples]
+		sequences = []
+		remaining = n_samples
+		while remaining > 0:
+			if remaining <= max_seq_length:
+				sequences.append(remaining)
+				break
+			seq_len = np.random.randint(min_seq_length, min(max_seq_length + 1, remaining + 1))
+			sequences.append(seq_len)
+			remaining -= seq_len
+		return sequences
+
 	def _predict_proba_single_model(self, model: hmm.GaussianHMM, X: np.ndarray) -> np.ndarray:
 		"""
 		Predict probabilities using a single HMM model.
 
-		For prediction, we treat each sample as an individual sequence,
-		since we want individual predictions for each sample.
+		Respects the sequential structure by using variable-length sequences,
+		allowing the model to leverage learned transition probabilities.
 		"""
-		# For prediction, treat each sample as a sequence of length 1
-		lengths = np.ones(len(X), dtype=int)
-
 		try:
-			# Get log probabilities for each state
-			log_prob, posteriors = model.score_samples(X, lengths)
+			lengths = self._create_sequences(X, min_seq_length=20, max_seq_length=100)
+
+			# Get posterior probabilities for each state
+			_, posteriors = model.score_samples(X, lengths)
 
 			# posteriors has shape (n_samples, n_components)
 			probs = posteriors
