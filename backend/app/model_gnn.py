@@ -107,16 +107,10 @@ class GeneticDosageGNN(nn.Module):
 			x = gnn_layer(x, edge_index)
 			if self.use_batch_norm:
 				x = self.batch_norms[i](x)
-			x = F.relu(x)
+				x = F.relu(x)
 			if self.dropout_rate > 0:
 				x = F.dropout(x, p=self.dropout_rate, training=self.training)
 
-		# Global mean pooling to aggregate node features into graph-level features
-		x = global_mean_pool(x, batch)
-
-		# Output layer
-		logits = self.output_layer(x)
-		return logits
 		# Global mean pooling to aggregate node features into graph-level features
 		x = global_mean_pool(x, batch)
 
@@ -463,17 +457,26 @@ class GNNDosageClassifier:
 		y_pred_train = self.predict_class(X, groups=groups)
 		self.pycm_train_ = ConfusionMatrix(actual_vector=y_int.tolist(), predict_vector=y_pred_train.tolist(), digit=4)
 
+		# Helper function to safely convert PYCM metrics
+		def safe_metric(value):
+			if value is None or value == 'None':
+				return 0.0
+			try:
+				return float(value)
+			except (ValueError, TypeError):
+				return 0.0
+
 		# Store key metrics for later access
 		self.pycm_metrics_ = {
-			'overall_accuracy': self.pycm_train_.Overall_ACC,
-			'kappa': self.pycm_train_.Kappa,
-			'overall_f1': self.pycm_train_.F1_Macro,
-			'overall_precision': self.pycm_train_.PPV_Macro,
-			'overall_recall': self.pycm_train_.TPR_Macro,
-			'class_accuracy': dict(self.pycm_train_.ACC),
-			'class_f1': dict(self.pycm_train_.F1),
-			'class_precision': dict(self.pycm_train_.PPV),
-			'class_recall': dict(self.pycm_train_.TPR),
+			'overall_accuracy': safe_metric(self.pycm_train_.Overall_ACC),
+			'kappa': safe_metric(self.pycm_train_.Kappa),
+			'overall_f1': safe_metric(self.pycm_train_.F1_Macro),
+			'overall_precision': safe_metric(self.pycm_train_.PPV_Macro),
+			'overall_recall': safe_metric(self.pycm_train_.TPR_Macro),
+			'class_accuracy': {k: safe_metric(v) for k, v in self.pycm_train_.ACC.items()},
+			'class_f1': {k: safe_metric(v) for k, v in self.pycm_train_.F1.items()},
+			'class_precision': {k: safe_metric(v) for k, v in self.pycm_train_.PPV.items()},
+			'class_recall': {k: safe_metric(v) for k, v in self.pycm_train_.TPR.items()},
 		}
 
 		if self.verbose:
@@ -583,26 +586,37 @@ class GNNDosageClassifier:
 			pycm_cm: PYCM ConfusionMatrix object
 			title: Report title
 		"""
+
+		# Helper function to safely format PYCM metrics
+		def safe_format(value):
+			"""Convert PYCM metric to float for formatting, handling 'None' strings."""
+			if value is None or value == 'None':
+				return 0.0
+			try:
+				return float(value)
+			except (ValueError, TypeError):
+				return 0.0
+
 		print(f'\n{"=" * 60}')
 		print(f'{title:^60}')
 		print(f'{"=" * 60}')
 
 		print('\n=== Overall Metrics ===')
-		print(f'Overall Accuracy: {pycm_cm.Overall_ACC:.4f}')
-		print(f'Balanced Accuracy: {pycm_cm.TPR_Macro:.4f}')
-		print(f'Kappa: {pycm_cm.Kappa:.4f}')
-		print(f'F1-Score (Macro): {pycm_cm.F1_Macro:.4f}')
-		print(f'Precision (Macro): {pycm_cm.PPV_Macro:.4f}')
-		print(f'Recall (Macro): {pycm_cm.TPR_Macro:.4f}')
+		print(f'Overall Accuracy: {safe_format(pycm_cm.Overall_ACC):.4f}')
+		print(f'Balanced Accuracy: {safe_format(pycm_cm.TPR_Macro):.4f}')
+		print(f'Kappa: {safe_format(pycm_cm.Kappa):.4f}')
+		print(f'F1-Score (Macro): {safe_format(pycm_cm.F1_Macro):.4f}')
+		print(f'Precision (Macro): {safe_format(pycm_cm.PPV_Macro):.4f}')
+		print(f'Recall (Macro): {safe_format(pycm_cm.TPR_Macro):.4f}')
 
 		print('\n=== Per-Class Metrics ===')
 		print(f'{"Class":<10} {"F1":<10} {"Precision":<12} {"Recall":<10} {"Accuracy":<10}')
 		print('-' * 60)
 		for cls in sorted(pycm_cm.classes):
-			f1 = pycm_cm.F1[cls] if cls in pycm_cm.F1 else 0.0
-			prec = pycm_cm.PPV[cls] if cls in pycm_cm.PPV else 0.0
-			rec = pycm_cm.TPR[cls] if cls in pycm_cm.TPR else 0.0
-			acc = pycm_cm.ACC[cls] if cls in pycm_cm.ACC else 0.0
+			f1 = safe_format(pycm_cm.F1[cls]) if cls in pycm_cm.F1 else 0.0
+			prec = safe_format(pycm_cm.PPV[cls]) if cls in pycm_cm.PPV else 0.0
+			rec = safe_format(pycm_cm.TPR[cls]) if cls in pycm_cm.TPR else 0.0
+			acc = safe_format(pycm_cm.ACC[cls]) if cls in pycm_cm.ACC else 0.0
 			print(f'Dosage {cls:<3} {f1:<10.4f} {prec:<12.4f} {rec:<10.4f} {acc:<10.4f}')
 
 		print('\n=== Confusion Matrix ===')

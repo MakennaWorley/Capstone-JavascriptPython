@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 from hmmlearn import hmm
@@ -104,6 +104,7 @@ class HMMDosageClassifier:
 		self.model: Optional[hmm.GaussianHMM] = None
 		self.feature_mean_: Optional[np.ndarray] = None
 		self.feature_std_: Optional[np.ndarray] = None
+		self.state_to_dosage_: Optional[Dict[int, int]] = None  # Mapping from HMM states to dosage classes
 
 		# Group-specific models for hierarchical structure
 		self.group_models: Dict[int, hmm.GaussianHMM] = {}
@@ -130,8 +131,157 @@ class HMMDosageClassifier:
 			n_iter=self.n_iter,
 			tol=self.tol,
 			random_state=self.random_seed,
-			verbose=self.verbose,
+			verbose=False,  # Suppress verbose output for cleaner logs
+			init_params='',  # Don't initialize parameters - we'll do it manually
+			params='stmc',  # But do update all parameters during training
 		)
+
+	def _initialize_hmm_with_priors(self, model: hmm.GaussianHMM, X: np.ndarray, y: np.ndarray, n_features_out: int = 1) -> None:
+		"""Initialize HMM parameters using label information (semi-supervised approach).
+
+		Args:
+			model: HMM model to initialize
+			X: Original feature matrix (before reshaping)
+			y: Labels
+			n_features_out: Number of features in reshaped data (1 for our sequence approach)
+		"""
+		# Set n_features manually so we can initialize parameters
+		model.n_features = n_features_out
+
+		# Initialize means array
+		model.means_ = np.zeros((self.n_components, n_features_out))  # (n_states, n_dims)
+
+		# For each dosage class, compute the mean of all features and use as initial state mean
+		for dosage in range(3):
+			class_mask = y == dosage
+			if class_mask.sum() > 0:
+				# Compute mean of all features for samples in this class
+				class_mean = X[class_mask].mean()  # Mean across all features and samples
+				model.means_[dosage, 0] = class_mean
+			else:
+				# If no samples, use neutral initialization
+				model.means_[dosage, 0] = 0.0
+
+				# Initialize covariances based on class variance
+		# Compute variance for each class
+		class_vars = []
+		for dosage in range(3):
+			class_mask = y == dosage
+			if class_mask.sum() > 1:
+				class_var = X[class_mask].var()
+				class_vars.append(max(class_var, 0.01))  # Avoid zero variance
+			else:
+				class_vars.append(1.0)
+
+		# Initialize covariances based on covariance_type
+		if self.covariance_type == 'diag':
+			model.covars_ = np.array([[v] for v in class_vars])  # (n_states, n_features)
+		elif self.covariance_type == 'spherical':
+			model.covars_ = np.array(class_vars)  # (n_states,)
+		elif self.covariance_type == 'full':
+			model.covars_ = np.array([[[v]] for v in class_vars])  # (n_states, n_features, n_features)
+		elif self.covariance_type == 'tied':
+			# Use average variance across all classes
+			avg_var = np.mean(class_vars)
+			model.covars_ = np.array([[avg_var]])  # (n_features, n_features)
+
+		# Initialize transition matrix to favor staying in same state
+		# This reflects that dosage tends to be consistent within regions
+		model.transmat_ = np.array(
+			[
+				[0.85, 0.10, 0.05],  # From state 0: likely stay in 0
+				[0.10, 0.80, 0.10],  # From state 1: likely stay in 1
+				[0.05, 0.10, 0.85],  # From state 2: likely stay in 2
+			]
+		)
+
+		# Initialize start probabilities based on class distribution
+		class_counts = np.bincount(y.astype(int), minlength=3)
+		model.startprob_ = (class_counts + 1) / (class_counts.sum() + 3)  # Laplace smoothing
+
+		if self.verbose:
+			print('Initialized HMM with label-guided priors')
+			print(f'  Start probabilities: {model.startprob_}')
+			print(f'  Means: {model.means_.flatten()}')
+			print(f'  Transition matrix diagonal: {np.diag(model.transmat_)}')
+
+	def _align_states_to_dosages(self, X: np.ndarray, y: np.ndarray, lengths: list) -> Dict[int, int]:
+		"""Align HMM hidden states to actual dosage classes using training labels."""
+		# Get state assignments using Viterbi algorithm
+		state_sequence = self.model.predict(X, lengths)
+
+		# For each state, find which dosage it corresponds to
+		state_to_dosage = {}
+		state_dosage_counts = {}  # Track distribution for diagnostics
+
+		for state in range(self.n_components):
+			state_mask = state_sequence == state
+			if state_mask.sum() > 0:
+				# Find dosage distribution for this state
+				dosages_in_state = y[state_mask]
+				dosage_counts = np.bincount(dosages_in_state.astype(int), minlength=3)
+				state_dosage_counts[state] = dosage_counts
+
+				# Assign state to most common dosage
+				most_common = dosage_counts.argmax()
+				state_to_dosage[state] = most_common
+
+				if self.verbose:
+					purity = dosage_counts[most_common] / dosage_counts.sum() * 100
+					print(f'  State {state} -> Dosage {most_common} ({state_mask.sum()} obs, {purity:.1f}% purity)')
+					print(f'    Distribution: D0={dosage_counts[0]}, D1={dosage_counts[1]}, D2={dosage_counts[2]}')
+			else:
+				# If no observations in this state, assign to missing dosage
+				used_dosages = set(state_to_dosage.values())
+				for d in range(3):
+					if d not in used_dosages:
+						state_to_dosage[state] = d
+						if self.verbose:
+							print(f'  State {state} -> Dosage {d} (no observations, assigned to missing class)')
+						break
+
+				# Check if all dosages are covered
+		assigned_dosages = set(state_to_dosage.values())
+		if len(assigned_dosages) < 3:
+			if self.verbose:
+				print(f'  WARNING: Not all dosages assigned! Missing: {set(range(3)) - assigned_dosages}')
+				print('  Attempting to reassign states based on means...')
+
+			# Sort states by their learned means (should correlate with dosage)
+			state_means = self.model.means_.flatten()
+			sorted_states = np.argsort(state_means)
+
+			# Assign sorted states to dosages 0, 1, 2
+			state_to_dosage = {int(sorted_states[i]): i for i in range(3)}
+
+			if self.verbose:
+				print('  Reassigned based on means:')
+				for state, dosage in sorted(state_to_dosage.items()):
+					print(f'    State {state} (mean={state_means[state]:.3f}) -> Dosage {dosage}')
+
+		return state_to_dosage
+
+	def _reshape_for_sequence(self, X: np.ndarray) -> Tuple[np.ndarray, list]:
+		"""Treat each sample's features as a temporal sequence.
+
+		Instead of treating samples as arbitrary sequences, treat each sample's
+		features (which represent positions along genome) as a sequence.
+
+		Args:
+			X: Feature matrix (n_samples, n_features)
+
+		Returns:
+			X_seq: Reshaped data (total_features, 1) where each feature is a timestep
+			lengths: List of sequence lengths (all equal to n_features)
+		"""
+		n_samples, n_features = X.shape
+
+		# Each sample becomes a sequence of length n_features
+		# Each timestep is a 1D observation (single feature value)
+		X_seq = X.reshape(-1, 1)  # Flatten all samples into (n_samples * n_features, 1)
+		lengths = [n_features] * n_samples  # Each sample is a sequence of n_features
+
+		return X_seq, lengths
 
 	def fit(self, X: np.ndarray, y: np.ndarray, groups: Optional[np.ndarray] = None) -> 'HMMDosageClassifier':
 		"""
@@ -154,85 +304,48 @@ class HMMDosageClassifier:
 		self.feature_std_ = sd
 
 		if self.verbose:
-			print('\n=== Training HMM Dosage Classifier ===')
+			print('\n=== Training HMM Dosage Classifier (Semi-Supervised) ===')
 			print(f'Samples: {X.shape[0]}, Features: {X.shape[1]}')
 			print(f'Dosage distribution: {np.bincount(y_int, minlength=3)}')
+			print('Using within-sample sequential structure (features as time steps)')
 
-		def create_sequences(X_data, min_seq_length=10, max_seq_length=100):
-			"""Create sequences of appropriate length for HMM training."""
-			n_samples = len(X_data)
+		# Reshape data: treat each sample's features as a sequence
+		X_seq, lengths = self._reshape_for_sequence(Xz)
 
-			if n_samples <= min_seq_length:
-				# If too few samples, create one sequence
-				return [n_samples]
+		# Create and flatten y for alignment (repeat each label n_features times)
+		n_features = X.shape[1]
+		y_seq = np.repeat(y_int, n_features)
 
-			# Create sequences of varying lengths between min and max
-			sequences = []
-			remaining = n_samples
-
-			while remaining > 0:
-				if remaining <= max_seq_length:
-					sequences.append(remaining)
-					break
-
-				# Create a sequence of random length between min and max
-				seq_len = np.random.randint(min_seq_length, min(max_seq_length + 1, remaining + 1))
-				sequences.append(seq_len)
-				remaining -= seq_len
-
-			return sequences
-
-		# Check if we should use hierarchical group structure
-		if groups is not None and len(np.unique(groups)) > 1:
-			self.use_groups = True
-			unique_groups = np.unique(groups)
-
-			if self.verbose:
-				print(f'Training hierarchical model with {len(unique_groups)} groups')
-
-			# Train a separate HMM for each group
-			for group_id in unique_groups:
-				group_mask = groups == group_id
-				X_group = Xz[group_mask]
-				y_group = y_int[group_mask]
-
-				if len(X_group) < 30:  # Increased minimum samples for meaningful sequences
-					if self.verbose:
-						print(f'  Skipping group {group_id} (only {len(X_group)} samples, need at least 30)')
-					continue
-
-				group_model = self._create_hmm_model()
-
-				# Create meaningful sequence lengths
-				lengths = create_sequences(X_group, min_seq_length=10, max_seq_length=50)
-
-				try:
-					group_model.fit(X_group, lengths)
-					self.group_models[int(group_id)] = group_model
-
-					if self.verbose:
-						print(f'  Group {group_id}: {len(X_group)} samples in {len(lengths)} sequences')
-				except Exception as e:
-					if self.verbose:
-						print(f'  Warning: Failed to train group {group_id}: {e}')
-
-		# Always train a global model as fallback
 		if self.verbose:
-			print('Training global HMM model')
+			print(f'Reshaped to {len(lengths)} sequences of length {n_features} each')
+			print(f'Total observations: {X_seq.shape[0]}')
 
+			# Create and initialize model
 		self.model = self._create_hmm_model()
 
-		# Create meaningful sequences for the global model
-		lengths = create_sequences(Xz, min_seq_length=20, max_seq_length=200)
+		# Initialize with label-guided priors (semi-supervised)
+		# Note: n_features_out=1 because we reshape each feature to a 1D observation
+		self._initialize_hmm_with_priors(self.model, Xz, y_int, n_features_out=1)
 
 		try:
-			self.model.fit(Xz, lengths)
+			# Train HMM on sequences
+			self.model.fit(X_seq, lengths)
 
 			if self.verbose:
-				print(f'Global model trained with {len(Xz)} samples in {len(lengths)} sequences')
+				print('\nHMM training complete')
+				print('Learned transition matrix:')
+				for i in range(3):
+					print(f'  State {i}: {self.model.transmat_[i]}')
 		except Exception as e:
-			print(f'Error training global HMM model: {e}')
+			print(f'Error training HMM model: {e}')
 			raise
+
+			# Align HMM states to dosage classes using training labels
+		if self.verbose:
+			print('\nAligning HMM states to dosage classes...')
+		state_alignment = self._align_states_to_dosages(X_seq, y_seq, lengths)
+		# Convert numpy int64 to Python int for JSON serialization
+		self.state_to_dosage_ = {int(k): int(v) for k, v in state_alignment.items()}
 
 		# Generate training predictions and compute PYCM metrics
 		if self.verbose:
@@ -277,58 +390,84 @@ class HMMDosageClassifier:
 
 		return self
 
-	@staticmethod
-	def _create_sequences(X_data, min_seq_length=20, max_seq_length=100):
-		"""Create sequences of appropriate length for HMM prediction."""
-		n_samples = len(X_data)
-		if n_samples <= min_seq_length:
-			return [n_samples]
-		sequences = []
-		remaining = n_samples
-		while remaining > 0:
-			if remaining <= max_seq_length:
-				sequences.append(remaining)
-				break
-			seq_len = np.random.randint(min_seq_length, min(max_seq_length + 1, remaining + 1))
-			sequences.append(seq_len)
-			remaining -= seq_len
-		return sequences
+	def _predict_sample_dosage(self, X_sample: np.ndarray) -> np.ndarray:
+		"""Predict dosage for a single sample using posterior probabilities.
 
-	def _predict_proba_single_model(self, model: hmm.GaussianHMM, X: np.ndarray) -> np.ndarray:
+		Args:
+			X_sample: Single sample's features (n_features,)
+
+		Returns:
+			probabilities: Probability distribution over dosages (3,)
 		"""
-		Predict probabilities using a single HMM model.
+		# Reshape sample to sequence format
+		X_seq = X_sample.reshape(-1, 1)  # (n_features, 1)
+		n_features = len(X_sample)
 
-		Respects the sequential structure by using variable-length sequences,
-		allowing the model to leverage learned transition probabilities.
+		# Use forward-backward algorithm to get posterior probabilities for each state
+		# This gives soft probabilities rather than hard Viterbi assignments
+		_, state_posteriors = self.model.score_samples(X_seq, [n_features])
+		# state_posteriors shape: (n_features, n_states)
+
+		# Map state probabilities to dosage probabilities
+		dosage_probs = np.zeros(3, dtype=np.float32)
+		for state in range(self.n_components):
+			if state not in self.state_to_dosage_:
+				# Skip states not in mapping (shouldn't happen, but defensive)
+				continue
+			dosage = self.state_to_dosage_[state]
+			# Sum probabilities for this state across all timesteps
+			dosage_probs[dosage] += state_posteriors[:, state].sum()
+
+			# Normalize to get probability distribution
+		prob_sum = dosage_probs.sum()
+		if prob_sum > 0:
+			dosage_probs = dosage_probs / prob_sum
+		else:
+			# Fallback to uniform if something went wrong
+			dosage_probs = np.ones(3, dtype=np.float32) / 3.0
+
+		return dosage_probs
+
+	def _predict_proba_with_posteriors(self, X: np.ndarray) -> np.ndarray:
 		"""
-		try:
-			lengths = HMMDosageClassifier._create_sequences(X, min_seq_length=20, max_seq_length=100)
+		Predict probabilities using posterior probabilities from forward-backward algorithm.
 
-			# Get posterior probabilities for each state
-			_, posteriors = model.score_samples(X, lengths)
-
-			# posteriors has shape (n_samples, n_components)
-			probs = posteriors
-
-			# Ensure probabilities sum to 1 (numerical stability)
-			row_sums = probs.sum(axis=1, keepdims=True)
-			# Avoid division by zero
-			row_sums = np.where(row_sums == 0, 1, row_sums)
-			probs = probs / row_sums
-
-			return probs.astype(np.float32)
-		except Exception as e:
-			print(f'Warning in HMM prediction: {e}')
-			# Return uniform probabilities as fallback
-			return np.ones((len(X), self.n_components), dtype=np.float32) / self.n_components
-
-	def predict_proba(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
-		"""
-		Predict probability distribution over dosage classes.
+		For each sample:
+		  1. Treat its features as a sequence
+		  2. Use forward-backward to get state posteriors
+		  3. Map state probabilities to dosages using learned alignment
+		  4. Aggregate across timesteps to get dosage probabilities
 
 		Args:
 			X: Feature matrix (n_samples, n_features)
-			groups: Optional group indices for hierarchical prediction
+
+		Returns:
+			probs: Probability matrix (n_samples, 3)
+		"""
+		try:
+			n_samples = X.shape[0]
+			probs = np.zeros((n_samples, 3), dtype=np.float32)
+
+			# Predict each sample independently
+			for i in range(n_samples):
+				probs[i] = self._predict_sample_dosage(X[i])
+
+			return probs
+		except Exception as e:
+			print(f'Warning in HMM prediction: {e}')
+			import traceback
+
+			traceback.print_exc()
+			# Return uniform probabilities as fallback
+			return np.ones((len(X), 3), dtype=np.float32) / 3.0
+
+	def predict_proba(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
+		"""
+		Predict probability distribution over dosage classes using posterior probabilities.
+
+		Args:
+			X: Feature matrix (n_samples, n_features)
+			groups: Optional group indices (not used in current implementation)
 
 		Returns:
 			proba: Probability matrix (n_samples, 3)
@@ -336,38 +475,13 @@ class HMMDosageClassifier:
 		if self.model is None:
 			raise RuntimeError('Model must be fitted before prediction')
 
+		if self.state_to_dosage_ is None or len(self.state_to_dosage_) == 0:
+			raise RuntimeError('State alignment not computed. Model may not be properly trained.')
+
 		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
 
-		# Use GPU acceleration if available
-		if self.use_gpu:
-			try:
-				import jax.numpy as jnp
-
-				Xz_gpu = jnp.array(Xz)
-				# Note: hmmlearn doesn't natively support JAX, so we convert back
-				Xz = np.array(Xz_gpu)
-			except:
-				pass  # Fall back to CPU
-
-		if self.use_groups and groups is not None and len(self.group_models) > 0:
-			# Use hierarchical prediction with group-specific models
-			probs = np.zeros((len(X), self.n_components), dtype=np.float32)
-
-			for group_id, group_model in self.group_models.items():
-				group_mask = groups == group_id
-				if group_mask.any():
-					probs[group_mask] = self._predict_proba_single_model(group_model, Xz[group_mask])
-
-			# Use global model for groups without specific models
-			ungrouped_mask = np.ones(len(X), dtype=bool)
-			for group_id in self.group_models.keys():
-				ungrouped_mask &= groups != group_id
-
-			if ungrouped_mask.any():
-				probs[ungrouped_mask] = self._predict_proba_single_model(self.model, Xz[ungrouped_mask])
-		else:
-			# Use global model for all predictions
-			probs = self._predict_proba_single_model(self.model, Xz)
+		# Use posterior probabilities (forward-backward) for soft predictions
+		probs = self._predict_proba_with_posteriors(Xz)
 
 		return probs
 
@@ -479,11 +593,15 @@ class HMMDosageClassifier:
 		ensure_dir(paths['dir'])
 
 		# Save model parameters
+		# Ensure state_to_dosage uses Python ints, not numpy int64
+		state_to_dosage_serializable = {int(k): int(v) for k, v in self.state_to_dosage_.items()}
+
 		payload = {
 			'type': 'HMMDosageClassifier',
 			'tag': self.tag,
 			'feature_mean': self.feature_mean_.tolist(),
 			'feature_std': self.feature_std_.tolist(),
+			'state_to_dosage': state_to_dosage_serializable,
 			'params': {
 				'n_iter': self.n_iter,
 				'n_components': self.n_components,
@@ -544,12 +662,19 @@ class HMMDosageClassifier:
 		# Restore feature standardization parameters
 		m.feature_mean_ = np.array(meta['feature_mean'], dtype=np.float32)
 		m.feature_std_ = np.array(meta['feature_std'], dtype=np.float32)
+		m.state_to_dosage_ = meta.get('state_to_dosage', {0: 0, 1: 1, 2: 2})
+		# Convert string keys back to int if necessary
+		if isinstance(list(m.state_to_dosage_.keys())[0], str):
+			m.state_to_dosage_ = {int(k): int(v) for k, v in m.state_to_dosage_.items()}
 
-		# Restore global model
+			# Restore global model
 		m.model = m._create_hmm_model()
+		# Set n_features before restoring parameters
+		means_array = np.array(meta['model_params']['means'])
+		m.model.n_features = means_array.shape[1]  # Get n_features from means shape
 		m.model.startprob_ = np.array(meta['model_params']['startprob'])
 		m.model.transmat_ = np.array(meta['model_params']['transmat'])
-		m.model.means_ = np.array(meta['model_params']['means'])
+		m.model.means_ = means_array
 		m.model.covars_ = np.array(meta['model_params']['covars'])
 
 		# Restore group models if they exist
