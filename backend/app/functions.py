@@ -2,14 +2,19 @@ from __future__ import annotations
 
 import base64
 import csv
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
 
-DATASETS_DIR = Path('./datasets')
-MODELS_DIR = Path('./models')
+load_dotenv()
+
+
+DATASETS_DIR = os.getenv('DATASETS_DIR')
+MODELS_DIR = os.getenv('MODELS_DIR')
 
 # -----------------------------
 # API
@@ -80,7 +85,7 @@ def get_dataset_names() -> List[str]:
 	names: List[str] = []
 
 	base_dir = Path(__file__).resolve().parent
-	file_path = base_dir / 'datasets' / 'datasets.txt'
+	file_path = base_dir / DATASETS_DIR / 'datasets.txt'
 
 	if not file_path.exists():
 		return []

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import dataclasses
+import os
 import sys
 from io import StringIO
 from pathlib import Path
@@ -10,9 +11,11 @@ from typing import Any, Dict, Optional, Tuple, Type, Union
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from dotenv import load_dotenv
 from sklearn.model_selection import KFold
 
 matplotlib.use('Agg')
+
 # Imports from this Repo
 from .data_preparation import PrepConfig, prepare_data, resample_training_data
 from .model_bayesian import BayesianCategoricalDosageClassifier
@@ -22,6 +25,12 @@ from .model_gnn import GNNDosageClassifier
 from .model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
 from .model_hmm import HMMDosageClassifier
 from .model_multi_log_regression import SklearnMultinomialClassifier
+
+# Load environment variables
+load_dotenv()
+DATASETS_DIR = os.getenv('DATASETS_DIR')
+MODELS_DIR = os.getenv('MODELS_DIR')
+IMAGES_DIR = os.getenv('IMAGES_DIR')
 
 
 def check_gpu_status():
@@ -297,9 +306,9 @@ def train_eval(
 	model_label: str,
 	*,
 	prep_cfg: Optional[PrepConfig] = None,
-	models_dir: str | Path = 'models',
-	images_dir: str | Path = 'images',
-	datasets_dir: str | Path = 'datasets',
+	models_dir: str | Path = MODELS_DIR,
+	images_dir: str | Path = IMAGES_DIR,
+	datasets_dir: str | Path = DATASETS_DIR,
 	force_retrain: bool = False,
 	draws: int = 1000,
 	tune: int = 1000,
@@ -456,9 +465,9 @@ def test_on_new_data(
 	model_name: str,
 	*,
 	prep_cfg: Optional[PrepConfig] = None,
-	models_dir: str | Path = 'models',
-	images_dir: str | Path = 'images',
-	datasets_dir: str | Path = 'datasets',
+	models_dir: str | Path = MODELS_DIR,
+	images_dir: str | Path = IMAGES_DIR,
+	datasets_dir: str | Path = DATASETS_DIR,
 ) -> Dict[str, Any]:
 	"""
 	Loads a new dataset and applies an existing trained model to it.

@@ -7,19 +7,24 @@ function isAlnumNoWhitespace(s: string) {
 	return ALNUM_RE.test(s);
 }
 
+// ---------- Security Constants (Sync with Python) ----------
+const MAX_USER_SAMPLES = 1000;
+const MAX_USER_LENGTH = 1000;
+const MAX_USER_GENERATIONS = 10;
+
 // ---------- types ----------
 type SimConfig = {
 	// basic
 	name: string;
-	full_data: boolean;
 
 	// advanced (scaling)
+	sequence_length: number;
 	n_generations: number;
 	samples_per_generation: number;
 };
 
 type GenerateRequest = {
-	params: Pick<SimConfig, 'name' | 'full_data'> & Partial<SimConfig> & { n_diploid_samples?: number };
+	params: { name: string } & Partial<SimConfig> & { n_diploid_samples?: number };
 };
 
 type Props = {
@@ -31,9 +36,9 @@ type Props = {
 // ---------- defaults ----------
 const DEFAULTS: SimConfig = {
 	name: '',
-	full_data: false,
-	n_generations: NaN,
-	samples_per_generation: NaN
+	sequence_length: 5,
+	n_generations: 0,
+	samples_per_generation: 50
 };
 
 export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = '/api/create/data' }: Props) {
@@ -63,12 +68,22 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 		}
 
 		if (advanced) {
+			if (!Number.isFinite(cfg.sequence_length) || !Number.isInteger(cfg.sequence_length) || cfg.sequence_length <= 0) {
+				e.push('Sequence length must be a positive number.');
+			}
 			if (!Number.isFinite(cfg.n_generations) || !Number.isInteger(cfg.n_generations) || cfg.n_generations <= 0) {
 				e.push('Number of generations must be a positive integer.');
 			}
 			if (!Number.isFinite(cfg.samples_per_generation) || !Number.isInteger(cfg.samples_per_generation) || cfg.samples_per_generation <= 0) {
 				e.push('Individuals per generation must be a positive integer.');
 			}
+
+			if (cfg.sequence_length > MAX_USER_LENGTH) e.push(`Sequence length cannot exceed ${MAX_USER_LENGTH}.`);
+			if (cfg.n_generations > MAX_USER_GENERATIONS) e.push(`Generations cannot exceed ${MAX_USER_GENERATIONS}.`);
+			if (cfg.n_generations * cfg.samples_per_generation > MAX_USER_SAMPLES)
+				e.push(
+					`Total individuals cannot exceed ${MAX_USER_SAMPLES}. Please lower either number of generations or individuals per generation.`
+				);
 		}
 
 		return e;
@@ -85,18 +100,15 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 
 		try {
 			const params: GenerateRequest['params'] = {
-				name: cfg.name.trim(),
-				full_data: cfg.full_data
+				name: cfg.name.trim()
 			};
 
 			// Only include parameters if Advanced is enabled
 			if (advanced) {
+				params.sequence_length = cfg.sequence_length;
 				params.n_generations = cfg.n_generations;
 				params.samples_per_generation = cfg.samples_per_generation;
-
-				if (derivedTotal !== undefined) {
-					params.n_diploid_samples = derivedTotal;
-				}
+				params.n_diploid_samples = cfg.n_generations * cfg.samples_per_generation;
 			}
 
 			const payload: GenerateRequest = { params };
@@ -150,11 +162,6 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 					/>
 				</label>
 
-				<label style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'center', cursor: 'pointer' }}>
-					<input type="checkbox" checked={cfg.full_data} onChange={(e) => update('full_data', e.target.checked)} />
-					<span>Generate datasets for training a model</span>
-				</label>
-
 				<label style={{ display: 'flex', gap: 8, marginTop: 12 }}>
 					<input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} />
 					Advanced Settings (scale individuals)
@@ -169,6 +176,19 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 					</legend>
 
 					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+						<label>
+							Sequence Length
+							<input
+								type="number"
+								value={Number.isFinite(cfg.sequence_length) ? cfg.sequence_length : ''}
+								placeholder="100"
+								onChange={(e) => update('sequence_length', Number(e.target.value))}
+								min={1}
+								step={1}
+								style={{ padding: '0.5rem' }}
+							/>
+						</label>
+
 						<label>
 							Number of generations
 							<input

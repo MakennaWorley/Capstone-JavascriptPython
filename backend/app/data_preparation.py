@@ -227,7 +227,7 @@ def build_split_examples(
 	if not X_list:
 		# Return empty arrays with consistent ranks
 		n_sites = truth_df.shape[0]
-		return np.zeros((0, n_sites, 3), dtype=float), np.zeros((0, n_sites), dtype=np.int8)
+		return np.zeros((0, n_sites, 3), dtype=float), np.zeros((0, n_sites), dtype=np.int8), np.zeros((0,), dtype=int)
 
 	X_all = np.stack(X_list, axis=0)
 	y_all = np.stack(y_list, axis=0)

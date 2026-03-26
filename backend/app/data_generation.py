@@ -34,37 +34,67 @@ import msprime
 import numpy as np
 import pandas as pd
 import tskit
+from dotenv import load_dotenv
 from graphviz import Digraph
+
+# Load environment variables from .env file
+load_dotenv()
 
 # -----------------------------
 # Configs
 # -----------------------------
 
+DATASETS_DIR = os.getenv('DATASETS_DIR')
+PROTECTED_DATASETS_DIR = os.getenv('PROTECTED_DATASETS_DIR')
+
+
+# API User Limits (The "Small" Tier Ceiling)
+MAX_USER_SAMPLES = 1000
+MAX_USER_LENGTH = 1000
+MAX_USER_GENERATIONS = 10
+
 
 @dataclass(frozen=True)
 class SimConfig:
 	# Sampling / population parameters
-	n_diploid_samples: int = 250
+	n_diploid_samples: int = 25_000
 	Ne: int = 500
 	ploidy: int = 2
 
 	# Genome / simulation parameters
-	sequence_length: int = 100
+	sequence_length: int = 100_000
 	mutation_rate: float = 1e-8
 
 	# Initial Diversity
 	founder_recessive_chance: float = 0.4
 
 	# Ancestry
-	n_generations: int = 5
-	samples_per_generation: int = 50
+	n_generations: int = 50
+	samples_per_generation: int = 500
 
 	# Output control
 	seed: int = 42
 	masking_rate: float = 0.20
-	output_dir: str = 'datasets'
+	datasets_dir: str = DATASETS_DIR
 	full_data: bool = False
 	name: str = 'DEFAULT_NAME'
+
+
+def get_preset_config(tier: str, base_name: str) -> dict:
+	"""
+	Returns parameters for different scales,
+	anchored by the user's 'Tiny' definition.
+	"""
+	presets = {
+		'tiny': {'n_diploid_samples': 250, 'sequence_length': 100, 'n_generations': 5, 'samples_per_generation': 50},
+		'small': {'n_diploid_samples': 1000, 'sequence_length': 1000, 'n_generations': 10, 'samples_per_generation': 50},
+		'medium': {'n_diploid_samples': 5000, 'sequence_length': 10000, 'n_generations': 25, 'samples_per_generation': 100},
+		'large': {'n_diploid_samples': 25000, 'sequence_length': 100000, 'n_generations': 50, 'samples_per_generation': 500},
+	}
+
+	params = presets.get(tier.lower(), presets['tiny'])
+	params['name'] = f'{base_name}_{tier}'
+	return params
 
 
 # -----------------------------
@@ -435,9 +465,16 @@ def write_genotypes_by_generation(ts, G_dip, df_sites, output_dir, name_prefix):
 
 
 def build_paths(cfg: SimConfig) -> Dict[str, str]:
-	"""Centralize output naming."""
-	ensure_dir(cfg.output_dir)
-	base = os.path.join(cfg.output_dir, cfg.name)
+	"""Routes data based on whether it is a full training run or a prediction set."""
+	# If full_data is flagged (Training), use Protected. Otherwise, use Public.
+	# Prefer cfg.datasets_dir if explicitly set
+	if cfg.full_data:
+		target_dir = cfg.datasets_dir if cfg.datasets_dir and cfg.datasets_dir != DATASETS_DIR else PROTECTED_DATASETS_DIR
+	else:
+		target_dir = cfg.datasets_dir if cfg.datasets_dir else DATASETS_DIR
+	ensure_dir(target_dir)
+
+	base = os.path.join(target_dir, cfg.name)
 
 	return {
 		'trees': f'{base}.trees',
@@ -466,12 +503,13 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None) -> Dict[str
 	# Build tables
 	df_sites = sites_table(cfg)
 	df_pedigree = pedigree_table(ts)
-	# write_genotypes_by_generation(ts=ts, G_dip=G_dip, df_sites=df_sites, output_dir=cfg.output_dir, name_prefix=cfg.name)
+	# write_genotypes_by_generation(ts=ts, G_dip=G_dip, df_sites=df_sites, output_dir=cfg.datasets_dir, name_prefix=cfg.name)
 
 	# Mask at diploid-individual level
 	rng = np.random.default_rng(cfg.seed + 999)
 	G_obs, _ = mask(G_dip, cfg.masking_rate, rng=rng)
-	draw_pedigree_svg(ts, os.path.join(cfg.output_dir, cfg.name), G_obs)
+	target_dir = PROTECTED_DATASETS_DIR if cfg.full_data else DATASETS_DIR
+	draw_pedigree_svg(ts, os.path.join(target_dir, cfg.name), G_obs)
 
 	# DataFrames with consistent column naming
 	individual_cols = [f'i_{i:04d}' for i in range(G_dip.shape[1])]
@@ -579,7 +617,7 @@ def parse_args() -> argparse.Namespace:
 
 	ap.add_argument('--seed', type=int, default=None, help='Random seed; if omitted, a random seed is chosen and recorded in meta.')
 	ap.add_argument('--masking-rate', type=float, default=SimConfig.masking_rate)
-	ap.add_argument('--output-dir', type=str, default=SimConfig.output_dir)
+	ap.add_argument('--output-dir', type=str, default=SimConfig.datasets_dir)
 	ap.add_argument('--full-data', action='store_true', help='Generate Train/Val/Test splits.', default=SimConfig.full_data)
 	ap.add_argument('--name', type=str, default=SimConfig.name)
 
@@ -607,7 +645,7 @@ def args_to_config(args: argparse.Namespace) -> SimConfig:
 		samples_per_generation=args.samples_per_generation,
 		seed=seed,
 		masking_rate=args.masking_rate,
-		output_dir=args.output_dir,
+		datasets_dir=args.output_dir,
 		full_data=args.full_data,
 		name=args.name,
 	)
@@ -633,11 +671,11 @@ def create_data() -> None:
 			# Create a unique config for each split
 			split_cfg = dict_to_config({**asdict(cfg), 'name': f'{cfg.name}.{split}', 'seed': cfg.seed + (i * 1000)})
 			run_generation(split_cfg)
-			add_to_file(f'{cfg.name}.{split}', cfg.output_dir)
+			add_to_file(f'{cfg.name}.{split}', PROTECTED_DATASETS_DIR)
 	else:
 		# Standard single run
 		outputs = run_generation(cfg)
-		add_to_file(args.name, cfg.output_dir)
+		add_to_file(args.name, cfg.datasets_dir)
 
 	# Optional quick checksgener
 	if args.checks:
@@ -651,6 +689,16 @@ if __name__ == '__main__':
 # -----------------------------
 # API
 # -----------------------------
+
+
+def validate_api_request(cfg: SimConfig) -> None:
+	"""Enforces Tiny/Small limits for the API."""
+	if cfg.n_diploid_samples > MAX_USER_SAMPLES:
+		raise ValueError(f'Sample size {cfg.n_diploid_samples} exceeds user limit of {MAX_USER_SAMPLES}.')
+	if cfg.sequence_length > MAX_USER_LENGTH:
+		raise ValueError(f'Sequence length {cfg.sequence_length} exceeds user limit of {MAX_USER_LENGTH}.')
+	if cfg.n_generations > MAX_USER_GENERATIONS:
+		raise ValueError(f'Generations {cfg.n_generations} exceeds user limit of {MAX_USER_GENERATIONS}.')
 
 
 def build_config_from_params(params: Dict[str, Any]) -> 'SimConfig':
@@ -690,17 +738,17 @@ def create_data_from_params(params: Dict[str, Any], *, meta_in: Optional[str] = 
 	else:
 		cfg = build_config_from_params(params)
 
+	validate_api_request(cfg)
+
 	if cfg.full_data:
 		splits = ['training', 'validation', 'testing']
-
 		for i, split in enumerate(splits):
 			split_cfg = dict_to_config({**asdict(cfg), 'name': f'{cfg.name}.{split}', 'seed': cfg.seed + (i * 1000)})
 			run_generation(split_cfg)
-			add_to_file(f'{cfg.name}.{split}', cfg.output_dir)
-
+			add_to_file(f'{cfg.name}.{split}', cfg.protected_datasets_dir)
 		return {'config': asdict(cfg), 'outputs': cfg.name, 'mode': 'stratified_triplet'}
 
-	else:
-		run_generation(cfg)
-		add_to_file(cfg.name, cfg.output_dir)
-		return {'config': asdict(cfg), 'outputs': cfg.name, 'mode': 'single_dataset'}
+	# else:
+	run_generation(cfg)
+	add_to_file(cfg.name, cfg.datasets_dir)
+	return {'config': asdict(cfg), 'outputs': cfg.name, 'mode': 'single_dataset'}
