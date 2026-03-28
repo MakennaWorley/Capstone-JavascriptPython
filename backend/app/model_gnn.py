@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -372,7 +373,29 @@ class GNNDosageClassifier:
 		best_val_loss = float('inf')
 		patience_counter = 0
 
-		for epoch in range(self.epochs):
+		# Using Checkpoints for training
+		checkpoint_dir = Path(os.environ['MODELS_DIR'])
+		latest_checkpoint = None
+		start_epoch = 0
+
+		# Find the highest numbered checkpoint
+		checkpoints = list(checkpoint_dir.glob('checkpoint_epoch_*.pt'))
+		if checkpoints:
+			checkpoints.sort(key=lambda x: int(x.stem.split('_')[-1]))
+			latest_checkpoint = checkpoints[-1]
+			start_epoch = int(latest_checkpoint.stem.split('_')[-1])
+
+		# Try to find a checkpoint if available (for resuming training)
+		if latest_checkpoint and not hasattr(self, '_resumed'):
+			try:
+				self.model.load_state_dict(torch.load(latest_checkpoint, map_location=self.device))
+				self._resumed = True
+				print(f'📦 Resumed DNN from checkpoint: {latest_checkpoint.name}')
+			except Exception as e:
+				print(f'⚠️ Warning: Could not load checkpoint {latest_checkpoint.name}: {e}. Starting from scratch.')
+				start_epoch = 0
+
+		for epoch in range(start_epoch, self.epochs):
 			# Training phase
 			self.model.train()
 			train_loss = 0.0
@@ -445,6 +468,11 @@ class GNNDosageClassifier:
 					if self.verbose:
 						print(f'Early stopping at epoch {epoch + 1}')
 					break
+
+			# checkpoint saving
+			if (epoch + 1) % 10 == 0:
+				temp_path = Path(f'{os.environ["MODELS_DIR"]}/checkpoint_epoch_{epoch + 1}.pt')
+				torch.save(self.model.state_dict(), temp_path)
 
 		# Restore best model
 		if hasattr(self, 'best_model_state_'):

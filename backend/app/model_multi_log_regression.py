@@ -19,6 +19,11 @@ class SklearnMultinomialClassifier:
 	"""
 
 	def __init__(self, random_seed=123):
+		self.random_seed = random_seed
+
+		# Set random seeds for reproducibility (consistent with DNN/GNN models)
+		np.random.seed(random_seed)
+
 		self.model = LogisticRegression(class_weight='balanced', solver='lbfgs', max_iter=1000, random_state=random_seed)
 		self.scaler = StandardScaler()
 
@@ -78,6 +83,7 @@ class SklearnMultinomialClassifier:
 		payload = {
 			'type': 'SklearnMultinomialClassifier',
 			'tag': self.tag,
+			'random_seed': self.random_seed,
 			'feature_mean': self.scaler.mean_.tolist(),
 			'feature_std': self.scaler.scale_.tolist(),
 			'n_features': int(self.scaler.n_features_in_),

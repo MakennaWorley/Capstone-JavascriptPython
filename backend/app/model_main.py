@@ -29,6 +29,7 @@ from .model_multi_log_regression import SklearnMultinomialClassifier
 # Load environment variables
 load_dotenv()
 DATASETS_DIR = os.getenv('DATASETS_DIR')
+PROTECTED_DATASETS_DIR = os.getenv('PROTECTED_DATASETS_DIR')
 MODELS_DIR = os.getenv('MODELS_DIR')
 IMAGES_DIR = os.getenv('IMAGES_DIR')
 
@@ -45,6 +46,10 @@ def check_gpu_status():
 				print(f'  GPU {i}: {device}')
 		else:
 			print('💻 Running on CPU (no GPU devices found)')
+
+		# Update this for your computer, this was running on my i9-12900k
+		os.environ['OMP_NUM_THREADS'] = '12'
+		os.environ['MKL_NUM_THREADS'] = '12'
 	except ImportError:
 		print('💻 Running on CPU (JAX not installed)')
 	except Exception as e:
@@ -192,7 +197,7 @@ def _run_fold_parallel(args):
 		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
 	elif model_label == 'hmm_dosage':
 		# HMM with optimized settings for CV
-		fold_model = ModelCls(n_iter=50, verbose=False)
+		fold_model = ModelCls(n_iter=20, verbose=False)
 	elif model_label == 'dnn_dosage':
 		# DNN with optimized settings for CV
 		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
@@ -308,7 +313,7 @@ def train_eval(
 	prep_cfg: Optional[PrepConfig] = None,
 	models_dir: str | Path = MODELS_DIR,
 	images_dir: str | Path = IMAGES_DIR,
-	datasets_dir: str | Path = DATASETS_DIR,
+	datasets_dir: str | Path = PROTECTED_DATASETS_DIR,
 	force_retrain: bool = False,
 	draws: int = 1000,
 	tune: int = 1000,
@@ -371,7 +376,7 @@ def train_eval(
 				gpu_strategy=optimal_config['gpu_strategy'],
 			)
 		elif model_label == 'hmm_dosage':
-			model = ModelCls(n_iter=100, random_seed=seed, use_gpu=True, verbose=True)
+			model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
 		elif model_label == 'dnn_dosage':
 			model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 		elif model_label == 'gnn_dosage':
@@ -411,7 +416,7 @@ def train_eval(
 			gpu_strategy=optimal_config['gpu_strategy'],
 		)
 	elif model_label == 'hmm_dosage':
-		model = ModelCls(n_iter=100, random_seed=seed, use_gpu=True, verbose=True)
+		model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
 	elif model_label == 'dnn_dosage':
 		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	elif model_label == 'gnn_dosage':
@@ -529,8 +534,8 @@ def test_on_new_data(
 	}
 
 
-def train_eval_all(train_f, val_f, test_f):
-	"""Runs both models for the capstone comparison."""
+def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECTED_DATASETS_DIR):
+	"""Runs both models for the capstone comparison using a specific datasets_dir."""
 	print('=== Model Training Comparison ===')
 
 	# Import and run system optimization
@@ -545,15 +550,17 @@ def train_eval_all(train_f, val_f, test_f):
 	print()
 
 	results = {}
-	for label in ['bayes_softmax3', 'multi_log_regression', 'hmm_dosage', 'dnn_dosage', 'gnn_dosage']:
-		results[label] = train_eval(train_f, val_f, test_f, label)
+	for label in ['hmm_dosage']:
+		results[label] = train_eval(train_f, val_f, test_f, label, datasets_dir=datasets_dir)
 	return results
 
 
 if __name__ == '__main__':
-	train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
-	train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
-	# print(test_on_new_data('Batch2.testing', 'bayes_softmax3', 'Batch1.training'))
-	# print(test_on_new_data('Batch2.testing', 'multi_log_regression', 'Batch1.training'))
-	# print(test_on_new_data('Batch1.testing', 'bayes_softmax3', 'Batch2.training'))
-	# print(test_on_new_data('Batch1.testing', 'multi_log_regression', 'Batch2.training'))
+	# Force use of the protected datasets directory for training runs
+	# train_eval_all('tiny.training', 'tiny.validation', 'tiny.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	# train_eval_all('small.training', 'small.validation', 'small.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	train_eval_all('medium.training', 'medium.validation', 'medium.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	# print(test_on_new_data('small.testing', 'bayes_softmax3', 'small.training'))
+	# print(test_on_new_data('small.testing', 'multi_log_regression', 'small.training'))
+	# print(test_on_new_data('medium.testing', 'bayes_softmax3', 'medium.training'))
+	# print(test_on_new_data('medium.testing', 'multi_log_regression', 'medium.training'))
