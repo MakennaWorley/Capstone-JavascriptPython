@@ -59,7 +59,7 @@ class BayesianCategoricalDosageClassifier:
 		tune: int = 1000,
 		chains: int = 4,
 		target_accept: float = 0.95,
-		random_seed: int = 123,
+		random_seed: Optional[int] = None,
 		cores: int = 8,
 		use_gpu: bool = True,
 		gpu_strategy: str = 'aggressive',  # 'safe' uses 4 cores, 'aggressive' uses all cores
@@ -68,6 +68,8 @@ class BayesianCategoricalDosageClassifier:
 		self.tune = tune
 		self.chains = chains
 		self.target_accept = target_accept
+		if random_seed is None:
+			random_seed = int(np.random.SeedSequence().entropy % (2**32))
 		self.random_seed = random_seed
 		self.cores = cores
 		self.use_gpu = use_gpu

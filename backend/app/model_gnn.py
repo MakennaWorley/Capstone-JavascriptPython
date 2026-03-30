@@ -150,7 +150,7 @@ class GNNDosageClassifier:
 		early_stopping_patience: int = 10,
 		weight_decay: float = 1e-4,
 		use_batch_norm: bool = True,
-		random_seed: int = 123,
+		random_seed: Optional[int] = None,
 		use_gpu: bool = True,
 		verbose: bool = True,
 		use_class_weights: bool = True,
@@ -168,7 +168,7 @@ class GNNDosageClassifier:
 			early_stopping_patience: Patience for early stopping
 			weight_decay: L2 regularization strength
 			use_batch_norm: Whether to use batch normalization
-			random_seed: Random seed for reproducibility
+			random_seed: Random seed for reproducibility (auto-generated if None)
 			use_gpu: Whether to use GPU acceleration (if available)
 			verbose: Print training progress
 			use_class_weights: Whether to use class weights for imbalanced data
@@ -185,6 +185,8 @@ class GNNDosageClassifier:
 		self.early_stopping_patience = early_stopping_patience
 		self.weight_decay = weight_decay
 		self.use_batch_norm = use_batch_norm
+		if random_seed is None:
+			random_seed = int(np.random.SeedSequence().entropy % (2**32))
 		self.random_seed = random_seed
 		self.use_gpu = use_gpu and GPU_AVAILABLE
 		self.verbose = verbose

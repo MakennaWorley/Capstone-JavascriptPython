@@ -62,7 +62,7 @@ class TestDNNDosageClassifierInitialization:
 		assert model.weight_decay == 1e-4
 		assert model.use_batch_norm is True
 		assert model.use_residual is True
-		assert model.random_seed == 123
+		assert isinstance(model.random_seed, int)
 		assert model.use_gpu is True or not torch.cuda.is_available()  # GPU if available
 		assert model.verbose is True
 		assert model.use_class_weights is True

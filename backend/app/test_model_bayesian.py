@@ -28,7 +28,7 @@ class TestBayesianCategoricalDosageClassifierInitialization:
 		assert model.tune == 1000
 		assert model.chains == 4
 		assert model.target_accept == 0.95
-		assert model.random_seed == 123
+		assert isinstance(model.random_seed, int)
 		assert model.cores == 8
 		assert model.use_gpu is True
 		assert model.gpu_strategy == 'aggressive'

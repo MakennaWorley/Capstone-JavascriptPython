@@ -78,7 +78,7 @@ class HMMDosageClassifier:
 		n_iter: int = 100,
 		n_components: int = 3,  # 3 hidden states for dosage 0, 1, 2
 		covariance_type: str = 'diag',  # 'diag', 'full', 'spherical', 'tied'
-		random_seed: int = 123,
+		random_seed: Optional[int] = None,
 		tol: float = 1e-2,
 		use_gpu: bool = True,
 		verbose: bool = True,
@@ -91,7 +91,7 @@ class HMMDosageClassifier:
 			n_iter: Maximum number of EM iterations
 			n_components: Number of hidden states (fixed to 3 for dosages 0, 1, 2)
 			covariance_type: Type of covariance parameters
-			random_seed: Random seed for reproducibility
+			random_seed: Random seed for reproducibility (auto-generated if None)
 			tol: Convergence threshold
 			use_gpu: Whether to use GPU acceleration (if available)
 			verbose: Print training progress
@@ -100,6 +100,8 @@ class HMMDosageClassifier:
 		self.n_iter = n_iter
 		self.n_components = n_components
 		self.covariance_type = covariance_type
+		if random_seed is None:
+			random_seed = int(np.random.SeedSequence().entropy % (2**32))
 		self.random_seed = random_seed
 		self.tol = tol
 		self.use_gpu = use_gpu and GPU_AVAILABLE

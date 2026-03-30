@@ -41,7 +41,7 @@ class TestHMMDosageClassifierInitialization:
 		assert model.n_iter == 100
 		assert model.n_components == 3
 		assert model.covariance_type == 'diag'
-		assert model.random_seed == 123
+		assert isinstance(model.random_seed, int)
 		assert model.tol == 1e-2
 		assert model.verbose is True
 		assert model.n_mix == 1

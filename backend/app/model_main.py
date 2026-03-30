@@ -326,10 +326,13 @@ def train_eval(
 	tune: int = 1000,
 	chains: int = 4,
 	target_accept: float = 0.99,
-	seed: int = 123,
+	seed: Optional[int] = None,
 	cores: int = 8,
 	optimize_system_resources: bool = True,
 ) -> Dict[str, Any]:
+	if seed is None:
+		seed = int(np.random.SeedSequence().entropy % (2**32))
+
 	if prep_cfg is None:
 		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
@@ -557,16 +560,17 @@ def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECT
 	print()
 
 	results = {}
-	for label in ['hmm_dosage']:
+	for label in ['bayes_softmax3', 'multi_log_regression', 'hmm_dosage', 'dnn_dosage', 'gnn_dosage']:
 		results[label] = train_eval(train_f, val_f, test_f, label, datasets_dir=datasets_dir)
 	return results
 
 
 if __name__ == '__main__':
 	# Force use of the protected datasets directory for training runs
-	# train_eval_all('tiny.training', 'tiny.validation', 'tiny.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-	# train_eval_all('small.training', 'small.validation', 'small.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	train_eval_all('tiny.training', 'tiny.validation', 'tiny.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	train_eval_all('small.training', 'small.validation', 'small.testing', datasets_dir=PROTECTED_DATASETS_DIR)
 	train_eval_all('medium.training', 'medium.validation', 'medium.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+
 	# print(test_on_new_data('small.testing', 'bayes_softmax3', 'small.training'))
 	# print(test_on_new_data('small.testing', 'multi_log_regression', 'small.training'))
 	# print(test_on_new_data('medium.testing', 'bayes_softmax3', 'medium.training'))
