@@ -8,6 +8,13 @@ from io import StringIO
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
+if __name__ == '__main__' and __package__ is None:
+	current_dir = Path(__file__).parent
+	backend_dir = current_dir.parent
+	capstone_dir = backend_dir.parent
+	sys.path.insert(0, str(capstone_dir))
+	__package__ = 'backend.app'
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
