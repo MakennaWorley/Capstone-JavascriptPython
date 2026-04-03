@@ -361,41 +361,50 @@ def train_eval(
 	if model_label == 'bayes_softmax3':
 		exists_check = exists_check and paths['idata'].exists()
 
-	if (not force_retrain) and exists_check:
-		print(f'Loading existing {model_tag} from {paths["meta"]}')
+	# EARLY EXIT: Skip training if model already exists and force_retrain is False
+	if exists_check and not force_retrain:
+		print(f'✓ Model already exists: Loading {model_tag} from {paths["meta"]}')
+		print('  To retrain, use force_retrain=True')
 		model = ModelCls.load(paths)
 		trained = False
+		return {
+			'trained': trained,
+			'skipped': True,
+			'reason': f'{model_tag} model for {train_base} already exists',
+			'paths': {'meta': str(paths['meta']), 'model_dir': str(paths['dir'])},
+		}
+
+	# Training required: proceed to Phase 1
+	print(f'--- Phase 1: Training {model_tag} on {train_base} ---')
+	# 2. PHASE 1: INITIAL TRAINING (Using the entire training file)
+	X_train, y_train, groups_train = load_whole_dataset(train_base, prep_cfg)
+
+	# Apply your resampling logic here for training
+	X_resampled, y_resampled, groups_resampled = resample_training_data(X_train, y_train, groups_train)
+
+	# Handle different constructor signatures with auto-optimized settings
+	if model_label == 'bayes_softmax3':
+		optimal_config = get_optimal_training_config()
+		model = ModelCls(
+			draws=optimal_config['draws'],
+			tune=optimal_config['tune'],
+			chains=optimal_config['chains'],
+			target_accept=target_accept,
+			random_seed=seed,
+			cores=optimal_config['cores'],
+			gpu_strategy=optimal_config['gpu_strategy'],
+		)
+	elif model_label == 'hmm_dosage':
+		model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
+	elif model_label == 'dnn_dosage':
+		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+	elif model_label == 'gnn_dosage':
+		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	else:
-		print(f'--- Phase 1: Training {model_tag} on {train_base} ---')
-		# 2. PHASE 1: INITIAL TRAINING (Using the entire training file)
-		X_train, y_train, groups_train = load_whole_dataset(train_base, prep_cfg)
+		model = ModelCls(random_seed=seed)
 
-		# Apply your resampling logic here for training
-		X_resampled, y_resampled, groups_resampled = resample_training_data(X_train, y_train, groups_train)
-
-		# Handle different constructor signatures with auto-optimized settings
-		if model_label == 'bayes_softmax3':
-			optimal_config = get_optimal_training_config()
-			model = ModelCls(
-				draws=optimal_config['draws'],
-				tune=optimal_config['tune'],
-				chains=optimal_config['chains'],
-				target_accept=target_accept,
-				random_seed=seed,
-				cores=optimal_config['cores'],
-				gpu_strategy=optimal_config['gpu_strategy'],
-			)
-		elif model_label == 'hmm_dosage':
-			model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
-		elif model_label == 'dnn_dosage':
-			model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
-		elif model_label == 'gnn_dosage':
-			model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
-		else:
-			model = ModelCls(random_seed=seed)
-
-		model.fit(X_resampled, y_resampled, groups=groups_resampled)
-		trained = True
+	model.fit(X_resampled, y_resampled, groups=groups_resampled)
+	trained = True
 
 	# 3. PHASE 2: CROSS-VALIDATION EVALUATION + RETRAINING (Using training + validation)
 	print(f'--- Phase 2: Evaluating on {val_base} and retraining with combined data ---')
@@ -548,6 +557,34 @@ def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECT
 	"""Runs both models for the capstone comparison using a specific datasets_dir."""
 	print('=== Model Training Comparison ===')
 
+	model_labels = ['bayes_softmax3', 'multi_log_regression', 'hmm_dosage', 'dnn_dosage', 'gnn_dosage']
+
+	# Check if all models already exist
+	models_dir = Path(MODELS_DIR) if MODELS_DIR else Path('models')
+	all_exist = True
+	missing_models = []
+
+	for label in model_labels:
+		_, model_tag = _select_model(label)
+		paths = model_paths(models_dir, train_f, model_tag)
+		exists_check = paths['meta'].exists()
+		if label == 'bayes_softmax3':
+			exists_check = exists_check and paths['idata'].exists()
+		if not exists_check:
+			all_exist = False
+			missing_models.append(model_tag)
+
+	# EARLY EXIT: All models exist
+	if all_exist:
+		print(f'✓ All models already trained for {train_f}')
+		print(f'  All model types exist: {", ".join(model_labels)}')
+		print('  Skipping training. Use force_retrain=True in train_eval() to retrain.')
+		return {'status': 'skipped', 'reason': 'All models already exist', 'train_f': train_f}
+
+	# Not all models exist - proceed with training
+	print(f'Training {len(missing_models)} missing model(s): {", ".join(missing_models)}')
+	print()
+
 	# Import and run system optimization
 	try:
 		from optimize_system import optimize_system
@@ -560,7 +597,7 @@ def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECT
 	print()
 
 	results = {}
-	for label in ['bayes_softmax3', 'multi_log_regression', 'hmm_dosage', 'dnn_dosage', 'gnn_dosage']:
+	for label in model_labels:
 		results[label] = train_eval(train_f, val_f, test_f, label, datasets_dir=datasets_dir)
 	return results
 
