@@ -34,8 +34,10 @@ origins_list = [o.strip() for o in origins.split(',') if o.strip()]
 
 app.add_middleware(CORSMiddleware, allow_origins=origins_list, allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
 
-DATASETS_DIR = Path(os.getenv('DATASETS_DIR')).resolve()
-MODELS_DIR = Path(os.getenv('MODELS_DIR')).resolve()
+DATASETS_DIR = (BASE_DIR / os.getenv('DATASETS_DIR')).resolve()
+PROTECTED_DATASETS_DIR = (BASE_DIR / os.getenv('PROTECTED_DATASETS_DIR')).resolve()
+MODELS_DIR = (BASE_DIR / os.getenv('MODELS_DIR')).resolve()
+IMAGES_DIR = (BASE_DIR / os.getenv('IMAGES_DIR')).resolve()
 
 
 # debugging

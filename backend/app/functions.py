@@ -10,11 +10,14 @@ import pandas as pd
 from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
+load_dotenv(dotenv_path=ROOT_DIR / '.env')
 
-
-DATASETS_DIR = os.getenv('DATASETS_DIR')
-MODELS_DIR = os.getenv('MODELS_DIR')
+DATASETS_DIR = (BASE_DIR / os.getenv('DATASETS_DIR')).resolve()
+PROTECTED_DATASETS_DIR = (BASE_DIR / os.getenv('PROTECTED_DATASETS_DIR')).resolve()
+MODELS_DIR = (BASE_DIR / os.getenv('MODELS_DIR')).resolve()
+IMAGES_DIR = (BASE_DIR / os.getenv('IMAGES_DIR')).resolve()
 
 # -----------------------------
 # API
