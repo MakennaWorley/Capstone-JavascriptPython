@@ -1,4 +1,3 @@
-
 type LoadingProgressProps = {
 	isLoading: boolean;
 	message: string;
