@@ -508,7 +508,7 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None) -> Dict[str
 	# Mask at diploid-individual level
 	rng = np.random.default_rng(cfg.seed + 999)
 	G_obs, _ = mask(G_dip, cfg.masking_rate, rng=rng)
-	target_dir = PROTECTED_DATASETS_DIR if cfg.full_data else DATASETS_DIR
+	target_dir = cfg.datasets_dir if cfg.datasets_dir else (PROTECTED_DATASETS_DIR if cfg.full_data else DATASETS_DIR)
 	draw_pedigree_svg(ts, os.path.join(target_dir, cfg.name), G_obs)
 
 	# DataFrames with consistent column naming

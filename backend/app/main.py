@@ -82,7 +82,7 @@ async def create_dataset(request: Request):
 			return api_error(message='Error: Missing or invalid simulation params', status_code=400, code='INVALID_PARAMS')
 
 		os.makedirs(DATASETS_DIR, exist_ok=True)
-		simulation_params['output_dir'] = str(DATASETS_DIR)
+		simulation_params['datasets_dir'] = str(DATASETS_DIR)
 
 		res = create_data_from_params(simulation_params)
 

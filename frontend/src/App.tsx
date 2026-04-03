@@ -5,34 +5,11 @@ import DatasetSelector from './components/DatasetSelector.js';
 import ModelSelector from './components/ModelSelector.js';
 import ModelStats from './components/ModelStats.js';
 import ModelTrainer from './components/ModelTrainer.js';
+import { useDatasetsPoll, useModelsPoll } from './hooks/useApiPolling';
 
 type Model = {
 	model_name: string;
 	model_type: string;
-};
-
-type ApiSuccessDatasets = {
-	status: 'success';
-	message: string;
-	data: {
-		datasets: string[];
-		count: number;
-	};
-};
-
-type ApiSuccessModels = {
-	status: 'success';
-	message: string;
-	data: {
-		models: Model[];
-		count: number;
-	};
-};
-
-type ApiError = {
-	status: 'error';
-	code?: string;
-	message: string;
 };
 
 export default function App() {
@@ -41,9 +18,7 @@ export default function App() {
 
 	const [msg, setMsg] = useState<string | null>(null);
 	const [status, setStatus] = useState('');
-	const [datasets, setDatasets] = useState<string[]>([]);
 	const [selectedDataset, setSelectedDataset] = useState<string>('');
-	const [models, setModels] = useState<Model[]>([]);
 	const [selectedModel, setSelectedModel] = useState<Model | null>(null);
 	const [testResults, setTestResults] = useState<{
 		log: string;
@@ -51,6 +26,10 @@ export default function App() {
 		testMetrics: unknown;
 		images: unknown;
 	} | null>(null);
+
+	// Use RxJS observables for automatic polling (updates every 5 seconds)
+	const { datasets, error: datasetsError, isLoading: datasetsLoading } = useDatasetsPoll(API_BASE, API_KEY, 5000);
+	const { models, error: modelsError, isLoading: modelsLoading } = useModelsPoll(API_BASE, API_KEY, 5000);
 
 	async function pingBackend() {
 		try {
@@ -64,70 +43,34 @@ export default function App() {
 		}
 	}
 
-	async function fetchDatasets() {
-		try {
-			setStatus('Fetching datasets...');
-
-			const r = await fetch(`${API_BASE}/api/datasets/list`, {
-				method: 'GET',
-				headers: { 'x-api-key': API_KEY }
-			});
-
-			const j: ApiSuccessDatasets | ApiError = await r.json();
-
-			if (j.status === 'success') {
-				setDatasets(j.data.datasets);
-				setMsg(`Loaded ${j.data.count} datasets`);
-				setStatus('Success!');
-			} else {
-				setDatasets([]);
-				setStatus(j.message || 'Failed to load datasets');
-			}
-		} catch {
-			setDatasets([]);
-			setStatus('Error fetching datasets');
-		}
-	}
-
-	async function fetchModels() {
-		try {
-			setStatus('Fetching models...');
-
-			const r = await fetch(`${API_BASE}/api/models/list`, {
-				method: 'GET',
-				headers: { 'x-api-key': API_KEY }
-			});
-
-			const j: ApiSuccessModels | ApiError = await r.json();
-
-			if (j.status === 'success') {
-				setModels(j.data.models);
-				setMsg(`Loaded ${j.data.count} models`);
-				setStatus('Success!');
-			} else {
-				setModels([]);
-				setStatus(j.message || 'Failed to load models');
-			}
-		} catch {
-			setModels([]);
-			setStatus('Error fetching models');
-		}
-	}
-
 	return (
 		<div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
 			<button type="button" onClick={pingBackend}>
 				Ping FastAPI
 			</button>
-			<button type="button" onClick={fetchDatasets} style={{ marginLeft: '1rem' }}>
-				List Datasets
-			</button>
-			<button type="button" onClick={fetchModels} style={{ marginLeft: '1rem' }}>
-				List Models
-			</button>
 
 			{status && <p>{status}</p>}
 			{msg && <p>Message: {msg}</p>}
+
+			{/* Dataset Status */}
+			<div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #646cff' }}>
+				<small style={{ color: 'rgba(255, 255, 255, 0.87)' }}>
+					<strong style={{ color: '#646cff' }}>Datasets:</strong> {datasetsLoading ? 'Loading...' : `${datasets.length} datasets`}
+					{datasetsError && <span style={{ color: '#ff6b6b' }}> - Error: {datasetsError}</span>}
+					<br />
+					<span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>(Auto-updating every 5 seconds)</span>
+				</small>
+			</div>
+
+			{/* Model Status */}
+			<div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #646cff' }}>
+				<small style={{ color: 'rgba(255, 255, 255, 0.87)' }}>
+					<strong style={{ color: '#646cff' }}>Models:</strong> {modelsLoading ? 'Loading...' : `${models.length} models`}
+					{modelsError && <span style={{ color: '#ff6b6b' }}> - Error: {modelsError}</span>}
+					<br />
+					<span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>(Auto-updating every 5 seconds)</span>
+				</small>
+			</div>
 
 			<div style={{ marginTop: '1.25rem' }}>
 				<h3>Dataset Dashboard</h3>
