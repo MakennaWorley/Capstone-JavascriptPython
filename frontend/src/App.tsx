@@ -26,6 +26,7 @@ export default function App() {
 		testMetrics: unknown;
 		images: unknown;
 	} | null>(null);
+	const [debugMode, setDebugMode] = useState(false);
 
 	// Use RxJS observables for automatic polling (updates every 5 seconds)
 	const { datasets, error: datasetsError, isLoading: datasetsLoading } = useDatasetsPoll(API_BASE, API_KEY, 5000);
@@ -45,32 +46,59 @@ export default function App() {
 
 	return (
 		<div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
-			<button type="button" onClick={pingBackend}>
-				Ping FastAPI
+			{/* Debug Toggle Button - Fixed in Top Right */}
+			<button
+				type="button"
+				onClick={() => setDebugMode(!debugMode)}
+				style={{
+					position: 'fixed',
+					top: '1rem',
+					right: '1rem',
+					padding: '0.5rem 1rem',
+					backgroundColor: debugMode ? '#4caf50' : '#646cff',
+					color: 'white',
+					border: 'none',
+					borderRadius: '4px',
+					cursor: 'pointer',
+					fontSize: '0.875rem',
+					fontWeight: 'bold',
+					zIndex: 9999,
+				}}
+			>
+				Debug: {debugMode ? 'ON' : 'OFF'}
 			</button>
 
-			{status && <p>{status}</p>}
-			{msg && <p>Message: {msg}</p>}
+			{/* Debug Features - Only visible when debug mode is ON */}
+			{debugMode && (
+				<>
+					<button type="button" onClick={pingBackend}>
+						Ping FastAPI
+					</button>
 
-			{/* Dataset Status */}
-			<div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #646cff' }}>
-				<small style={{ color: 'rgba(255, 255, 255, 0.87)' }}>
-					<strong style={{ color: '#646cff' }}>Datasets:</strong> {datasetsLoading ? 'Loading...' : `${datasets.length} datasets`}
-					{datasetsError && <span style={{ color: '#ff6b6b' }}> - Error: {datasetsError}</span>}
-					<br />
-					<span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>(Auto-updating every 5 seconds)</span>
-				</small>
-			</div>
+					{status && <p>{status}</p>}
+					{msg && <p>Message: {msg}</p>}
 
-			{/* Model Status */}
-			<div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #646cff' }}>
-				<small style={{ color: 'rgba(255, 255, 255, 0.87)' }}>
-					<strong style={{ color: '#646cff' }}>Models:</strong> {modelsLoading ? 'Loading...' : `${models.length} models`}
-					{modelsError && <span style={{ color: '#ff6b6b' }}> - Error: {modelsError}</span>}
-					<br />
-					<span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>(Auto-updating every 5 seconds)</span>
-				</small>
-			</div>
+					{/* Dataset Status */}
+					<div style={{ marginTop: '1rem', padding: '0.75rem', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #646cff' }}>
+						<small style={{ color: 'rgba(255, 255, 255, 0.87)' }}>
+							<strong style={{ color: '#646cff' }}>Datasets:</strong> {datasetsLoading ? 'Loading...' : `${datasets.length} datasets`}
+							{datasetsError && <span style={{ color: '#ff6b6b' }}> - Error: {datasetsError}</span>}
+							<br />
+							<span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>(Auto-updating every 5 seconds)</span>
+						</small>
+					</div>
+
+					{/* Model Status */}
+					<div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#1a1a1a', borderRadius: '4px', border: '1px solid #646cff' }}>
+						<small style={{ color: 'rgba(255, 255, 255, 0.87)' }}>
+							<strong style={{ color: '#646cff' }}>Models:</strong> {modelsLoading ? 'Loading...' : `${models.length} models`}
+							{modelsError && <span style={{ color: '#ff6b6b' }}> - Error: {modelsError}</span>}
+							<br />
+							<span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>(Auto-updating every 5 seconds)</span>
+						</small>
+					</div>
+				</>
+			)}
 
 			<div style={{ marginTop: '1.25rem' }}>
 				<h3>Dataset Dashboard</h3>
