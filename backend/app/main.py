@@ -38,6 +38,7 @@ DATASETS_DIR = (BASE_DIR / os.getenv('DATASETS_DIR')).resolve()
 PROTECTED_DATASETS_DIR = (BASE_DIR / os.getenv('PROTECTED_DATASETS_DIR')).resolve()
 MODELS_DIR = (BASE_DIR / os.getenv('MODELS_DIR')).resolve()
 IMAGES_DIR = (BASE_DIR / os.getenv('IMAGES_DIR')).resolve()
+LOGS_DIR = (BASE_DIR / os.getenv('LOGS_DIR')).resolve()
 
 
 # debugging
@@ -96,6 +97,9 @@ async def create_dataset(request: Request):
 			status_code=200,
 		)
 
+	except ValueError as e:
+		# Handle validation errors (e.g., dataset already exists)
+		return api_error(message=f'Error: {str(e)}', status_code=400, code='VALIDATION_ERROR')
 	except Exception as e:
 		print(f'Error during data generation: {str(e)}')
 		return api_error(message='Unexpected server error while generating data', status_code=500, code='DATASET_CREATE_FAILED')
@@ -249,14 +253,15 @@ async def test_model_on_dataset(request: Request):
 			datasets_dir=str(DATASETS_DIR),
 		)
 
-		# Read the log file that was just created
-		# The log file is saved in paths['dir'] from model_main.py
-		log_file_path = MODELS_DIR / f'{model_name}.{model_type}.test_{dataset_name}.txt'
-
-		if not log_file_path.exists():
-			return api_error(message='Error: Test log file was not created', status_code=500, code='LOG_FILE_MISSING')
-
-		log_content = log_file_path.read_text(encoding='utf-8')
+		# Get log content - either from returned data or from file path
+		if 'log_content' in result:
+			log_content = result['log_content']
+		else:
+			# Fallback: try to read from log file path in result
+			log_paths = result.get('paths', {})
+			# The log file path might be stored, or we need to construct it
+			# For now, log_content should be in result
+			log_content = ''
 
 		# Read and encode the images as base64
 		paths_data = result.get('paths', {})
@@ -276,14 +281,22 @@ async def test_model_on_dataset(request: Request):
 		)
 
 	except FileNotFoundError as e:
-		return api_error(message=f'Error: Model not found - {str(e)}', status_code=404, code='MODEL_NOT_FOUND')
+		error_msg = f'Model not found - {str(e)}'
+		print(f'[FileNotFoundError] {error_msg}')
+		return api_error(message=error_msg, status_code=404, code='MODEL_NOT_FOUND')
 
 	except ValueError as e:
-		return api_error(message=f'Error: Invalid model type - {str(e)}', status_code=400, code='INVALID_MODEL_TYPE')
-
-	except Exception as e:
-		print(f'Error: Model testing failed: {str(e)}')
+		error_msg = str(e)
+		print(f'[ValueError] {error_msg}')
 		import traceback
 
 		traceback.print_exc()
-		return api_error(message=f'Unexpected server error while testing model: {str(e)}', status_code=500, code='MODEL_TEST_FAILED')
+		return api_error(message=error_msg, status_code=400, code='VALIDATION_ERROR')
+
+	except Exception as e:
+		error_msg = f'Unexpected server error while testing model: {str(e)}'
+		print(f'[Exception] {error_msg}')
+		import traceback
+
+		traceback.print_exc()
+		return api_error(message=error_msg, status_code=500, code='MODEL_TEST_FAILED')

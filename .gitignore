@@ -35,6 +35,7 @@ backend/__init__.py
 backend/app/datasets/
 backend/app/protected_datasets/
 backend/app/images/
+backend/app/logs/
 backend/app/MagicMock/
 backend/app/models/
 backend/important_stuff.txt

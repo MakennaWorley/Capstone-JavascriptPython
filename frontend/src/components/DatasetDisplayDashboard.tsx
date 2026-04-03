@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import FamilyTreeVisualization from './FamilyTreeVisualization.js';
+import LoadingProgress from './LoadingProgress.js';
 
 type DatasetDashboardProps = {
 	apiBase: string;
@@ -123,7 +124,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 		if (!selectedDataset) return;
 
 		setLoading(true);
-		setStatus('Loading dashboard files...');
+		setStatus('');
 		setData({});
 
 		try {
@@ -191,7 +192,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 		if (!selectedDataset || !selectedIndId) return;
 
 		setLoading(true);
-		setStatus(`Fetching family tree for ID ${selectedIndId}...`);
+		setStatus('');
 		try {
 			const url = `${apiBase}/api/dataset/${encodeURIComponent(selectedDataset)}/tree/${selectedIndId}`;
 			const resp = await fetch(url, {
@@ -214,7 +215,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 		if (!selectedDataset) return;
 
 		setLoading(true);
-		setStatus('Preparing download...');
+		setStatus('');
 
 		try {
 			const url = `${apiBase}/api/dataset/${encodeURIComponent(selectedDataset)}/download`;
@@ -276,6 +277,8 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 					{loading ? 'Loading…' : 'Load Dashboard'}
 				</button>
 			)}
+
+			<LoadingProgress isLoading={loading} message="Fetching your data..." />
 
 			{status && <p style={{ marginTop: '0.75rem' }}>{status}</p>}
 

@@ -75,7 +75,7 @@ class SimConfig:
 	# Output control
 	seed: int = 42
 	masking_rate: float = 0.20
-	datasets_dir: str = DATASETS_DIR
+	datasets_dir: str | None = None
 	full_data: bool = False
 	name: str = 'DEFAULT_NAME'
 
@@ -125,6 +125,18 @@ def add_to_file(text: str, output_dir: str) -> None:
 	path = os.path.join(output_dir, 'datasets.txt')
 	with open(path, 'a', encoding='utf-8') as f:
 		f.write(text.rstrip('\n') + '\n')
+
+
+def dataset_exists(dataset_name: str, datasets_dir: str) -> bool:
+	"""Check if a dataset name already exists in datasets.txt."""
+	datasets_file = os.path.join(datasets_dir, 'datasets.txt')
+	if not os.path.exists(datasets_file):
+		return False
+
+	with open(datasets_file, 'r', encoding='utf-8') as f:
+		existing_datasets = {line.strip() for line in f if line.strip()}
+
+	return dataset_name in existing_datasets
 
 
 # -----------------------------
@@ -617,7 +629,7 @@ def parse_args() -> argparse.Namespace:
 
 	ap.add_argument('--seed', type=int, default=None, help='Random seed; if omitted, a random seed is chosen and recorded in meta.')
 	ap.add_argument('--masking-rate', type=float, default=SimConfig.masking_rate)
-	ap.add_argument('--output-dir', type=str, default=SimConfig.datasets_dir)
+	ap.add_argument('--output-dir', type=str, default=None)
 	ap.add_argument('--full-data', action='store_true', help='Generate Train/Val/Test splits.', default=SimConfig.full_data)
 	ap.add_argument('--name', type=str, default=SimConfig.name)
 
@@ -634,6 +646,9 @@ def args_to_config(args: argparse.Namespace) -> SimConfig:
 	if seed is None:
 		seed = int(np.random.SeedSequence().entropy % (2**32))
 
+	# Use provided output_dir or default to DATASETS_DIR
+	output_dir = args.output_dir or DATASETS_DIR
+
 	return SimConfig(
 		n_diploid_samples=args.n_diploid_samples,
 		Ne=args.Ne,
@@ -645,7 +660,7 @@ def args_to_config(args: argparse.Namespace) -> SimConfig:
 		samples_per_generation=args.samples_per_generation,
 		seed=seed,
 		masking_rate=args.masking_rate,
-		datasets_dir=args.output_dir,
+		datasets_dir=output_dir,
 		full_data=args.full_data,
 		name=args.name,
 	)
@@ -662,6 +677,17 @@ def create_data() -> None:
 		cfg = dict_to_config(params_dict)
 	else:
 		cfg = args_to_config(args)
+
+	# Check if dataset(s) already exist before starting generation
+	if args.full_data:
+		splits = ['training', 'validation', 'testing']
+		for split in splits:
+			dataset_name = f'{cfg.name}.{split}'
+			if dataset_exists(dataset_name, PROTECTED_DATASETS_DIR):
+				raise ValueError(f'Dataset "{dataset_name}" already exists in {PROTECTED_DATASETS_DIR}. Please choose a different name.')
+	else:
+		if dataset_exists(args.name, cfg.datasets_dir):
+			raise ValueError(f'Dataset "{args.name}" already exists in {cfg.datasets_dir}. Please choose a different name.')
 
 	# Run generation
 	if args.full_data:
@@ -739,6 +765,17 @@ def create_data_from_params(params: Dict[str, Any], *, meta_in: Optional[str] = 
 		cfg = build_config_from_params(params)
 
 	validate_api_request(cfg)
+
+	# Check if dataset(s) already exist before starting generation
+	if cfg.full_data:
+		splits = ['training', 'validation', 'testing']
+		for split in splits:
+			dataset_name = f'{cfg.name}.{split}'
+			if dataset_exists(dataset_name, cfg.protected_datasets_dir):
+				raise ValueError(f'Dataset "{dataset_name}" already exists. Please choose a different name.')
+	else:
+		if dataset_exists(cfg.name, cfg.datasets_dir):
+			raise ValueError(f'Dataset "{cfg.name}" already exists. Please choose a different name.')
 
 	if cfg.full_data:
 		splits = ['training', 'validation', 'testing']

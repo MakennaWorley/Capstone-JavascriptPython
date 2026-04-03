@@ -4,6 +4,7 @@ import csv
 import dataclasses
 import os
 import sys
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
@@ -34,11 +35,15 @@ from .model_hmm import HMMDosageClassifier
 from .model_multi_log_regression import SklearnMultinomialClassifier
 
 # Load environment variables
-load_dotenv()
-DATASETS_DIR = os.getenv('DATASETS_DIR')
-PROTECTED_DATASETS_DIR = os.getenv('PROTECTED_DATASETS_DIR')
-MODELS_DIR = os.getenv('MODELS_DIR')
-IMAGES_DIR = os.getenv('IMAGES_DIR')
+current_dir = Path(__file__).parent
+root_dir = current_dir.parent
+load_dotenv(dotenv_path=root_dir / '.env')
+
+DATASETS_DIR = (current_dir / os.getenv('DATASETS_DIR')).resolve()
+PROTECTED_DATASETS_DIR = (current_dir / os.getenv('PROTECTED_DATASETS_DIR')).resolve()
+MODELS_DIR = (current_dir / os.getenv('MODELS_DIR')).resolve()
+IMAGES_DIR = (current_dir / os.getenv('IMAGES_DIR')).resolve()
+LOGS_DIR = (current_dir / os.getenv('LOGS_DIR')).resolve()
 
 
 def check_gpu_status():
@@ -448,8 +453,9 @@ def train_eval(
 	# Save immediately after retraining
 	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': float(avg_val_mse)})
 
-	# Update models.csv with the trained model
-	update_models_csv(train_base, model_tag, csv_path=models_csv_path)
+	# Update models.csv with the trained model (use base name without dataset suffix)
+	model_base_name = train_base.split('.')[0]
+	update_models_csv(model_base_name, model_tag, csv_path=models_csv_path)
 
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
 	# Setup log file for test output
@@ -483,6 +489,90 @@ def train_eval(
 	}
 
 
+def get_or_create_logs_dir(logs_dir: str | Path = LOGS_DIR) -> Path:
+	"""Get or create the logs directory."""
+	logs_path = Path(logs_dir)
+	logs_path.mkdir(parents=True, exist_ok=True)
+	return logs_path
+
+
+def get_applied_models_csv_path(logs_dir: str | Path = LOGS_DIR) -> Path:
+	"""Get the path to the applied_models.csv file."""
+	return get_or_create_logs_dir(logs_dir) / 'applied_models.csv'
+
+
+def check_model_already_applied(model_name: str, model_type: str, test_data: str, logs_dir: str | Path = LOGS_DIR) -> Optional[Dict[str, Any]]:
+	"""
+	Check if a model has already been tested on a dataset.
+	Returns the cached result if found, None otherwise.
+	"""
+	csv_path = get_applied_models_csv_path(logs_dir)
+
+	if not csv_path.exists():
+		return None
+
+	with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+		reader = csv.DictReader(f)
+		for row in reader:
+			if row['model_name'] == model_name and row['model_type'] == model_type and row['test_data'] == test_data:
+				# Found a cached result
+				return {
+					'log_file': row['log_file'],
+					'graph_test': row['graph_test'],
+					'graph_cm': row['graph_cm'],
+					'applied_date': row['applied_date'],
+				}
+
+	return None
+
+
+def register_model_application(
+	model_name: str,
+	model_type: str,
+	test_data: str,
+	log_file: str | Path,
+	graph_test: str | Path,
+	graph_cm: str | Path,
+	logs_dir: str | Path = LOGS_DIR,
+) -> None:
+	"""
+	Register that a model has been applied to a dataset.
+	Adds an entry to applied_models.csv.
+	"""
+	csv_path = get_applied_models_csv_path(logs_dir)
+
+	# Check if entry already exists
+	if csv_path.exists():
+		with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+			reader = csv.DictReader(f)
+			for row in reader:
+				if row['model_name'] == model_name and row['model_type'] == model_type and row['test_data'] == test_data:
+					# Entry already exists
+					return
+
+	# Add new entry
+	file_exists = csv_path.exists()
+	with open(csv_path, 'a', newline='', encoding='utf-8') as f:
+		writer = csv.DictWriter(f, fieldnames=['model_name', 'model_type', 'test_data', 'log_file', 'graph_test', 'graph_cm', 'applied_date'])
+
+		if not file_exists:
+			writer.writeheader()
+
+		writer.writerow(
+			{
+				'model_name': model_name,
+				'model_type': model_type,
+				'test_data': test_data,
+				'log_file': str(log_file),
+				'graph_test': str(graph_test),
+				'graph_cm': str(graph_cm),
+				'applied_date': datetime.now().isoformat(),
+			}
+		)
+
+		print(f'Registered model application: {model_name} ({model_type}) on {test_data}')
+
+
 def test_on_new_data(
 	test_base: str,
 	model_type: str,
@@ -496,17 +586,36 @@ def test_on_new_data(
 	"""
 	Loads a new dataset and applies an existing trained model to it.
 	The model must have been previously trained using train_eval() with the specified model_name.
+
+	If the model has already been applied to this dataset, returns cached results without recomputing.
 	"""
 	if prep_cfg is None:
 		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
+	# 0.5 Check if this model has already been tested on this dataset
+	cached_result = check_model_already_applied(model_name, model_type, test_base)
+	if cached_result:
+		print(f'✓ Model "{model_name}" ({model_type}) already tested on "{test_base}"')
+		print(f'  Using cached results from {cached_result["applied_date"]}')
+		print(f'  Log: {cached_result["log_file"]}')
+
+		# Read the cached log file
+		log_content = Path(cached_result['log_file']).read_text(encoding='utf-8')
+
+		return {
+			'test_metrics': {},  # Metrics not cached, but graphs are
+			'paths': {
+				'graph_test': cached_result['graph_test'],
+				'graph_cm': cached_result['graph_cm'],
+				'model_dir': str(Path(models_dir) / model_name / model_type),
+			},
+			'log_content': log_content,
+			'from_cache': True,
+		}
+
 	# 1. Setup Model Types and Paths
 	ModelCls, model_tag = _select_model(model_type)
 	paths = model_paths(models_dir, model_name, model_tag)
-
-	# Create images directory
-	images_path = Path(images_dir)
-	images_path.mkdir(parents=True, exist_ok=True)
 
 	# 2. Check if Model Exists
 	exists_check = paths['meta'].exists()
@@ -521,20 +630,48 @@ def test_on_new_data(
 	model = ModelCls.load(paths)
 
 	# Setup log file for test output
-	log_file_path = paths['dir'] / f'{model_name}.{model_tag}.test_{test_base}.txt'
+	logs_dir = get_or_create_logs_dir()
+
+	# Use timestamp for unique filenames if multiple tests on same model+dataset
+	timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+	log_file_path = logs_dir / f'{model_name}-{model_tag}-{test_base}_{timestamp}.txt'
 
 	with OutputLogger(log_file_path):
 		# 4. Prepare Test Data
 		print(f'--- Testing {model_tag} on {test_base} ---')
 		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
+		# 4.5 Validate Feature Dimensions Match
+		# Get expected number of features from the model (handle different model types)
+		if hasattr(model, 'feature_mean_'):
+			# Models: Bayesian, HMM, DNN, GNN
+			expected_n_features = len(model.feature_mean_)
+		elif hasattr(model, 'scaler') and hasattr(model.scaler, 'n_features_in_'):
+			# Model: SklearnMultinomialClassifier
+			expected_n_features = model.scaler.n_features_in_
+		elif hasattr(model, 'model') and hasattr(model.model, 'n_features_in_'):
+			# Other sklearn-based models
+			expected_n_features = model.model.n_features_in_
+		else:
+			raise RuntimeError(f'Unable to determine feature dimensions for model type {type(model).__name__}')
+
+		actual_n_features = X_test.shape[1]
+
+		if expected_n_features != actual_n_features:
+			raise ValueError(
+				f'Feature dimension mismatch for model "{model_name}":\n'
+				f'  Model was trained with {expected_n_features} features\n'
+				f'  Test dataset "{test_base}" has {actual_n_features} features\n'
+				f'  Please ensure both datasets have the same number of features.\n'
+				f'  This often happens when datasets have different genome lengths or SNP counts.'
+			)
+
 		# 5. Predict and Evaluate
 		test_metrics = evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True)
 
-		# 6. Save Graphs
-		# Create paths for this specific test evaluation
-		test_graph_path = images_path / f'{model_tag}_test_{test_base}_single.png'
-		test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion_single.png'
+		# 6. Save Graphs to logs directory
+		test_graph_path = logs_dir / f'{model_name}-{model_tag}-{test_base}_{timestamp}_graph.png'
+		test_cm_path = logs_dir / f'{model_name}-{model_tag}-{test_base}_{timestamp}_confusion.png'
 
 		if test_graph_path:
 			plt.savefig(test_graph_path)
@@ -547,9 +684,25 @@ def test_on_new_data(
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
+	# Read the log file content after the OutputLogger context exits
+	log_content = log_file_path.read_text(encoding='utf-8')
+
+	# Register this model application for future reference
+	register_model_application(
+		model_name=model_name,
+		model_type=model_type,
+		test_data=test_base,
+		log_file=log_file_path,
+		graph_test=test_graph_path,
+		graph_cm=test_cm_path,
+		logs_dir=LOGS_DIR,
+	)
+
 	return {
 		'test_metrics': test_metrics,
 		'paths': {'graph_test': str(test_graph_path), 'graph_cm': str(test_cm_path), 'model_dir': str(paths['dir'])},
+		'from_cache': False,
+		'log_content': log_content,
 	}
 
 

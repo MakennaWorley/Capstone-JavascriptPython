@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import LoadingProgress from './LoadingProgress.js';
 
 type Model = {
 	model_name: string;
@@ -76,10 +77,15 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 					});
 				}
 			} else {
-				setError(result.message || 'Failed to test model');
+				// Display error from API response
+				const errorMessage = result.message || `Failed to test model (Status: ${result.status})`;
+				setError(errorMessage);
+				console.error('Model test error:', result);
 			}
 		} catch (err) {
-			setError(`Error testing model: ${err}`);
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			setError(`Network error: ${errorMsg}`);
+			console.error('Model test network error:', err);
 		} finally {
 			setLoading(false);
 		}
@@ -121,6 +127,8 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 			>
 				{loading ? 'Testing...' : 'Test Model on Dataset'}
 			</button>
+
+			<LoadingProgress isLoading={loading} message="Applying a model to your data..." />
 
 			{!canTest && <p style={{ marginTop: '1rem', color: '#ff9800' }}>Please select both a dataset and a model to test.</p>}
 

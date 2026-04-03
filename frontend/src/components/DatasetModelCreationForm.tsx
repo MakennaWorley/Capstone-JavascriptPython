@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import LoadingProgress from './LoadingProgress.js';
 
 // ---------- helpers ----------
 const ALNUM_RE = /^[A-Za-z0-9]+$/;
@@ -95,7 +96,7 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 		if (errors.length) return;
 
 		setSending(true);
-		setStatus('Sending...');
+		setStatus('');
 		setResponseJson(null);
 
 		try {
@@ -129,7 +130,14 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 			} catch {}
 
 			if (!r.ok) {
-				setStatus(`Error ${r.status}`);
+				// Extract error message from response if available
+				let errorMessage = `Error ${r.status}`;
+				if (maybeJson?.message) {
+					errorMessage = maybeJson.message;
+				} else if (typeof text === 'string' && text) {
+					errorMessage = text;
+				}
+				setStatus(errorMessage);
 				setResponseJson(maybeJson ?? text);
 				return;
 			}
@@ -225,6 +233,8 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 			<button type="submit" disabled={sending || errors.length > 0} style={{ padding: '0.75rem' }}>
 				{sending ? 'Generating...' : 'Generate Data'}
 			</button>
+
+			<LoadingProgress isLoading={sending} message="Generating your data..." />
 
 			{status && <p>{status}</p>}
 

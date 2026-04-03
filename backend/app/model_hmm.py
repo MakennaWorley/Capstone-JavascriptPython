@@ -648,15 +648,44 @@ class HMMDosageClassifier:
 		if isinstance(list(m.state_to_dosage_.keys())[0], str):
 			m.state_to_dosage_ = {int(k): int(v) for k, v in m.state_to_dosage_.items()}
 
-			# Restore global model
+		# Restore global model
 		m.model = m._create_hmm_model()
-		# Set n_features before restoring parameters
+
+		# Extract arrays from JSON
 		means_array = np.array(meta['model_params']['means'])
-		m.model.n_features = means_array.shape[1]  # Get n_features from means shape
-		m.model.startprob_ = np.array(meta['model_params']['startprob'])
-		m.model.transmat_ = np.array(meta['model_params']['transmat'])
+		covars_array = np.array(meta['model_params']['covars'])
+		startprob_array = np.array(meta['model_params']['startprob'])
+		transmat_array = np.array(meta['model_params']['transmat'])
+
+		# Validate shapes before setting
+		n_components = m.n_components
+		n_features = means_array.shape[1] if means_array.ndim > 1 else 1
+
+		if means_array.shape != (n_components, n_features):
+			raise ValueError(f'Invalid means shape in saved model. Expected {(n_components, n_features)}, got {means_array.shape}')
+
+		# For diagonal covariance type, squeeze extra dimensions if present
+		# hmmlearn expects shape (n_components, n_features) for 'diag' covariance_type
+		if m.covariance_type == 'diag':
+			# If covars has shape (n_components, n_features, 1), squeeze the last dimension
+			if covars_array.ndim == 3 and covars_array.shape[2] == 1:
+				covars_array = np.squeeze(covars_array, axis=2)
+
+		if covars_array.shape != (n_components, n_features):
+			raise ValueError(
+				f'Invalid covars shape in saved model. Expected {(n_components, n_features)}, '
+				f'got {covars_array.shape}. This may indicate the model was trained on a dataset '
+				f"with {n_features} features, but you're trying to load it with a different dataset."
+			)
+
+		# Set n_features before any parameter assignment
+		m.model.n_features = n_features
+
+		# Set parameters in correct order
+		m.model.startprob_ = startprob_array
+		m.model.transmat_ = transmat_array
 		m.model.means_ = means_array
-		m.model.covars_ = np.array(meta['model_params']['covars'])
+		m.model.covars_ = covars_array
 
 		# Restore group models if they exist
 		m.use_groups = meta.get('use_groups', False)
@@ -664,10 +693,16 @@ class HMMDosageClassifier:
 			for group_id_str, gparams in meta['group_models'].items():
 				group_id = int(group_id_str)
 				gmodel = m._create_hmm_model()
+				gmodel.n_features = n_features
 				gmodel.startprob_ = np.array(gparams['startprob'])
 				gmodel.transmat_ = np.array(gparams['transmat'])
 				gmodel.means_ = np.array(gparams['means'])
-				gmodel.covars_ = np.array(gparams['covars'])
+
+				# Handle diagonal covariance type - squeeze extra dimensions if needed
+				group_covars = np.array(gparams['covars'])
+				if m.covariance_type == 'diag' and group_covars.ndim == 3 and group_covars.shape[2] == 1:
+					group_covars = np.squeeze(group_covars, axis=2)
+				gmodel.covars_ = group_covars
 				m.group_models[group_id] = gmodel
 
 		# Restore PYCM metrics
@@ -678,7 +713,7 @@ class HMMDosageClassifier:
 		if pycm_path.exists():
 			try:
 				m.pycm_train_ = ConfusionMatrix(file=open(str(pycm_path)))
-			except:
-				pass  # OK if we can't load it
+			except Exception as e:
+				print(f'Warning: Could not load PYCM confusion matrix: {e}')
 
 		return m
