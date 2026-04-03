@@ -57,20 +57,20 @@ MAX_USER_GENERATIONS = 10
 @dataclass(frozen=True)
 class SimConfig:
 	# Sampling / population parameters
-	n_diploid_samples: int = 25_000
+	n_diploid_samples: int = 250
 	Ne: int = 500
 	ploidy: int = 2
 
 	# Genome / simulation parameters
-	sequence_length: int = 100_000
+	sequence_length: int = 100
 	mutation_rate: float = 1e-8
 
 	# Initial Diversity
 	founder_recessive_chance: float = 0.4
 
 	# Ancestry
-	n_generations: int = 50
-	samples_per_generation: int = 500
+	n_generations: int = 5
+	samples_per_generation: int = 50
 
 	# Output control
 	seed: int = 42

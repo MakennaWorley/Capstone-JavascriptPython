@@ -463,7 +463,7 @@ def train_eval(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
@@ -534,7 +534,7 @@ def test_on_new_data(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
@@ -567,11 +567,11 @@ def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECT
 
 if __name__ == '__main__':
 	# Force use of the protected datasets directory for training runs
-	train_eval_all('tiny.training', 'tiny.validation', 'tiny.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-	train_eval_all('small.training', 'small.validation', 'small.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-	train_eval_all('medium.training', 'medium.validation', 'medium.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	# train_eval_all('tiny.training', 'tiny.validation', 'tiny.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	# train_eval_all('small.training', 'small.validation', 'small.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	# train_eval_all('medium.training', 'medium.validation', 'medium.testing', datasets_dir=PROTECTED_DATASETS_DIR)
 
-	# print(test_on_new_data('small.testing', 'bayes_softmax3', 'small.training'))
+	print(test_on_new_data('public', 'bayes_softmax3', 'tiny.training'))
 	# print(test_on_new_data('small.testing', 'multi_log_regression', 'small.training'))
 	# print(test_on_new_data('medium.testing', 'bayes_softmax3', 'medium.training'))
 	# print(test_on_new_data('medium.testing', 'multi_log_regression', 'medium.training'))

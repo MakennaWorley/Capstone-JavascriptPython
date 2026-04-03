@@ -74,14 +74,15 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 
 		# Finalize ROC Plot
 		axes[0].plot([0, 1], [0, 1], 'k--', lw=2)
-		axes[0].set_title(f'Multiclass ROC: {name}')
+		title_name = name.replace('_test_', ' ')
+		axes[0].set_title(title_name)
 		axes[0].set_xlabel('False Positive Rate')
 		axes[0].set_ylabel('True Positive Rate')
 		axes[0].legend(loc='lower right')
 		axes[0].grid(True, alpha=0.3)
 
 		# Finalize PR Plot
-		axes[1].set_title(f'Multiclass PR: {name}')
+		axes[1].set_title(title_name)
 		axes[1].set_xlabel('Recall')
 		axes[1].set_ylabel('Precision')
 		axes[1].legend(loc='upper right')
@@ -150,7 +151,8 @@ def evaluate_and_graph_reg(model, X, y, name, graph, **kwargs):
 		axs[0, 0].plot([y.min(), y.max()], [y.min(), y.max()], color='red', linestyle='--', label='Identity Line')
 		axs[0, 0].set_xlabel('True Values')
 		axs[0, 0].set_ylabel('Predicted Values')
-		axs[0, 0].set_title(f'Predicted vs True ({name})\n$R^2 = {r2:.3f}$')
+		title_name_reg = name.replace('_test_', ' ')
+		axs[0, 0].set_title(f'Predicted vs True: {title_name_reg}\n$R^2 = {r2:.3f}$')
 		axs[0, 0].legend()
 
 		# 2) Residual Histogram
@@ -187,7 +189,8 @@ def plot_confusion_matrix(y_true, y_pred, name, save_path):
 	plt.figure(figsize=(8, 6))
 	sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=[0, 1, 2], yticklabels=[0, 1, 2])
 
-	plt.title(f'Confusion Matrix: {name}')
+	title_name_cm = name.replace('_test_', ' ')
+	plt.title(title_name_cm)
 	plt.xlabel('Predicted Dosage')
 	plt.ylabel('True Dosage')
 	plt.tight_layout()
