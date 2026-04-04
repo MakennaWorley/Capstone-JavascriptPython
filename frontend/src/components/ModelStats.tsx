@@ -1,5 +1,4 @@
 type ModelStatsProps = {
-	log: string | null;
 	paths: {
 		graph_test: string;
 		graph_cm: string;
@@ -12,8 +11,8 @@ type ModelStatsProps = {
 	} | null;
 };
 
-export default function ModelStats({ log, paths, testMetrics, images }: ModelStatsProps) {
-	if (!log && !paths && !images) {
+export default function ModelStats({ paths, testMetrics, images }: ModelStatsProps) {
+	if (!paths && !images && !testMetrics) {
 		return (
 			<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
 				<h3 style={{ marginTop: 0 }}>Model Statistics</h3>
@@ -80,29 +79,6 @@ export default function ModelStats({ log, paths, testMetrics, images }: ModelSta
 					>
 						<pre style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.6' }}>{JSON.stringify(testMetrics, null, 2)}</pre>
 					</div>
-				</div>
-			)}
-
-			{/* Log Section */}
-			{log && (
-				<div>
-					<h4>Detailed Log</h4>
-					<pre
-						style={{
-							backgroundColor: '#0a0a0a',
-							padding: '1rem',
-							borderRadius: '4px',
-							overflowX: 'auto',
-							fontSize: '0.85rem',
-							lineHeight: '1.5',
-							border: '1px solid #333',
-							maxHeight: '500px',
-							overflowY: 'auto',
-							margin: 0
-						}}
-					>
-						{log}
-					</pre>
 				</div>
 			)}
 		</div>

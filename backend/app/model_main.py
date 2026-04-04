@@ -597,19 +597,14 @@ def test_on_new_data(
 	if cached_result:
 		print(f'✓ Model "{model_name}" ({model_type}) already tested on "{test_base}"')
 		print(f'  Using cached results from {cached_result["applied_date"]}')
-		print(f'  Log: {cached_result["log_file"]}')
-
-		# Read the cached log file
-		log_content = Path(cached_result['log_file']).read_text(encoding='utf-8')
 
 		return {
-			'test_metrics': {},  # Metrics not cached, but graphs are
+			'test_metrics': {'model': f'{model_name} {model_type}', 'dataset': test_base},  # Include model and dataset info
 			'paths': {
 				'graph_test': cached_result['graph_test'],
 				'graph_cm': cached_result['graph_cm'],
 				'model_dir': str(Path(models_dir) / model_name / model_type),
 			},
-			'log_content': log_content,
 			'from_cache': True,
 		}
 
@@ -638,7 +633,7 @@ def test_on_new_data(
 
 	with OutputLogger(log_file_path):
 		# 4. Prepare Test Data
-		print(f'--- Testing {model_tag} on {test_base} ---')
+		print(f'--- Testing {model_name} {model_type} on {test_base} ---')
 		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
 		# 4.5 Validate Feature Dimensions Match
@@ -684,8 +679,9 @@ def test_on_new_data(
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
-	# Read the log file content after the OutputLogger context exits
-	log_content = log_file_path.read_text(encoding='utf-8')
+	# Add model and dataset names to test metrics
+	test_metrics['model'] = f'{model_name} {model_type}'
+	test_metrics['dataset'] = test_base
 
 	# Register this model application for future reference
 	register_model_application(
@@ -702,7 +698,6 @@ def test_on_new_data(
 		'test_metrics': test_metrics,
 		'paths': {'graph_test': str(test_graph_path), 'graph_cm': str(test_cm_path), 'model_dir': str(paths['dir'])},
 		'from_cache': False,
-		'log_content': log_content,
 	}
 
 

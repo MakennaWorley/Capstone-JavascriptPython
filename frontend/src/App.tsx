@@ -21,7 +21,6 @@ export default function App() {
 	const [selectedDataset, setSelectedDataset] = useState<string>('');
 	const [selectedModel, setSelectedModel] = useState<Model | null>(null);
 	const [testResults, setTestResults] = useState<{
-		log: string;
 		paths: unknown;
 		testMetrics: unknown;
 		images: unknown;
@@ -210,7 +209,6 @@ export default function App() {
 					/>
 
 					<ModelStats
-						log={testResults?.log || null}
 						paths={testResults?.paths || null}
 						testMetrics={testResults?.testMetrics || null}
 						images={testResults?.images || null}

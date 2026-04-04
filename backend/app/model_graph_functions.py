@@ -48,12 +48,18 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 
 	# F1-Score (Macro) treats all classes equally regardless of frequency
 	# F1-Score (Weighted) accounts for class imbalance by weighting by support
-	f1_macro = f1_score(y_int, y_pred_int, average='macro')
-	f1_weighted = f1_score(y_int, y_pred_int, average='weighted')
+	try:
+		f1_macro = f1_score(y_int, y_pred_int, average='macro')
+		f1_weighted = f1_score(y_int, y_pred_int, average='weighted')
+	except Exception as e:
+		print(f'Warning: Could not calculate F1 scores: {e}')
+		f1_macro = None
+		f1_weighted = None
 
 	print(f'--- {name} ---')
 	print(f'Accuracy: {acc:.4f} | Balanced Accuracy: {bal_acc:.4f} | Macro-AUC: {auc_macro:.4f}')
-	print(f'F1-Score (Macro):  {f1_macro:.4f} | F1-Score (Weighted): {f1_weighted:.4f}')
+	if f1_macro is not None and f1_weighted is not None:
+		print(f'F1-Score (Macro):  {f1_macro:.4f} | F1-Score (Weighted): {f1_weighted:.4f}')
 	print('-' * 30)
 
 	# 3. Diagnostic Plots
@@ -90,7 +96,13 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 
 		plt.tight_layout()
 
-	return {'model': name, 'accuracy': acc, 'balanced_accuracy': bal_acc, 'f1_macro': f1_macro, 'auc_macro': auc_macro}
+	# Build return dict with safe handling
+	result = {'model': name, 'accuracy': acc, 'balanced_accuracy': bal_acc, 'auc_macro': auc_macro}
+	if f1_macro is not None:
+		result['f1_macro'] = f1_macro
+	if f1_weighted is not None:
+		result['f1_weighted'] = f1_weighted
+	return result
 
 
 def evaluate_and_graph_reg(model, X, y, name, graph, **kwargs):

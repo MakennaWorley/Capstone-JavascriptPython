@@ -11,14 +11,13 @@ type ModelTrainerProps = {
 	xApiKey: string;
 	selectedDataset: string;
 	selectedModel: Model | null;
-	onTestComplete?: (data: { log: string; paths: any; testMetrics: any; images: any }) => void;
+	onTestComplete?: (data: { paths: any; testMetrics: any; images: any }) => void;
 };
 
 type ApiSuccessTest = {
 	status: 'success';
 	message: string;
 	data: {
-		log: string;
 		test_metrics: any;
 		paths: {
 			graph_test: string;
@@ -70,7 +69,6 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 				setError(null);
 				if (onTestComplete) {
 					onTestComplete({
-						log: result.data.log,
 						paths: result.data.paths,
 						testMetrics: result.data.test_metrics,
 						images: result.data.images

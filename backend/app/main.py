@@ -253,16 +253,6 @@ async def test_model_on_dataset(request: Request):
 			datasets_dir=str(DATASETS_DIR),
 		)
 
-		# Get log content - either from returned data or from file path
-		if 'log_content' in result:
-			log_content = result['log_content']
-		else:
-			# Fallback: try to read from log file path in result
-			log_paths = result.get('paths', {})
-			# The log file path might be stored, or we need to construct it
-			# For now, log_content should be in result
-			log_content = ''
-
 		# Read and encode the images as base64
 		paths_data = result.get('paths', {})
 		graph_test_path = Path(paths_data.get('graph_test', ''))
@@ -276,7 +266,7 @@ async def test_model_on_dataset(request: Request):
 
 		return api_success(
 			message=f"Success: Model '{model_name}' tested on dataset '{dataset_name}'",
-			data={'log': log_content, 'test_metrics': result.get('test_metrics'), 'paths': result.get('paths'), 'images': image_data},
+			data={'test_metrics': result.get('test_metrics'), 'paths': result.get('paths'), 'images': image_data},
 			status_code=200,
 		)
 
