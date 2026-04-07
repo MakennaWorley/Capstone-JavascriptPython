@@ -36,11 +36,25 @@ export default function FamilyTreeVisualization({ data }: Props) {
 	// X = Spread based on ID order or index
 	// Y = Based on 'time' (generation)
 	const layout = useMemo(() => {
+		const focusId = data.focus_id;
+
+		// Filter edges to only those directly connected to the focus individual
+		const filteredEdges = data.edges.filter((edge) => edge.source === focusId || edge.target === focusId);
+
+		// Collect IDs of all directly connected nodes (focus + parents + children)
+		const connectedIds = new Set<number>([focusId]);
+		filteredEdges.forEach((edge) => {
+			connectedIds.add(edge.source);
+			connectedIds.add(edge.target);
+		});
+
+		const visibleNodes = data.nodes.filter((node) => connectedIds.has(node.id));
+
 		const nodesById = new Map<number, { x: number; y: number; node: FamilyNode }>();
 
 		// 1. Group nodes by their time (generation)
 		const layers: { [time: number]: FamilyNode[] } = {};
-		data.nodes.forEach((node) => {
+		visibleNodes.forEach((node) => {
 			if (!layers[node.time]) layers[node.time] = [];
 			layers[node.time].push(node);
 		});
@@ -69,10 +83,10 @@ export default function FamilyTreeVisualization({ data }: Props) {
 			});
 		});
 
-		return nodesById;
+		return { nodesById, filteredEdges };
 	}, [data]);
 
-	const hovered = hoveredNode !== null ? layout.get(hoveredNode) : undefined;
+	const hovered = hoveredNode !== null ? layout.nodesById.get(hoveredNode) : undefined;
 
 	return (
 		<div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #ddd', borderRadius: '12px' }}>
@@ -84,9 +98,9 @@ export default function FamilyTreeVisualization({ data }: Props) {
 				<div style={{ overflowX: 'auto' }}>
 					<svg width={WIDTH} height={HEIGHT} style={{ border: '1px solid #eee', background: '#fff' }} aria-label="Family tree image">
 						{/* Draw Edges */}
-						{data.edges.map((edge, i) => {
-							const start = layout.get(edge.source);
-							const end = layout.get(edge.target);
+					{layout.filteredEdges.map((edge, i) => {
+							const start = layout.nodesById.get(edge.source);
+							const end = layout.nodesById.get(edge.target);
 							if (!start || !end) return null;
 							return (
 								<line
@@ -103,7 +117,11 @@ export default function FamilyTreeVisualization({ data }: Props) {
 						})}
 
 						{/* Draw Nodes */}
-						{Array.from(layout.values()).map(({ x, y, node }) => (
+					{Array.from(layout.nodesById.values()).map(({ x, y, node }) => {
+						const hasGenetics = node.observed.some((v) => v !== null);
+						const nodeFill = node.id === data.focus_id ? '#3b82f6' : hasGenetics ? '#bbf7d0' : '#fecaca';
+						const nodeStroke = node.id === data.focus_id ? '#1d4ed8' : hasGenetics ? '#16a34a' : '#dc2626';
+						return (
 							<g key={node.id} style={{ cursor: 'pointer' }}>
 								<circle
 									cx={x}
@@ -122,8 +140,8 @@ export default function FamilyTreeVisualization({ data }: Props) {
 									cx={x}
 									cy={y}
 									r={node.id === data.focus_id ? NODE_RADIUS + 4 : NODE_RADIUS}
-									fill={node.id === data.focus_id ? '#3b82f6' : '#fff'}
-									stroke={node.id === data.focus_id ? '#1d4ed8' : '#333'}
+									fill={nodeFill}
+									stroke={nodeStroke}
 									strokeWidth={node.id === data.focus_id ? 3 : 1}
 									pointerEvents="none"
 								/>
@@ -139,7 +157,8 @@ export default function FamilyTreeVisualization({ data }: Props) {
 									{node.id}
 								</text>
 							</g>
-						))}
+						);
+					})}
 					</svg>
 				</div>
 
@@ -177,7 +196,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 			</div>
 
 			<p style={{ fontSize: '0.8rem', color: '#666', marginTop: '10px' }}>
-				* Vertical axis represents <b>Time</b>. Blue node is the focus individual. Hover to see genotype vectors.
+				* Vertical axis represents <b>Time</b>. Blue node is the focus individual. <span style={{ color: '#16a34a' }}>&#9632;</span> Known genotype &nbsp; <span style={{ color: '#dc2626' }}>&#9632;</span> Unknown genotype. Hover to see genotype vectors.
 			</p>
 		</div>
 	);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import DatasetDashboard from './components/DatasetDisplayDashboard.js';
 import DatasetModelCreationForm from './components/DatasetModelCreationForm.js';
 import DatasetSelector from './components/DatasetSelector.js';
+import ModelDashboard from './components/ModelDashboard.js';
 import ModelSelector from './components/ModelSelector.js';
 import ModelStats from './components/ModelStats.js';
 import ModelTrainer from './components/ModelTrainer.js';
@@ -191,29 +192,38 @@ export default function App() {
 					</div>
 				</div>
 
-				<div style={{ marginTop: '1.25rem' }}>
-					<h3>Dataset Dashboard</h3>
-				</div>
+				{selectedDataset && (
+					<>
+						<div style={{ marginTop: '1.25rem' }}>
+							<h3>Dataset Dashboard</h3>
+						</div>
 
-				<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} />
+						<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} />
+					</>
+				)}
 
-				<div style={{ marginTop: '1.25rem' }}>
-					<h3>Model Dashboard</h3>
+				{selectedModel && <ModelDashboard model={selectedModel} />}
 
-					<ModelTrainer
-						apiBase={API_BASE}
-						xApiKey={API_KEY}
-						selectedDataset={selectedDataset}
-						selectedModel={selectedModel}
-						onTestComplete={setTestResults}
-					/>
+				{selectedDataset && selectedModel && (
+					<div style={{ marginTop: '1.25rem' }}>
+						<h3>Test Model</h3>
 
-					<ModelStats
-						paths={testResults?.paths || null}
-						testMetrics={testResults?.testMetrics || null}
-						images={testResults?.images || null}
-					/>
-				</div>
+						<ModelTrainer
+							apiBase={API_BASE}
+							xApiKey={API_KEY}
+							selectedDataset={selectedDataset}
+							selectedModel={selectedModel}
+							onTestComplete={setTestResults}
+						/>
+
+						<ModelStats
+							paths={testResults?.paths || null}
+							testMetrics={testResults?.testMetrics || null}
+							images={testResults?.images || null}
+							debugMode={debugMode}
+						/>
+					</div>
+				)}
 			</div>
 
 			{/* Create Dataset Modal */}
@@ -263,7 +273,7 @@ export default function App() {
 							</button>
 						</div>
 
-						<DatasetModelCreationForm apiBase={API_BASE} xApiKey={API_KEY} />
+						<DatasetModelCreationForm apiBase={API_BASE} xApiKey={API_KEY} debugMode={debugMode} />
 					</div>
 				</div>
 			)}

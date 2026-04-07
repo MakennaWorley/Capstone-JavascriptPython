@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import FamilyTreeVisualization from './FamilyTreeVisualization.js';
 import LoadingProgress from './LoadingProgress.js';
 
@@ -95,6 +95,9 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 	const [familyTreeData, setFamilyTreeData] = useState<any>(null);
 	const [columnPageIndex, setColumnPageIndex] = useState(0);
 	const COLUMNS_PER_PAGE = 10;
+
+	// Cache keyed by `dataset:indId` to avoid redundant backend requests
+	const familyTreeCache = useRef<Map<string, any>>(new Map());
 
 	// Show loading progress only after 1 second to avoid spasms on fast requests
 	useEffect(() => {
@@ -225,30 +228,49 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 	// Automatically load dashboard when dataset selection changes
 	useEffect(() => {
 		if (selectedDataset) {
+			familyTreeCache.current.clear();
+			setFamilyTreeData(null);
 			loadDashboard();
 		}
 	}, [selectedDataset, apiBase, xApiKey]);
 
-	async function loadFamilyTree() {
+	// Auto-load (or serve from cache) when individual selection changes
+	useEffect(() => {
 		if (!selectedDataset || !selectedIndId) return;
 
-		setLoading(true);
-		try {
-			const url = `${apiBase}/api/dataset/${encodeURIComponent(selectedDataset)}/tree/${selectedIndId}`;
-			const resp = await fetch(url, {
-				headers: { 'x-api-key': xApiKey }
-			});
-
-			if (!resp.ok) throw new Error(`Tree fetch failed: ${resp.status}`);
-
-			const j = await resp.json();
-			setFamilyTreeData(j.data);
-		} catch (e: any) {
-			// Silently fail - tree will not display
-		} finally {
-			setLoading(false);
+		const cacheKey = `${selectedDataset}:${selectedIndId}`;
+		const cached = familyTreeCache.current.get(cacheKey);
+		if (cached) {
+			setFamilyTreeData(cached);
+			return;
 		}
-	}
+
+		setLoading(true);
+		fetch(`${apiBase}/api/dataset/${encodeURIComponent(selectedDataset)}/tree/${selectedIndId}`, {
+			headers: { 'x-api-key': xApiKey }
+		})
+			.then((resp) => {
+				if (!resp.ok) throw new Error(`Tree fetch failed: ${resp.status}`);
+				return resp.json();
+			})
+			.then((j) => {
+				const componentData = j.data;
+				// Pre-populate cache for every individual in this connected component.
+				if (componentData?.nodes) {
+					for (const node of componentData.nodes) {
+						const key = `${selectedDataset}:${node.id}`;
+						if (!familyTreeCache.current.has(key)) {
+							familyTreeCache.current.set(key, { ...componentData, focus_id: node.id });
+						}
+					}
+				}
+				setFamilyTreeData(componentData);
+			})
+			.catch(() => {
+				// Silently fail - tree will not display
+			})
+			.finally(() => setLoading(false));
+	}, [selectedIndId, selectedDataset, apiBase, xApiKey]);
 
 	async function downloadAllDatasetZip() {
 		if (!selectedDataset) return;
@@ -354,7 +376,16 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 
 					{/* Column pagination controls */}
 					{mergedPreview.headers.length > COLUMNS_PER_PAGE && (
-						<div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%', boxSizing: 'border-box' }}>
+						<div
+							style={{
+								marginBottom: '1rem',
+								display: 'flex',
+								gap: '0.5rem',
+								alignItems: 'center',
+								width: '100%',
+								boxSizing: 'border-box'
+							}}
+						>
 							<button
 								type="button"
 								onClick={() => setColumnPageIndex(Math.max(0, columnPageIndex - 1))}
@@ -402,26 +433,21 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 					}}
 				>
 					<h4>Family Tree Explorer</h4>
-					<div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-						<label>
-							<span style={{ display: 'block', fontSize: '0.8rem' }}>Select Individual ID</span>
-							<select
-								value={selectedIndId}
-								onChange={(e) => setSelectedIndId(e.target.value)}
-								style={{ padding: '0.4rem', minWidth: '150px' }}
-							>
-								<option value="">-- Choose ID --</option>
-								{availableIds.map((id) => (
-									<option key={id} value={id}>
-										Individual {id}
-									</option>
-								))}
-							</select>
-						</label>
-						<button type="button" onClick={loadFamilyTree} disabled={!selectedIndId || loading}>
-							Visualize Tree
-						</button>
-					</div>
+					<label>
+						<span style={{ display: 'block', fontSize: '0.8rem' }}>Select Individual ID</span>
+						<select
+							value={selectedIndId}
+							onChange={(e) => setSelectedIndId(e.target.value)}
+							style={{ padding: '0.4rem', minWidth: '150px' }}
+						>
+							<option value="">-- Choose ID --</option>
+							{availableIds.map((id) => (
+								<option key={id} value={id}>
+									Individual {id}
+								</option>
+							))}
+						</select>
+					</label>
 				</div>
 			)}
 

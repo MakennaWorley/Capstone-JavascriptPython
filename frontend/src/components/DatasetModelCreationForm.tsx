@@ -32,6 +32,7 @@ type Props = {
 	apiBase: string;
 	xApiKey: string;
 	endpoint?: string;
+	debugMode?: boolean;
 };
 
 // ---------- defaults ----------
@@ -42,7 +43,7 @@ const DEFAULTS: SimConfig = {
 	samples_per_generation: 50
 };
 
-export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = '/api/create/data' }: Props) {
+export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = '/api/create/data', debugMode = false }: Props) {
 	const [advanced, setAdvanced] = useState(false);
 	const [sending, setSending] = useState(false);
 	const [status, setStatus] = useState('');
@@ -238,7 +239,7 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 
 			{status && <p>{status}</p>}
 
-			{responseJson && (
+			{debugMode && responseJson && (
 				<pre style={{ whiteSpace: 'pre-wrap', padding: '0.75rem', border: '1px solid #ddd' }}>
 					{typeof responseJson === 'string' ? responseJson : JSON.stringify(responseJson, null, 2)}
 				</pre>

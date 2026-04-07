@@ -260,9 +260,7 @@ def get_individual_family_tree_data(dataset_name: str, individual_id: int, datas
 	paths = _paths_for_dataset(dataset_name, datasets_dir=datasets_dir)
 	pedigree_path = paths['pedigree_csv']
 
-	print(f'DEBUG: Dashboard says pedigree is at: {pedigree_path}')
 	if not pedigree_path.exists():
-		print('file is missing')
 		raise FileNotFoundError(f'Missing file: {pedigree_path}')
 
 	ped = pd.read_csv(pedigree_path)
