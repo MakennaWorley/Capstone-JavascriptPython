@@ -25,7 +25,14 @@ from sklearn.model_selection import KFold
 matplotlib.use('Agg')
 
 # Imports from this Repo
-from .data_preparation import PrepConfig, prepare_data, resample_training_data
+from .data_preparation import (
+	PrepConfig,
+	build_adjacency_from_pedigree,
+	build_split_examples,
+	connected_components,
+	load_dataset_frames,
+	resample_training_data,
+)
 from .model_bayesian import BayesianCategoricalDosageClassifier
 from .model_dnn import DNNDosageClassifier
 from .model_functions import flatten_examples, model_paths
@@ -295,25 +302,33 @@ def load_whole_dataset(base_name: str, prep_cfg: PrepConfig):
 	"""
 	Loads a dataset file and flattens it completely without looking for
 	train/val/test sub-splits.
+
+	Returns (X, y, groups, target_ids, site_labels) where:
+	  target_ids: list of individual IDs (ints) in the same order as examples in X/y
+	  site_labels: list of site index values (strings) from the first column of the truth CSV
 	"""
 	# Copies all settings from prep_cfg but updates the dataset_name
 	current_cfg = dataclasses.replace(prep_cfg, dataset_name=base_name)
 
-	# Pass the updated config to prepare_data
-	data = prepare_data(current_cfg)
+	truth_df, obs_df, ped_df = load_dataset_frames(base_name, datasets_dir=current_cfg.datasets_dir)
+	adj = build_adjacency_from_pedigree(ped_df)
+	comps = connected_components(adj)
 
-	X_raw = data['X']
-	y_raw = data['y']
+	X_raw, y_raw, g_raw, target_ids = build_split_examples(truth_df, obs_df, adj, comps, current_cfg, ped_df)
 
 	X, y = flatten_examples(X_raw, y_raw)
 
-	if 'groups' in data:
+	if len(target_ids) > 0:
 		n_sites = X_raw.shape[1]
-		groups = np.repeat(data['groups'].flatten().astype(int), n_sites)
+		groups = np.repeat(g_raw.flatten().astype(int), n_sites)
 	else:
 		groups = np.zeros(X.shape[0], dtype=int)
 
-	return X, y, groups
+	# Site labels from the index column of truth_df
+	index_col = truth_df.columns[0]
+	site_labels = [str(v) for v in truth_df[index_col].tolist()]
+
+	return X, y, groups, target_ids, site_labels
 
 
 def train_eval(
@@ -634,7 +649,7 @@ def test_on_new_data(
 	with OutputLogger(log_file_path):
 		# 4. Prepare Test Data
 		print(f'--- Testing {model_name} {model_type} on {test_base} ---')
-		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
+		X_test, y_test, groups_test, target_ids, site_labels = load_whole_dataset(test_base, prep_cfg)
 
 		# 4.5 Validate Feature Dimensions Match
 		# Get expected number of features from the model (handle different model types)
@@ -679,6 +694,24 @@ def test_on_new_data(
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
+	# Build per-prediction error list from y_pred_cm vs y_test
+	# Layout: each target_id has n_sites predictions, flattened in order
+	prediction_errors = []
+	if len(target_ids) > 0 and len(site_labels) > 0:
+		n_sites = len(site_labels)
+		y_pred_arr = np.asarray(y_pred_cm).flatten()
+		y_true_arr = np.asarray(y_test).flatten()
+		for i, ind_id in enumerate(target_ids):
+			ind_label = f'i_{ind_id:04d}'
+			for s, site in enumerate(site_labels):
+				flat_idx = i * n_sites + s
+				if flat_idx >= len(y_pred_arr):
+					break
+				pred_val = int(y_pred_arr[flat_idx])
+				true_val = int(y_true_arr[flat_idx])
+				if pred_val != true_val:
+					prediction_errors.append({'individual': ind_label, 'site': site, 'predicted': pred_val, 'actual': true_val})
+
 	# Add model and dataset names to test metrics
 	test_metrics['model'] = f'{model_name} {model_type}'
 	test_metrics['dataset'] = test_base
@@ -697,6 +730,7 @@ def test_on_new_data(
 	return {
 		'test_metrics': test_metrics,
 		'paths': {'graph_test': str(test_graph_path), 'graph_cm': str(test_cm_path), 'model_dir': str(paths['dir'])},
+		'prediction_errors': prediction_errors,
 		'from_cache': False,
 	}
 

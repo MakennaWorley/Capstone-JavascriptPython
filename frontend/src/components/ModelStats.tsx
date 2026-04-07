@@ -1,3 +1,7 @@
+import { useMemo, useState } from 'react';
+
+type PredictionError = { individual: string; site: string; predicted: number; actual: number };
+
 type ModelStatsProps = {
 	paths: {
 		graph_test: string;
@@ -10,6 +14,7 @@ type ModelStatsProps = {
 		graph_cm_base64?: string;
 	} | null;
 	debugMode?: boolean;
+	predictionErrors?: PredictionError[] | null;
 };
 
 const METRIC_LABELS: Record<string, string> = {
@@ -27,7 +32,21 @@ function formatValue(v: any): string {
 	return String(v);
 }
 
-export default function ModelStats({ paths, testMetrics, images, debugMode = false }: ModelStatsProps) {
+export default function ModelStats({ paths, testMetrics, images, debugMode = false, predictionErrors }: ModelStatsProps) {
+	const [rowPageIndex, setRowPageIndex] = useState(0);
+	const ROWS_PER_PAGE = 10;
+
+	const uniqueErrorSites = useMemo(
+		() => new Set((predictionErrors ?? []).map((e) => e.site)).size,
+		[predictionErrors]
+	);
+
+	const pagedErrors = useMemo(() => {
+		const list = predictionErrors ?? [];
+		const start = rowPageIndex * ROWS_PER_PAGE;
+		return list.slice(start, start + ROWS_PER_PAGE);
+	}, [predictionErrors, rowPageIndex]);
+
 	if (!paths && !images && !testMetrics) {
 		return (
 			<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
@@ -162,6 +181,114 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 					</div>
 				</div>
 			)}
+
+			{/* Prediction Error Analysis */}
+			{predictionErrors != null && (
+				<div style={{ marginTop: '2rem' }}>
+					<h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Prediction Error Analysis</h4>
+
+					<p style={{ marginTop: 0, opacity: 0.8, fontSize: '0.875rem' }}>
+						{predictionErrors.length} error{predictionErrors.length !== 1 ? 's' : ''} across{' '}
+						{uniqueErrorSites} site{uniqueErrorSites !== 1 ? 's' : ''}
+						{'  ·  '}Showing {predictionErrors.length === 0 ? 0 : rowPageIndex * ROWS_PER_PAGE + 1}–
+						{Math.min((rowPageIndex + 1) * ROWS_PER_PAGE, predictionErrors.length)} of{' '}
+						{predictionErrors.length}
+					</p>
+
+					<div style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+						<button
+							type="button"
+							onClick={() => setRowPageIndex(Math.max(0, rowPageIndex - 1))}
+							disabled={rowPageIndex === 0}
+							style={{ padding: '0.3rem 0.7rem', cursor: 'pointer' }}
+						>
+							↑ Prev
+						</button>
+						<button
+							type="button"
+							onClick={() =>
+								setRowPageIndex(
+									Math.min(rowPageIndex + 1, Math.ceil(predictionErrors.length / ROWS_PER_PAGE) - 1)
+								)
+							}
+							disabled={(rowPageIndex + 1) * ROWS_PER_PAGE >= predictionErrors.length}
+							style={{ padding: '0.3rem 0.7rem', cursor: 'pointer' }}
+						>
+							↓ Next
+						</button>
+					</div>
+
+					<PredictionErrorTable errors={pagedErrors} />
+				</div>
+			)}
+		</div>
+	);
+}
+
+function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
+	return (
+		<div style={{ overflowX: 'hidden', width: '100%', boxSizing: 'border-box', minHeight: '120px' }}>
+			<table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'auto' }}>
+				<thead>
+					<tr>
+						{['Individual', 'Site', 'Predicted', 'Actual'].map((h) => (
+							<th
+								key={h}
+								style={{
+									textAlign: 'left',
+									borderBottom: '1px solid #ccc',
+									padding: '0.5rem',
+									whiteSpace: 'nowrap',
+									fontWeight: 'bold'
+								}}
+							>
+								{h}
+							</th>
+						))}
+					</tr>
+				</thead>
+				<tbody>
+					{errors.map((e, ridx) => (
+						<tr key={ridx}>
+							<td style={{ borderBottom: '1px solid #2a2a2a', padding: '0.5rem', whiteSpace: 'nowrap' }}>
+								{e.individual}
+							</td>
+							<td style={{ borderBottom: '1px solid #2a2a2a', padding: '0.5rem', whiteSpace: 'nowrap' }}>
+								{e.site}
+							</td>
+							<td
+								style={{
+									borderBottom: '1px solid #2a2a2a',
+									padding: '0.5rem',
+									whiteSpace: 'nowrap',
+									color: '#ff6b6b',
+									fontWeight: 'bold'
+								}}
+							>
+								{e.predicted}
+							</td>
+							<td
+								style={{
+									borderBottom: '1px solid #2a2a2a',
+									padding: '0.5rem',
+									whiteSpace: 'nowrap',
+									color: '#00aa00',
+									fontWeight: 'bold'
+								}}
+							>
+								{e.actual}
+							</td>
+						</tr>
+					))}
+					{errors.length === 0 && (
+						<tr>
+							<td colSpan={4} style={{ padding: '0.5rem', opacity: 0.6 }}>
+								No prediction errors.
+							</td>
+						</tr>
+					)}
+				</tbody>
+			</table>
 		</div>
 	);
 }

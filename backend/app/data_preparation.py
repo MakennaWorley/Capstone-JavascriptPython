@@ -200,15 +200,18 @@ def make_example_for_target(
 
 def build_split_examples(
 	truth_df: pd.DataFrame, obs_df: pd.DataFrame, adj: Dict[int, Set[int]], families: List[Set[int]], cfg: PrepConfig, ped_df: pd.DataFrame
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[int]]:
 	"""
 	Returns:
 	  X_all: (n_examples, n_sites, n_features)
 	  y_all: (n_examples, n_sites)
+	  g_all: (n_examples,)
+	  target_ids: list of individual IDs in the order they appear in X_all/y_all
 	"""
 	X_list: List[np.ndarray] = []
 	y_list: List[np.ndarray] = []
 	g_list: List[np.ndarray] = []
+	target_ids: List[int] = []
 
 	for fam in families:
 		for target_id in fam:
@@ -220,6 +223,7 @@ def build_split_examples(
 			X, y = ex
 			X_list.append(X)
 			y_list.append(y)
+			target_ids.append(target_id)
 
 			gen = ped_df.loc[ped_df['individual_id'] == target_id, 'time'].values[0]
 			g_list.append(gen)
@@ -227,12 +231,12 @@ def build_split_examples(
 	if not X_list:
 		# Return empty arrays with consistent ranks
 		n_sites = truth_df.shape[0]
-		return np.zeros((0, n_sites, 3), dtype=float), np.zeros((0, n_sites), dtype=np.int8), np.zeros((0,), dtype=int)
+		return np.zeros((0, n_sites, 3), dtype=float), np.zeros((0, n_sites), dtype=np.int8), np.zeros((0,), dtype=int), []
 
 	X_all = np.stack(X_list, axis=0)
 	y_all = np.stack(y_list, axis=0)
 	g_all = np.array(g_list, dtype=int)
-	return X_all, y_all, g_all
+	return X_all, y_all, g_all, target_ids
 
 
 def resample_training_data(X, y, groups):
@@ -288,7 +292,7 @@ def prepare_data(cfg: PrepConfig) -> Dict[str, np.ndarray]:
 	comps = connected_components(adj)
 
 	# Use ALL components in this dataset
-	X, y, g = build_split_examples(truth, obs, adj, comps, cfg, ped)
+	X, y, g, _ = build_split_examples(truth, obs, adj, comps, cfg, ped)
 
 	return {'X': X, 'y': y, 'groups': g}
 
@@ -308,7 +312,7 @@ def prepare_data_triplet(base_name: str, cfg: PrepConfig) -> Dict[str, Dict[str,
 		adj = build_adjacency_from_pedigree(ped)
 		comps = connected_components(adj)
 
-		X, y, g = build_split_examples(truth, obs, adj, comps, cfg, ped)
+		X, y, g, _ = build_split_examples(truth, obs, adj, comps, cfg, ped)
 
 		out[split_key] = {'X': X, 'y': y, 'groups': g, 'dataset': ds_name}
 

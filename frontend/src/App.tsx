@@ -25,6 +25,7 @@ export default function App() {
 		paths: unknown;
 		testMetrics: unknown;
 		images: unknown;
+		predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }>;
 	} | null>(null);
 	const [debugMode, setDebugMode] = useState(false);
 	const [showCreateDatasetModal, setShowCreateDatasetModal] = useState(false);
@@ -217,9 +218,10 @@ export default function App() {
 						/>
 
 						<ModelStats
-							paths={testResults?.paths || null}
+							paths={(testResults?.paths as any) || null}
 							testMetrics={testResults?.testMetrics || null}
 							images={testResults?.images || null}
+							predictionErrors={testResults?.predictionErrors ?? null}
 							debugMode={debugMode}
 						/>
 					</div>

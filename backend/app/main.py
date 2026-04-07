@@ -266,7 +266,12 @@ async def test_model_on_dataset(request: Request):
 
 		return api_success(
 			message=f"Success: Model '{model_name}' tested on dataset '{dataset_name}'",
-			data={'test_metrics': result.get('test_metrics'), 'paths': result.get('paths'), 'images': image_data},
+			data={
+				'test_metrics': result.get('test_metrics'),
+				'paths': result.get('paths'),
+				'images': image_data,
+				'prediction_errors': result.get('prediction_errors', []),
+			},
 			status_code=200,
 		)
 
