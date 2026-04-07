@@ -21,19 +21,26 @@
 *.DS_Store
 Thumbs.db
 
+__pycache__/
+.streamlit/
+.venv/
 node_modules/
 dist/
+
 */.env
-__pycache__/
 *.pyc
-.venv/
-.streamlit/
-backend/app/datasets/
-backend/app/datasets_archive/
 .ruff_cache
-frontend/coverage/
-backend/app/models/
+
+backend/__init__.py
+backend/app/datasets/
+backend/app/protected_datasets/
 backend/app/images/
+backend/app/logs/
+backend/app/MagicMock/
+backend/app/models/
+backend/important_stuff.txt
+
+frontend/coverage/
 
 # Windows WSL
 .python-version

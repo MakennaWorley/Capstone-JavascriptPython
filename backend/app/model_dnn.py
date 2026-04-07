@@ -9,16 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from pycm import ConfusionMatrix
-
-try:
-	from torch_geometric.data import Data
-	from torch_geometric.data import DataLoader as GeometricDataLoader
-	from torch_geometric.nn import GraphConv, global_mean_pool
-
-	TORCH_GEOMETRIC_AVAILABLE = True
-except ImportError:
-	TORCH_GEOMETRIC_AVAILABLE = False
-	print('Warning: torch_geometric not installed. Install with: pip install torch-geometric')
+from torch.utils.data import DataLoader, TensorDataset
 
 from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
@@ -44,91 +35,106 @@ except Exception as e:
 	GPU_AVAILABLE = False
 
 
-class GeneticDosageGNN(nn.Module):
+class GeneticDosageNN(nn.Module):
 	"""
-	Graph Neural Network architecture for genetic dosage classification.
+	Neural Network architecture for genetic dosage classification.
 
 	Architecture:
-	- Builds a graph where nodes represent genetic features/variants
-	- Edges connect correlated features (similarity > threshold)
-	- Multiple GraphConv layers to aggregate information across the feature graph
-	- Global mean pooling to create sample-level representations
+	- Input layer with batch normalization
+	- Multiple hidden layers with dropout and batch normalization
 	- Output layer with 3 units (for dosage classes 0, 1, 2)
+	- Uses ReLU activations and residual connections
 	"""
 
-	def __init__(self, input_dim: int, hidden_dims: Tuple[int, ...] = (256, 128, 64), dropout_rate: float = 0.3, use_batch_norm: bool = True):
+	def __init__(
+		self,
+		input_dim: int,
+		hidden_dims: Tuple[int, ...] = (256, 128, 64),
+		dropout_rate: float = 0.3,
+		use_batch_norm: bool = True,
+		use_residual: bool = True,
+	):
 		"""
-		Initialize GNN architecture.
+		Initialize Neural Network architecture.
 
 		Args:
-			input_dim: Number of input features (nodes in graph)
-			hidden_dims: Tuple of hidden layer dimensions for GNN layers
+			input_dim: Number of input features
+			hidden_dims: Tuple of hidden layer dimensions
 			dropout_rate: Dropout probability
 			use_batch_norm: Whether to use batch normalization
+			use_residual: Whether to use residual connections
 		"""
-		super(GeneticDosageGNN, self).__init__()
+		super(GeneticDosageNN, self).__init__()
 
 		self.input_dim = input_dim
 		self.hidden_dims = hidden_dims
 		self.dropout_rate = dropout_rate
 		self.use_batch_norm = use_batch_norm
+		self.use_residual = use_residual
 
-		if not TORCH_GEOMETRIC_AVAILABLE:
-			raise ImportError('torch_geometric is required for GNN model')
-
-		# Build GNN layers
-		self.gnn_layers = nn.ModuleList()
-		self.batch_norms = nn.ModuleList()
-
+		# Build network layers
+		layers = []
 		prev_dim = input_dim
 
-		# GraphConv layers
-		for hidden_dim in hidden_dims:
-			self.gnn_layers.append(GraphConv(prev_dim, hidden_dim))
+		# Input batch normalization
+		if use_batch_norm:
+			layers.append(nn.BatchNorm1d(input_dim))
+
+		# Hidden layers
+		for i, hidden_dim in enumerate(hidden_dims):
+			# Linear layer
+			layers.append(nn.Linear(prev_dim, hidden_dim))
+
+			# Batch normalization
 			if use_batch_norm:
-				self.batch_norms.append(nn.BatchNorm1d(hidden_dim))
+				layers.append(nn.BatchNorm1d(hidden_dim))
+
+			# Activation
+			layers.append(nn.ReLU())
+
+			# Dropout
+			if dropout_rate > 0:
+				layers.append(nn.Dropout(dropout_rate))
+
 			prev_dim = hidden_dim
 
-		# Output layer
-		self.output_layer = nn.Linear(prev_dim, 3)
+		# Output layer (3 classes for dosage 0, 1, 2)
+		layers.append(nn.Linear(prev_dim, 3))
 
-	def forward(self, x: torch.Tensor, edge_index: torch.Tensor, batch: torch.Tensor) -> torch.Tensor:
+		self.network = nn.Sequential(*layers)
+
+		# Residual connections (if dimensions match)
+		self.residual_layers = nn.ModuleList()
+		if use_residual:
+			prev_dim = input_dim
+			for hidden_dim in hidden_dims:
+				if prev_dim == hidden_dim:
+					self.residual_layers.append(nn.Identity())
+				else:
+					self.residual_layers.append(nn.Linear(prev_dim, hidden_dim))
+				prev_dim = hidden_dim
+
+	def forward(self, x: torch.Tensor) -> torch.Tensor:
 		"""
-		Forward pass through the GNN.
+		Forward pass through the network.
 
 		Args:
-			x: Node feature matrix (num_nodes, input_dim)
-			edge_index: Graph edge indices (2, num_edges)
-			batch: Batch assignment for each node
+			x: Input tensor (batch_size, input_dim)
 
 		Returns:
 			logits: Output logits (batch_size, 3)
 		"""
-		for i, gnn_layer in enumerate(self.gnn_layers):
-			x = gnn_layer(x, edge_index)
-			if self.use_batch_norm:
-				x = self.batch_norms[i](x)
-				x = F.relu(x)
-			if self.dropout_rate > 0:
-				x = F.dropout(x, p=self.dropout_rate, training=self.training)
-
-		# Global mean pooling to aggregate node features into graph-level features
-		x = global_mean_pool(x, batch)
-
-		# Output layer
-		logits = self.output_layer(x)
-		return logits
+		return self.network(x)
 
 
-class GNNDosageClassifier:
+class DNNDosageClassifier:
 	"""
-	Graph Neural Network (PyTorch-based) for genetic dosage classification.
+	Deep Neural Network (PyTorch-based) for genetic dosage classification.
 
-	This model uses Graph Convolutional Networks to leverage correlations between genetic features:
-	- Builds a feature correlation graph where edges connect related variants
-	- Multiple GraphConv layers to propagate information across features
-	- Global mean pooling to create sample-level predictions
-	- Batch normalization and dropout for regularization
+	This model uses a deep neural network with modern architectural components:
+	- Batch normalization for stable training
+	- Dropout for regularization
+	- Residual connections for better gradient flow
 	- Support for hierarchical group structure
 	- GPU acceleration via PyTorch
 	- Comprehensive metrics via PYCM
@@ -150,17 +156,17 @@ class GNNDosageClassifier:
 		early_stopping_patience: int = 10,
 		weight_decay: float = 1e-4,
 		use_batch_norm: bool = True,
+		use_residual: bool = True,
 		random_seed: Optional[int] = None,
 		use_gpu: bool = True,
 		verbose: bool = True,
 		use_class_weights: bool = True,
-		correlation_threshold: float = 0.3,
 	):
 		"""
-		Initialize GNN Dosage Classifier.
+		Initialize DNN Dosage Classifier.
 
 		Args:
-			hidden_dims: Tuple of hidden GNN layer dimensions
+			hidden_dims: Tuple of hidden layer dimensions
 			dropout_rate: Dropout probability
 			learning_rate: Learning rate for optimizer
 			batch_size: Batch size for training
@@ -168,15 +174,12 @@ class GNNDosageClassifier:
 			early_stopping_patience: Patience for early stopping
 			weight_decay: L2 regularization strength
 			use_batch_norm: Whether to use batch normalization
+			use_residual: Whether to use residual connections
 			random_seed: Random seed for reproducibility (auto-generated if None)
 			use_gpu: Whether to use GPU acceleration (if available)
 			verbose: Print training progress
 			use_class_weights: Whether to use class weights for imbalanced data
-			correlation_threshold: Threshold for feature correlation edges (0-1)
 		"""
-		if not TORCH_GEOMETRIC_AVAILABLE:
-			raise ImportError('torch_geometric is required for GNN model. Install with: pip install torch-geometric')
-
 		self.hidden_dims = hidden_dims
 		self.dropout_rate = dropout_rate
 		self.learning_rate = learning_rate
@@ -185,13 +188,13 @@ class GNNDosageClassifier:
 		self.early_stopping_patience = early_stopping_patience
 		self.weight_decay = weight_decay
 		self.use_batch_norm = use_batch_norm
+		self.use_residual = use_residual
 		if random_seed is None:
 			random_seed = int(np.random.SeedSequence().entropy % (2**32))
 		self.random_seed = random_seed
 		self.use_gpu = use_gpu and GPU_AVAILABLE
 		self.verbose = verbose
 		self.use_class_weights = use_class_weights
-		self.correlation_threshold = correlation_threshold
 
 		# Set random seeds for reproducibility
 		torch.manual_seed(random_seed)
@@ -201,12 +204,11 @@ class GNNDosageClassifier:
 			torch.cuda.manual_seed_all(random_seed)
 
 		# Model components
-		self.model: Optional[GeneticDosageGNN] = None
+		self.model: Optional[GeneticDosageNN] = None
 		self.device = DEVICE if self.use_gpu else torch.device('cpu')
 		self.feature_mean_: Optional[np.ndarray] = None
 		self.feature_std_: Optional[np.ndarray] = None
 		self.class_weights_: Optional[torch.Tensor] = None
-		self.edge_index_: Optional[torch.Tensor] = None
 
 		# Training history
 		self.train_history_: Dict[str, list] = {'loss': [], 'accuracy': []}
@@ -217,52 +219,13 @@ class GNNDosageClassifier:
 		self.pycm_metrics_: Optional[Dict[str, Any]] = None
 
 		if self.use_gpu:
-			print(f'🚀 GNN GPU acceleration enabled on {self.device}')
+			print(f'🚀 DNN GPU acceleration enabled on {self.device}')
 		else:
-			print('💻 GNN running on CPU')
+			print('💻 DNN running on CPU')
 
 	@property
 	def tag(self) -> str:
-		return 'gnn_dosage'
-
-	def _build_feature_graph(self, X: np.ndarray) -> torch.Tensor:
-		"""
-		Build a graph where nodes are features and edges connect correlated features.
-
-		Args:
-			X: Standardized feature matrix (n_samples, n_features)
-
-		Returns:
-			edge_index: PyTorch tensor of shape (2, num_edges)
-		"""
-		# Compute correlation matrix between features
-		feature_corr = np.corrcoef(X.T)  # (n_features, n_features)
-
-		# Find edges based on correlation threshold
-		edges = []
-		n_features = X.shape[1]
-
-		for i in range(n_features):
-			for j in range(i + 1, n_features):
-				# Create edge if absolute correlation exceeds threshold
-				if abs(feature_corr[i, j]) >= self.correlation_threshold:
-					edges.append([i, j])
-					edges.append([j, i])  # Undirected graph
-
-		if len(edges) == 0:
-			# If no edges from correlation, create k-NN graph (k=3 nearest features)
-			distances = 1 - np.abs(feature_corr)
-			for i in range(n_features):
-				nearest = np.argsort(distances[i])[1:4]  # Skip self (index 0)
-				for j in nearest:
-					edges.append([i, j])
-
-		edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-
-		if self.verbose:
-			print(f'Built feature graph with {n_features} nodes and {edge_index.shape[1] // 2} undirected edges')
-
-		return edge_index
+		return 'dnn_dosage'
 
 	def _compute_class_weights(self, y: np.ndarray) -> torch.Tensor:
 		"""
@@ -285,9 +248,9 @@ class GNNDosageClassifier:
 
 		return weight_tensor.to(self.device)
 
-	def fit(self, X: np.ndarray, y: np.ndarray, groups: Optional[np.ndarray] = None) -> 'GNNDosageClassifier':
+	def fit(self, X: np.ndarray, y: np.ndarray, groups: Optional[np.ndarray] = None) -> 'DNNDosageClassifier':
 		"""
-		Fit GNN to genetic dosage data.
+		Fit DNN to genetic dosage data.
 
 		Args:
 			X: Feature matrix (n_samples, n_features)
@@ -306,13 +269,10 @@ class GNNDosageClassifier:
 		self.feature_std_ = sd
 
 		if self.verbose:
-			print('\n=== Training GNN Dosage Classifier ===')
+			print('\n=== Training DNN Dosage Classifier ===')
 			print(f'Samples: {X.shape[0]}, Features: {X.shape[1]}')
 			print(f'Dosage distribution: {np.bincount(y_int, minlength=3)}')
 			print(f'Device: {self.device}')
-
-		# Build feature correlation graph
-		self.edge_index_ = self._build_feature_graph(Xz).to(self.device)
 
 		# Compute class weights if requested
 		if self.use_class_weights:
@@ -330,35 +290,26 @@ class GNNDosageClassifier:
 		X_train, y_train = Xz[train_idx], y_int[train_idx]
 		X_val, y_val = Xz[val_idx], y_int[val_idx]
 
-		# Create PyTorch Geometric Data objects for each sample
-		train_graphs = []
-		for i, (x_sample, y_sample) in enumerate(zip(X_train, y_train)):
-			# Node features are the feature values
-			node_features = torch.tensor(x_sample, dtype=torch.float32).unsqueeze(1)  # (n_features, 1)
-			graph = Data(x=node_features, edge_index=self.edge_index_, y=torch.tensor(y_sample, dtype=torch.long))
-			train_graphs.append(graph)
+		# Create data loaders
+		train_dataset = TensorDataset(torch.tensor(X_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.long))
+		val_dataset = TensorDataset(torch.tensor(X_val, dtype=torch.float32), torch.tensor(y_val, dtype=torch.long))
 
-		val_graphs = []
-		for i, (x_sample, y_sample) in enumerate(zip(X_val, y_val)):
-			node_features = torch.tensor(x_sample, dtype=torch.float32).unsqueeze(1)
-			graph = Data(x=node_features, edge_index=self.edge_index_, y=torch.tensor(y_sample, dtype=torch.long))
-			val_graphs.append(graph)
-
-		train_loader = GeometricDataLoader(train_graphs, batch_size=self.batch_size, shuffle=True)
-		val_loader = GeometricDataLoader(val_graphs, batch_size=self.batch_size, shuffle=False)
+		train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+		val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
 
 		# Initialize model
-		self.model = GeneticDosageGNN(
-			input_dim=1,  # Each node feature is 1D (single feature value)
+		self.model = GeneticDosageNN(
+			input_dim=X.shape[1],
 			hidden_dims=self.hidden_dims,
 			dropout_rate=self.dropout_rate,
 			use_batch_norm=self.use_batch_norm,
+			use_residual=self.use_residual,
 		).to(self.device)
 
 		if self.verbose:
 			n_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 			print(f'Model parameters: {n_params:,}')
-			print(f'Architecture: {self.hidden_dims} (GNN layers)')
+			print(f'Architecture: {self.hidden_dims}')
 
 		# Loss function and optimizer
 		if self.use_class_weights:
@@ -392,7 +343,7 @@ class GNNDosageClassifier:
 			try:
 				self.model.load_state_dict(torch.load(latest_checkpoint, map_location=self.device))
 				self._resumed = True
-				print(f'📦 Resumed DNN from checkpoint: {latest_checkpoint.name}')
+				print(f'📦 Resumed GNN from checkpoint: {latest_checkpoint.name}')
 			except Exception as e:
 				print(f'⚠️ Warning: Could not load checkpoint {latest_checkpoint.name}: {e}. Starting from scratch.')
 				start_epoch = 0
@@ -404,19 +355,20 @@ class GNNDosageClassifier:
 			train_correct = 0
 			train_total = 0
 
-			for batch in train_loader:
-				batch = batch.to(self.device)
+			for batch_X, batch_y in train_loader:
+				batch_X = batch_X.to(self.device)
+				batch_y = batch_y.to(self.device)
 
 				optimizer.zero_grad()
-				outputs = self.model(batch.x, batch.edge_index, batch.batch)
-				loss = criterion(outputs, batch.y)
+				outputs = self.model(batch_X)
+				loss = criterion(outputs, batch_y)
 				loss.backward()
 				optimizer.step()
 
-				train_loss += loss.item() * len(batch.y)
+				train_loss += loss.item() * len(batch_X)
 				_, predicted = torch.max(outputs, 1)
-				train_total += len(batch.y)
-				train_correct += (predicted == batch.y).sum().item()
+				train_total += batch_y.size(0)
+				train_correct += (predicted == batch_y).sum().item()
 
 			train_loss /= train_total
 			train_accuracy = train_correct / train_total
@@ -428,16 +380,17 @@ class GNNDosageClassifier:
 			val_total = 0
 
 			with torch.no_grad():
-				for batch in val_loader:
-					batch = batch.to(self.device)
+				for batch_X, batch_y in val_loader:
+					batch_X = batch_X.to(self.device)
+					batch_y = batch_y.to(self.device)
 
-					outputs = self.model(batch.x, batch.edge_index, batch.batch)
-					loss = criterion(outputs, batch.y)
+					outputs = self.model(batch_X)
+					loss = criterion(outputs, batch_y)
 
-					val_loss += loss.item() * len(batch.y)
+					val_loss += loss.item() * len(batch_X)
 					_, predicted = torch.max(outputs, 1)
-					val_total += len(batch.y)
-					val_correct += (predicted == batch.y).sum().item()
+					val_total += batch_y.size(0)
+					val_correct += (predicted == batch_y).sum().item()
 
 			val_loss /= val_total
 			val_accuracy = val_correct / val_total
@@ -489,6 +442,7 @@ class GNNDosageClassifier:
 
 		# Helper function to safely convert PYCM metrics
 		def safe_metric(value):
+			"""Convert PYCM metric to float, handling 'None' strings and None values."""
 			if value is None or value == 'None':
 				return 0.0
 			try:
@@ -538,26 +492,21 @@ class GNNDosageClassifier:
 
 		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
 
-		# Create graph objects for each sample
-		test_graphs = []
-		for x_sample in Xz:
-			node_features = torch.tensor(x_sample, dtype=torch.float32).unsqueeze(1)
-			graph = Data(x=node_features, edge_index=self.edge_index_)
-			test_graphs.append(graph)
-
-		test_loader = GeometricDataLoader(test_graphs, batch_size=self.batch_size, shuffle=False)
-
 		self.model.eval()
-		all_probs = []
-
 		with torch.no_grad():
-			for batch in test_loader:
-				batch = batch.to(self.device)
-				logits = self.model(batch.x, batch.edge_index, batch.batch)
+			X_tensor = torch.tensor(Xz, dtype=torch.float32).to(self.device)
+
+			# Process in batches to avoid memory issues
+			batch_size = 1024
+			all_probs = []
+
+			for i in range(0, len(X_tensor), batch_size):
+				batch = X_tensor[i : i + batch_size]
+				logits = self.model(batch)
 				probs = F.softmax(logits, dim=1)
 				all_probs.append(probs.cpu().numpy())
 
-		return np.vstack(all_probs).astype(np.float32)
+			return np.vstack(all_probs).astype(np.float32)
 
 	def predict_class(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
 		"""
@@ -608,7 +557,7 @@ class GNNDosageClassifier:
 
 		return pycm_cm
 
-	def print_pycm_report(self, pycm_cm: ConfusionMatrix, title: str = 'GNN Evaluation Report'):
+	def print_pycm_report(self, pycm_cm: ConfusionMatrix, title: str = 'DNN Evaluation Report'):
 		"""
 		Print a comprehensive PYCM evaluation report.
 
@@ -655,7 +604,7 @@ class GNNDosageClassifier:
 
 	def save(self, paths: Dict[str, Path], extra_meta: Dict[str, Any]) -> None:
 		"""
-		Save GNN model to disk.
+		Save DNN model to disk.
 
 		Args:
 			paths: Dictionary with file paths (dir, meta, etc.)
@@ -673,14 +622,13 @@ class GNNDosageClassifier:
 				'model_state_dict': self.model.state_dict(),
 				'best_model_state': self.best_model_state_ if hasattr(self, 'best_model_state_') else None,
 				'class_weights': self.class_weights_.cpu() if self.class_weights_ is not None else None,
-				'edge_index': self.edge_index_.cpu() if self.edge_index_ is not None else None,
 			},
 			model_path,
 		)
 
 		# Save model parameters
 		payload = {
-			'type': 'GNNDosageClassifier',
+			'type': 'DNNDosageClassifier',
 			'tag': self.tag,
 			'feature_mean': self.feature_mean_.tolist(),
 			'feature_std': self.feature_std_.tolist(),
@@ -693,11 +641,11 @@ class GNNDosageClassifier:
 				'early_stopping_patience': self.early_stopping_patience,
 				'weight_decay': self.weight_decay,
 				'use_batch_norm': self.use_batch_norm,
+				'use_residual': self.use_residual,
 				'random_seed': self.random_seed,
 				'use_gpu': self.use_gpu,
 				'verbose': self.verbose,
 				'use_class_weights': self.use_class_weights,
-				'correlation_threshold': self.correlation_threshold,
 			},
 			'train_history': self.train_history_,
 			'val_history': self.val_history_,
@@ -714,15 +662,15 @@ class GNNDosageClassifier:
 			self.pycm_train_.save_obj(str(pycm_path))
 
 	@classmethod
-	def load(cls, paths: Dict[str, Path]) -> 'GNNDosageClassifier':
+	def load(cls, paths: Dict[str, Path]) -> 'DNNDosageClassifier':
 		"""
-		Load GNN model from disk.
+		Load DNN model from disk.
 
 		Args:
 			paths: Dictionary with file paths
 
 		Returns:
-			model: Loaded GNNDosageClassifier
+			model: Loaded DNNDosageClassifier
 		"""
 		meta = load_meta(paths)
 
@@ -749,12 +697,11 @@ class GNNDosageClassifier:
 
 		checkpoint = torch.load(model_path, map_location=m.device)
 
-		# Restore edge index
-		if checkpoint.get('edge_index') is not None:
-			m.edge_index_ = checkpoint['edge_index'].to(m.device)
-
 		# Reconstruct model architecture
-		m.model = GeneticDosageGNN(input_dim=1, hidden_dims=m.hidden_dims, dropout_rate=m.dropout_rate, use_batch_norm=m.use_batch_norm).to(m.device)
+		input_dim = len(m.feature_mean_)
+		m.model = GeneticDosageNN(
+			input_dim=input_dim, hidden_dims=m.hidden_dims, dropout_rate=m.dropout_rate, use_batch_norm=m.use_batch_norm, use_residual=m.use_residual
+		).to(m.device)
 
 		m.model.load_state_dict(checkpoint['model_state_dict'])
 
@@ -772,7 +719,7 @@ class GNNDosageClassifier:
 		if pycm_path.exists():
 			try:
 				m.pycm_train_ = ConfusionMatrix(file=open(str(pycm_path)))
-			except Exception:
+			except:
 				pass  # OK if we can't load it
 
 		m.model.eval()

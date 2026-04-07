@@ -6,7 +6,8 @@ from typing import Any, Dict, Optional
 import arviz as az
 import numpy as np
 import pymc as pm
-from model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
+
+from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
 # Configure PyMC to use JAX backend for GPU acceleration (if available)
 try:
@@ -58,7 +59,7 @@ class BayesianCategoricalDosageClassifier:
 		tune: int = 1000,
 		chains: int = 4,
 		target_accept: float = 0.95,
-		random_seed: int = 123,
+		random_seed: Optional[int] = None,
 		cores: int = 8,
 		use_gpu: bool = True,
 		gpu_strategy: str = 'aggressive',  # 'safe' uses 4 cores, 'aggressive' uses all cores
@@ -67,6 +68,8 @@ class BayesianCategoricalDosageClassifier:
 		self.tune = tune
 		self.chains = chains
 		self.target_accept = target_accept
+		if random_seed is None:
+			random_seed = int(np.random.SeedSequence().entropy % (2**32))
 		self.random_seed = random_seed
 		self.cores = cores
 		self.use_gpu = use_gpu
@@ -77,7 +80,7 @@ class BayesianCategoricalDosageClassifier:
 		try:
 			import jax
 
-			self.gpu_available = len(jax.devices('gpu')) > 0 and use_gpu
+			self.gpu_available = len(jax.devices('gpu')) > 0 and self.use_gpu
 			if self.gpu_available:
 				print(f'GPU acceleration enabled with {len(jax.devices("gpu"))} GPU(s)')
 		except:
@@ -156,13 +159,23 @@ class BayesianCategoricalDosageClassifier:
 		return self
 
 	def predict_proba(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
+		if self.idata is None:
+			raise RuntimeError('Model must be fitted before prediction')
+
 		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
 
-		if self.idata is not None and groups is not None:
+		if groups is not None:
 			# b shape is (n_groups, 3)
 			group_b = self.idata.posterior['b'].mean(axis=(0, 1)).values
+			max_group = len(group_b) - 1
+
+			# Warn about invalid groups
+			if np.any((groups > max_group) | (groups < 0)):
+				n_invalid = np.sum((groups > max_group) | (groups < 0))
+				print(f'Warning: {n_invalid} samples have invalid group indices (valid range: 0-{max_group}). Using global mean.')
+
 			intercept = np.take(group_b, groups, axis=0, mode='clip')
-			mask = (groups >= len(group_b)) | (groups < 0)
+			mask = (groups > max_group) | (groups < 0)
 			intercept[mask] = self._mu_b_mean
 		else:
 			# Fallback to global category means
@@ -210,7 +223,9 @@ class BayesianCategoricalDosageClassifier:
 				'chains': self.chains,
 				'target_accept': self.target_accept,
 				'random_seed': self.random_seed,
+				'cores': self.cores,
 				'use_gpu': self.use_gpu,
+				'gpu_strategy': self.gpu_strategy,
 			},
 			'extra': extra_meta,
 		}

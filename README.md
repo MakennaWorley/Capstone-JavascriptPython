@@ -61,18 +61,27 @@ Once that finishes, you should see three containers running:
 
 #### How to Run Locally (NVIDIA GPU)
 
-If you have an NVIDIA GPU and NVIDIA Container Toolkit installed:
+The repository defaults to the CPU backend. If you have an NVIDIA GPU and the NVIDIA Container Toolkit installed, start the optional GPU backend using the `gpu` profile:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+docker compose --profile gpu up --build
 ```
 
-Note: the GPU profile swaps in the GPU-enabled backend container.
-
-Once that finishes, you should see three containers running:
+This enables the GPU-backed `backend_gpu` service (the CPU backend remains the default). After startup you should see the same three apps:
 - FastAPI: `http://localhost:8000`
 - React: `http://localhost:5173`
 - Streamlit: `http://localhost:8501`
+
+If you prefer to build/run only the GPU backend service directly:
+
+```bash
+docker compose build backend_gpu
+docker compose up backend_gpu
+```
+
+Notes:
+- The GPU service requires a host with NVIDIA drivers and the NVIDIA Container Toolkit.
+- Use the `--profile gpu` option only on machines with a supported GPU.
 
 #### How to Rebuild Containers (If you mess them up)
 To ensure a clean environment, you can stop, remove, and rebuild your Docker containers:
@@ -95,4 +104,5 @@ docker compose up
 
 #### How to run the .venv python environment
 
-run `source .venv/bin/activate` to activate the python environment.
+Bash: run `source .venv/bin/activate` to activate the python environment
+Windows: run `.\.venv\Scripts\Activate.ps1`

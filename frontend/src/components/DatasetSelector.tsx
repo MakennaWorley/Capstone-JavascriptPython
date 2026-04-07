@@ -9,7 +9,7 @@ export default function DatasetSelector({ datasets, selected, onSelect, disabled
 	if (datasets.length === 0) {
 		return (
 			<p style={{ opacity: 0.8 }}>
-				Click <b>List Datasets</b> first.
+				Failed to load datasets. Please check your connection and refresh the page. If the problem persists, contact support.
 			</p>
 		);
 	}

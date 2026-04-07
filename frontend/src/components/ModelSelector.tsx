@@ -14,7 +14,7 @@ export default function ModelSelector({ models, selected, onSelect, disabled = f
 	if (models.length === 0) {
 		return (
 			<p style={{ opacity: 0.8 }}>
-				Click <b>List Models</b> first.
+				Failed to load models. Please check your connection and refresh the page. If the problem persists, contact support.
 			</p>
 		);
 	}

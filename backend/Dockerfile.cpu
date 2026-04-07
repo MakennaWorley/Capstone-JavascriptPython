@@ -15,6 +15,10 @@ RUN pip install -r requirements.txt
 
 # Install CPU torch
 RUN pip install torch==2.9.1 torchvision==0.24.1 torchaudio==2.9.1
+RUN pip install torch-geometric==2.5.0
+
+# Install CPU-only JAX for PyMC compatibility
+RUN pip install jax==0.4.28 jaxlib==0.4.28
 
 COPY backend /app
 

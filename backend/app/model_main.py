@@ -2,25 +2,55 @@ from __future__ import annotations
 
 import csv
 import dataclasses
+import os
 import sys
+from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
+if __name__ == '__main__' and __package__ is None:
+	current_dir = Path(__file__).parent
+	backend_dir = current_dir.parent
+	capstone_dir = backend_dir.parent
+	sys.path.insert(0, str(capstone_dir))
+	__package__ = 'backend.app'
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from dotenv import load_dotenv
 from sklearn.model_selection import KFold
 
 matplotlib.use('Agg')
+
 # Imports from this Repo
-from data_preparation import PrepConfig, prepare_data, resample_training_data
-from model_bayesian import BayesianCategoricalDosageClassifier
-from model_functions import flatten_examples, model_paths
-from model_gnn import GNNDosageClassifier
-from model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
-from model_hmm import HMMDosageClassifier
-from model_multi_log_regression import SklearnMultinomialClassifier
+from .data_preparation import (
+	PrepConfig,
+	build_adjacency_from_pedigree,
+	build_split_examples,
+	connected_components,
+	load_dataset_frames,
+	resample_training_data,
+)
+from .model_bayesian import BayesianCategoricalDosageClassifier
+from .model_dnn import DNNDosageClassifier
+from .model_functions import flatten_examples, model_paths
+from .model_gnn import GNNDosageClassifier
+from .model_graph_functions import evaluate_and_graph_clf, plot_confusion_matrix
+from .model_hmm import HMMDosageClassifier
+from .model_multi_log_regression import SklearnMultinomialClassifier
+
+# Load environment variables
+current_dir = Path(__file__).parent
+root_dir = current_dir.parent
+load_dotenv(dotenv_path=root_dir / '.env')
+
+DATASETS_DIR = (current_dir / os.getenv('DATASETS_DIR')).resolve()
+PROTECTED_DATASETS_DIR = (current_dir / os.getenv('PROTECTED_DATASETS_DIR')).resolve()
+MODELS_DIR = (current_dir / os.getenv('MODELS_DIR')).resolve()
+IMAGES_DIR = (current_dir / os.getenv('IMAGES_DIR')).resolve()
+LOGS_DIR = (current_dir / os.getenv('LOGS_DIR')).resolve()
 
 
 def check_gpu_status():
@@ -35,6 +65,10 @@ def check_gpu_status():
 				print(f'  GPU {i}: {device}')
 		else:
 			print('💻 Running on CPU (no GPU devices found)')
+
+		# Update this for your computer, this was running on my i9-12900k
+		os.environ['OMP_NUM_THREADS'] = '12'
+		os.environ['MKL_NUM_THREADS'] = '12'
 	except ImportError:
 		print('💻 Running on CPU (JAX not installed)')
 	except Exception as e:
@@ -161,6 +195,8 @@ def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
 			return (SklearnMultinomialClassifier, 'multi_log_regression')
 		case 'hmm_dosage':
 			return (HMMDosageClassifier, 'hmm_dosage')
+		case 'dnn_dosage':
+			return (DNNDosageClassifier, 'dnn_dosage')
 		case 'gnn_dosage':
 			return (GNNDosageClassifier, 'gnn_dosage')
 		case _:
@@ -180,7 +216,10 @@ def _run_fold_parallel(args):
 		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
 	elif model_label == 'hmm_dosage':
 		# HMM with optimized settings for CV
-		fold_model = ModelCls(n_iter=50, verbose=False)
+		fold_model = ModelCls(n_iter=20, verbose=False)
+	elif model_label == 'dnn_dosage':
+		# DNN with optimized settings for CV
+		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
 	elif model_label == 'gnn_dosage':
 		# GNN with optimized settings for CV
 		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
@@ -263,25 +302,33 @@ def load_whole_dataset(base_name: str, prep_cfg: PrepConfig):
 	"""
 	Loads a dataset file and flattens it completely without looking for
 	train/val/test sub-splits.
+
+	Returns (X, y, groups, target_ids, site_labels) where:
+	  target_ids: list of individual IDs (ints) in the same order as examples in X/y
+	  site_labels: list of site index values (strings) from the first column of the truth CSV
 	"""
 	# Copies all settings from prep_cfg but updates the dataset_name
 	current_cfg = dataclasses.replace(prep_cfg, dataset_name=base_name)
 
-	# Pass the updated config to prepare_data
-	data = prepare_data(current_cfg)
+	truth_df, obs_df, ped_df = load_dataset_frames(base_name, datasets_dir=current_cfg.datasets_dir)
+	adj = build_adjacency_from_pedigree(ped_df)
+	comps = connected_components(adj)
 
-	X_raw = data['X']
-	y_raw = data['y']
+	X_raw, y_raw, g_raw, target_ids = build_split_examples(truth_df, obs_df, adj, comps, current_cfg, ped_df)
 
 	X, y = flatten_examples(X_raw, y_raw)
 
-	if 'groups' in data:
+	if len(target_ids) > 0:
 		n_sites = X_raw.shape[1]
-		groups = np.repeat(data['groups'].flatten().astype(int), n_sites)
+		groups = np.repeat(g_raw.flatten().astype(int), n_sites)
 	else:
 		groups = np.zeros(X.shape[0], dtype=int)
 
-	return X, y, groups
+	# Site labels from the index column of truth_df
+	index_col = truth_df.columns[0]
+	site_labels = [str(v) for v in truth_df[index_col].tolist()]
+
+	return X, y, groups, target_ids, site_labels
 
 
 def train_eval(
@@ -291,18 +338,21 @@ def train_eval(
 	model_label: str,
 	*,
 	prep_cfg: Optional[PrepConfig] = None,
-	models_dir: str | Path = 'models',
-	images_dir: str | Path = 'images',
-	datasets_dir: str | Path = 'datasets',
+	models_dir: str | Path = MODELS_DIR,
+	images_dir: str | Path = IMAGES_DIR,
+	datasets_dir: str | Path = PROTECTED_DATASETS_DIR,
 	force_retrain: bool = False,
 	draws: int = 1000,
 	tune: int = 1000,
 	chains: int = 4,
 	target_accept: float = 0.99,
-	seed: int = 123,
+	seed: Optional[int] = None,
 	cores: int = 8,
 	optimize_system_resources: bool = True,
 ) -> Dict[str, Any]:
+	if seed is None:
+		seed = int(np.random.SeedSequence().entropy % (2**32))
+
 	if prep_cfg is None:
 		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
@@ -331,39 +381,50 @@ def train_eval(
 	if model_label == 'bayes_softmax3':
 		exists_check = exists_check and paths['idata'].exists()
 
-	if (not force_retrain) and exists_check:
-		print(f'Loading existing {model_tag} from {paths["meta"]}')
+	# EARLY EXIT: Skip training if model already exists and force_retrain is False
+	if exists_check and not force_retrain:
+		print(f'✓ Model already exists: Loading {model_tag} from {paths["meta"]}')
+		print('  To retrain, use force_retrain=True')
 		model = ModelCls.load(paths)
 		trained = False
+		return {
+			'trained': trained,
+			'skipped': True,
+			'reason': f'{model_tag} model for {train_base} already exists',
+			'paths': {'meta': str(paths['meta']), 'model_dir': str(paths['dir'])},
+		}
+
+	# Training required: proceed to Phase 1
+	print(f'--- Phase 1: Training {model_tag} on {train_base} ---')
+	# 2. PHASE 1: INITIAL TRAINING (Using the entire training file)
+	X_train, y_train, groups_train = load_whole_dataset(train_base, prep_cfg)
+
+	# Apply your resampling logic here for training
+	X_resampled, y_resampled, groups_resampled = resample_training_data(X_train, y_train, groups_train)
+
+	# Handle different constructor signatures with auto-optimized settings
+	if model_label == 'bayes_softmax3':
+		optimal_config = get_optimal_training_config()
+		model = ModelCls(
+			draws=optimal_config['draws'],
+			tune=optimal_config['tune'],
+			chains=optimal_config['chains'],
+			target_accept=target_accept,
+			random_seed=seed,
+			cores=optimal_config['cores'],
+			gpu_strategy=optimal_config['gpu_strategy'],
+		)
+	elif model_label == 'hmm_dosage':
+		model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
+	elif model_label == 'dnn_dosage':
+		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+	elif model_label == 'gnn_dosage':
+		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	else:
-		print(f'--- Phase 1: Training {model_tag} on {train_base} ---')
-		# 2. PHASE 1: INITIAL TRAINING (Using the entire training file)
-		X_train, y_train, groups_train = load_whole_dataset(train_base, prep_cfg)
+		model = ModelCls(random_seed=seed)
 
-		# Apply your resampling logic here for training
-		X_resampled, y_resampled, groups_resampled = resample_training_data(X_train, y_train, groups_train)
-
-		# Handle different constructor signatures with auto-optimized settings
-		if model_label == 'bayes_softmax3':
-			optimal_config = get_optimal_training_config()
-			model = ModelCls(
-				draws=optimal_config['draws'],
-				tune=optimal_config['tune'],
-				chains=optimal_config['chains'],
-				target_accept=target_accept,
-				random_seed=seed,
-				cores=optimal_config['cores'],
-				gpu_strategy=optimal_config['gpu_strategy'],
-			)
-		elif model_label == 'hmm_dosage':
-			model = ModelCls(n_iter=100, random_seed=seed, use_gpu=True, verbose=True)
-		elif model_label == 'gnn_dosage':
-			model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
-		else:
-			model = ModelCls(random_seed=seed)
-
-		model.fit(X_resampled, y_resampled, groups=groups_resampled)
-		trained = True
+	model.fit(X_resampled, y_resampled, groups=groups_resampled)
+	trained = True
 
 	# 3. PHASE 2: CROSS-VALIDATION EVALUATION + RETRAINING (Using training + validation)
 	print(f'--- Phase 2: Evaluating on {val_base} and retraining with combined data ---')
@@ -394,7 +455,9 @@ def train_eval(
 			gpu_strategy=optimal_config['gpu_strategy'],
 		)
 	elif model_label == 'hmm_dosage':
-		model = ModelCls(n_iter=100, random_seed=seed, use_gpu=True, verbose=True)
+		model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
+	elif model_label == 'dnn_dosage':
+		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	elif model_label == 'gnn_dosage':
 		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	else:
@@ -405,8 +468,9 @@ def train_eval(
 	# Save immediately after retraining
 	model.save(paths, extra_meta={'train_src': train_base, 'val_src': val_base, 'avg_val_mse': float(avg_val_mse)})
 
-	# Update models.csv with the trained model
-	update_models_csv(train_base, model_tag, csv_path=models_csv_path)
+	# Update models.csv with the trained model (use base name without dataset suffix)
+	model_base_name = train_base.split('.')[0]
+	update_models_csv(model_base_name, model_tag, csv_path=models_csv_path)
 
 	# 4. PHASE 3: TESTING (Evaluating on unseen data)
 	# Setup log file for test output
@@ -429,7 +493,7 @@ def train_eval(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
@@ -440,30 +504,128 @@ def train_eval(
 	}
 
 
+def get_or_create_logs_dir(logs_dir: str | Path = LOGS_DIR) -> Path:
+	"""Get or create the logs directory."""
+	logs_path = Path(logs_dir)
+	logs_path.mkdir(parents=True, exist_ok=True)
+	return logs_path
+
+
+def get_applied_models_csv_path(logs_dir: str | Path = LOGS_DIR) -> Path:
+	"""Get the path to the applied_models.csv file."""
+	return get_or_create_logs_dir(logs_dir) / 'applied_models.csv'
+
+
+def check_model_already_applied(model_name: str, model_type: str, test_data: str, logs_dir: str | Path = LOGS_DIR) -> Optional[Dict[str, Any]]:
+	"""
+	Check if a model has already been tested on a dataset.
+	Returns the cached result if found, None otherwise.
+	"""
+	csv_path = get_applied_models_csv_path(logs_dir)
+
+	if not csv_path.exists():
+		return None
+
+	with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+		reader = csv.DictReader(f)
+		for row in reader:
+			if row['model_name'] == model_name and row['model_type'] == model_type and row['test_data'] == test_data:
+				# Found a cached result
+				return {
+					'log_file': row['log_file'],
+					'graph_test': row['graph_test'],
+					'graph_cm': row['graph_cm'],
+					'applied_date': row['applied_date'],
+				}
+
+	return None
+
+
+def register_model_application(
+	model_name: str,
+	model_type: str,
+	test_data: str,
+	log_file: str | Path,
+	graph_test: str | Path,
+	graph_cm: str | Path,
+	logs_dir: str | Path = LOGS_DIR,
+) -> None:
+	"""
+	Register that a model has been applied to a dataset.
+	Adds an entry to applied_models.csv.
+	"""
+	csv_path = get_applied_models_csv_path(logs_dir)
+
+	# Check if entry already exists
+	if csv_path.exists():
+		with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+			reader = csv.DictReader(f)
+			for row in reader:
+				if row['model_name'] == model_name and row['model_type'] == model_type and row['test_data'] == test_data:
+					# Entry already exists
+					return
+
+	# Add new entry
+	file_exists = csv_path.exists()
+	with open(csv_path, 'a', newline='', encoding='utf-8') as f:
+		writer = csv.DictWriter(f, fieldnames=['model_name', 'model_type', 'test_data', 'log_file', 'graph_test', 'graph_cm', 'applied_date'])
+
+		if not file_exists:
+			writer.writeheader()
+
+		writer.writerow(
+			{
+				'model_name': model_name,
+				'model_type': model_type,
+				'test_data': test_data,
+				'log_file': str(log_file),
+				'graph_test': str(graph_test),
+				'graph_cm': str(graph_cm),
+				'applied_date': datetime.now().isoformat(),
+			}
+		)
+
+		print(f'Registered model application: {model_name} ({model_type}) on {test_data}')
+
+
 def test_on_new_data(
 	test_base: str,
 	model_type: str,
 	model_name: str,
 	*,
 	prep_cfg: Optional[PrepConfig] = None,
-	models_dir: str | Path = 'models',
-	images_dir: str | Path = 'images',
-	datasets_dir: str | Path = 'datasets',
+	models_dir: str | Path = MODELS_DIR,
+	images_dir: str | Path = IMAGES_DIR,
+	datasets_dir: str | Path = DATASETS_DIR,
 ) -> Dict[str, Any]:
 	"""
 	Loads a new dataset and applies an existing trained model to it.
 	The model must have been previously trained using train_eval() with the specified model_name.
+
+	If the model has already been applied to this dataset, returns cached results without recomputing.
 	"""
 	if prep_cfg is None:
 		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
+	# 0.5 Check if this model has already been tested on this dataset
+	cached_result = check_model_already_applied(model_name, model_type, test_base)
+	if cached_result:
+		print(f'✓ Model "{model_name}" ({model_type}) already tested on "{test_base}"')
+		print(f'  Using cached results from {cached_result["applied_date"]}')
+
+		return {
+			'test_metrics': {'model': f'{model_name} {model_type}', 'dataset': test_base},  # Include model and dataset info
+			'paths': {
+				'graph_test': cached_result['graph_test'],
+				'graph_cm': cached_result['graph_cm'],
+				'model_dir': str(Path(models_dir) / model_name / model_type),
+			},
+			'from_cache': True,
+		}
+
 	# 1. Setup Model Types and Paths
 	ModelCls, model_tag = _select_model(model_type)
 	paths = model_paths(models_dir, model_name, model_tag)
-
-	# Create images directory
-	images_path = Path(images_dir)
-	images_path.mkdir(parents=True, exist_ok=True)
 
 	# 2. Check if Model Exists
 	exists_check = paths['meta'].exists()
@@ -478,20 +640,48 @@ def test_on_new_data(
 	model = ModelCls.load(paths)
 
 	# Setup log file for test output
-	log_file_path = paths['dir'] / f'{model_name}.{model_tag}.test_{test_base}.txt'
+	logs_dir = get_or_create_logs_dir()
+
+	# Use timestamp for unique filenames if multiple tests on same model+dataset
+	timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+	log_file_path = logs_dir / f'{model_name}-{model_tag}-{test_base}_{timestamp}.txt'
 
 	with OutputLogger(log_file_path):
 		# 4. Prepare Test Data
-		print(f'--- Testing {model_tag} on {test_base} ---')
-		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
+		print(f'--- Testing {model_name} {model_type} on {test_base} ---')
+		X_test, y_test, groups_test, target_ids, site_labels = load_whole_dataset(test_base, prep_cfg)
+
+		# 4.5 Validate Feature Dimensions Match
+		# Get expected number of features from the model (handle different model types)
+		if hasattr(model, 'feature_mean_'):
+			# Models: Bayesian, HMM, DNN, GNN
+			expected_n_features = len(model.feature_mean_)
+		elif hasattr(model, 'scaler') and hasattr(model.scaler, 'n_features_in_'):
+			# Model: SklearnMultinomialClassifier
+			expected_n_features = model.scaler.n_features_in_
+		elif hasattr(model, 'model') and hasattr(model.model, 'n_features_in_'):
+			# Other sklearn-based models
+			expected_n_features = model.model.n_features_in_
+		else:
+			raise RuntimeError(f'Unable to determine feature dimensions for model type {type(model).__name__}')
+
+		actual_n_features = X_test.shape[1]
+
+		if expected_n_features != actual_n_features:
+			raise ValueError(
+				f'Feature dimension mismatch for model "{model_name}":\n'
+				f'  Model was trained with {expected_n_features} features\n'
+				f'  Test dataset "{test_base}" has {actual_n_features} features\n'
+				f'  Please ensure both datasets have the same number of features.\n'
+				f'  This often happens when datasets have different genome lengths or SNP counts.'
+			)
 
 		# 5. Predict and Evaluate
 		test_metrics = evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True)
 
-		# 6. Save Graphs
-		# Create paths for this specific test evaluation
-		test_graph_path = images_path / f'{model_tag}_test_{test_base}_single.png'
-		test_cm_path = images_path / f'{model_tag}_test_{test_base}_confusion_single.png'
+		# 6. Save Graphs to logs directory
+		test_graph_path = logs_dir / f'{model_name}-{model_tag}-{test_base}_{timestamp}_graph.png'
+		test_cm_path = logs_dir / f'{model_name}-{model_tag}-{test_base}_{timestamp}_confusion.png'
 
 		if test_graph_path:
 			plt.savefig(test_graph_path)
@@ -500,19 +690,82 @@ def test_on_new_data(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} Test Confusion Matrix - {test_base}', save_path=test_cm_path)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
+
+	# Build per-prediction error list from y_pred_cm vs y_test
+	# Layout: each target_id has n_sites predictions, flattened in order
+	prediction_errors = []
+	if len(target_ids) > 0 and len(site_labels) > 0:
+		n_sites = len(site_labels)
+		y_pred_arr = np.asarray(y_pred_cm).flatten()
+		y_true_arr = np.asarray(y_test).flatten()
+		for i, ind_id in enumerate(target_ids):
+			ind_label = f'i_{ind_id:04d}'
+			for s, site in enumerate(site_labels):
+				flat_idx = i * n_sites + s
+				if flat_idx >= len(y_pred_arr):
+					break
+				pred_val = int(y_pred_arr[flat_idx])
+				true_val = int(y_true_arr[flat_idx])
+				if pred_val != true_val:
+					prediction_errors.append({'individual': ind_label, 'site': site, 'predicted': pred_val, 'actual': true_val})
+
+	# Add model and dataset names to test metrics
+	test_metrics['model'] = f'{model_name} {model_type}'
+	test_metrics['dataset'] = test_base
+
+	# Register this model application for future reference
+	register_model_application(
+		model_name=model_name,
+		model_type=model_type,
+		test_data=test_base,
+		log_file=log_file_path,
+		graph_test=test_graph_path,
+		graph_cm=test_cm_path,
+		logs_dir=LOGS_DIR,
+	)
 
 	return {
 		'test_metrics': test_metrics,
 		'paths': {'graph_test': str(test_graph_path), 'graph_cm': str(test_cm_path), 'model_dir': str(paths['dir'])},
+		'prediction_errors': prediction_errors,
+		'from_cache': False,
 	}
 
 
-def train_eval_all(train_f, val_f, test_f):
-	"""Runs both models for the capstone comparison."""
+def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECTED_DATASETS_DIR):
+	"""Runs both models for the capstone comparison using a specific datasets_dir."""
 	print('=== Model Training Comparison ===')
+
+	model_labels = ['bayes_softmax3', 'multi_log_regression', 'hmm_dosage', 'dnn_dosage', 'gnn_dosage']
+
+	# Check if all models already exist
+	models_dir = Path(MODELS_DIR) if MODELS_DIR else Path('models')
+	all_exist = True
+	missing_models = []
+
+	for label in model_labels:
+		_, model_tag = _select_model(label)
+		paths = model_paths(models_dir, train_f, model_tag)
+		exists_check = paths['meta'].exists()
+		if label == 'bayes_softmax3':
+			exists_check = exists_check and paths['idata'].exists()
+		if not exists_check:
+			all_exist = False
+			missing_models.append(model_tag)
+
+	# EARLY EXIT: All models exist
+	if all_exist:
+		print(f'✓ All models already trained for {train_f}')
+		print(f'  All model types exist: {", ".join(model_labels)}')
+		print('  Skipping training. Use force_retrain=True in train_eval() to retrain.')
+		return {'status': 'skipped', 'reason': 'All models already exist', 'train_f': train_f}
+
+	# Not all models exist - proceed with training
+	print(f'Training {len(missing_models)} missing model(s): {", ".join(missing_models)}')
+	print()
 
 	# Import and run system optimization
 	try:
@@ -526,15 +779,18 @@ def train_eval_all(train_f, val_f, test_f):
 	print()
 
 	results = {}
-	for label in ['bayes_softmax3', 'multi_log_regression', 'hmm_dosage', 'gnn_dosage']:
-		results[label] = train_eval(train_f, val_f, test_f, label)
+	for label in model_labels:
+		results[label] = train_eval(train_f, val_f, test_f, label, datasets_dir=datasets_dir)
 	return results
 
 
 if __name__ == '__main__':
-	train_eval_all('Batch1.training', 'Batch1.validation', 'Batch1.testing')
-	train_eval_all('Batch2.training', 'Batch2.validation', 'Batch2.testing')
-	# print(test_on_new_data('Batch2.testing', 'bayes_softmax3', 'Batch1.training'))
-	# print(test_on_new_data('Batch2.testing', 'multi_log_regression', 'Batch1.training'))
-	# print(test_on_new_data('Batch1.testing', 'bayes_softmax3', 'Batch2.training'))
-	# print(test_on_new_data('Batch1.testing', 'multi_log_regression', 'Batch2.training'))
+	# Force use of the protected datasets directory for training runs
+	# train_eval_all('tiny.training', 'tiny.validation', 'tiny.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	# train_eval_all('small.training', 'small.validation', 'small.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+	# train_eval_all('medium.training', 'medium.validation', 'medium.testing', datasets_dir=PROTECTED_DATASETS_DIR)
+
+	print(test_on_new_data('public', 'bayes_softmax3', 'tiny.training'))
+	# print(test_on_new_data('small.testing', 'multi_log_regression', 'small.training'))
+	# print(test_on_new_data('medium.testing', 'bayes_softmax3', 'medium.training'))
+	# print(test_on_new_data('medium.testing', 'multi_log_regression', 'medium.training'))

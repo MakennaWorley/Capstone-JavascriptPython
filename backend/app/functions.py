@@ -2,14 +2,22 @@ from __future__ import annotations
 
 import base64
 import csv
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
 
-DATASETS_DIR = Path('./datasets')
-MODELS_DIR = Path('./models')
+BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
+load_dotenv(dotenv_path=ROOT_DIR / '.env')
+
+DATASETS_DIR = (BASE_DIR / os.getenv('DATASETS_DIR')).resolve()
+PROTECTED_DATASETS_DIR = (BASE_DIR / os.getenv('PROTECTED_DATASETS_DIR')).resolve()
+MODELS_DIR = (BASE_DIR / os.getenv('MODELS_DIR')).resolve()
+IMAGES_DIR = (BASE_DIR / os.getenv('IMAGES_DIR')).resolve()
 
 # -----------------------------
 # API
@@ -80,7 +88,7 @@ def get_dataset_names() -> List[str]:
 	names: List[str] = []
 
 	base_dir = Path(__file__).resolve().parent
-	file_path = base_dir / 'datasets' / 'datasets.txt'
+	file_path = base_dir / DATASETS_DIR / 'datasets.txt'
 
 	if not file_path.exists():
 		return []
@@ -213,7 +221,7 @@ def get_genetic_data_from_id(
 			raise FileNotFoundError(f'Missing file: {observed_path}')
 		observed_df = pd.read_csv(observed_path)
 
-	col = _col_name(individual_id)
+	col = col_name(individual_id)
 	if col not in observed_df.columns:
 		available = [c for c in observed_df.columns if c.startswith('i_')]
 		raise KeyError(f"Column '{col}' not found. Available individual columns: {available[:5]}{'...' if len(available) > 5 else ''}")
@@ -252,9 +260,7 @@ def get_individual_family_tree_data(dataset_name: str, individual_id: int, datas
 	paths = _paths_for_dataset(dataset_name, datasets_dir=datasets_dir)
 	pedigree_path = paths['pedigree_csv']
 
-	print(f'DEBUG: Dashboard says pedigree is at: {pedigree_path}')
 	if not pedigree_path.exists():
-		print('file is missing')
 		raise FileNotFoundError(f'Missing file: {pedigree_path}')
 
 	ped = pd.read_csv(pedigree_path)

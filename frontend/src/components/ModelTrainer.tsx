@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import LoadingProgress from './LoadingProgress.js';
 
 type Model = {
 	model_name: string;
@@ -10,14 +11,13 @@ type ModelTrainerProps = {
 	xApiKey: string;
 	selectedDataset: string;
 	selectedModel: Model | null;
-	onTestComplete?: (data: { log: string; paths: any; testMetrics: any; images: any }) => void;
+	onTestComplete?: (data: { paths: any; testMetrics: any; images: any; predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }> }) => void;
 };
 
 type ApiSuccessTest = {
 	status: 'success';
 	message: string;
 	data: {
-		log: string;
 		test_metrics: any;
 		paths: {
 			graph_test: string;
@@ -28,6 +28,7 @@ type ApiSuccessTest = {
 			graph_test_base64?: string;
 			graph_cm_base64?: string;
 		};
+		prediction_errors?: Array<{ individual: string; site: string; predicted: number; actual: number }>;
 	};
 };
 
@@ -67,19 +68,24 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 
 			if (result.status === 'success') {
 				setError(null);
-				if (onTestComplete) {
+			if (onTestComplete) {
 					onTestComplete({
-						log: result.data.log,
 						paths: result.data.paths,
 						testMetrics: result.data.test_metrics,
-						images: result.data.images
+						images: result.data.images,
+						predictionErrors: result.data.prediction_errors ?? []
 					});
 				}
 			} else {
-				setError(result.message || 'Failed to test model');
+				// Display error from API response
+				const errorMessage = result.message || `Failed to test model (Status: ${result.status})`;
+				setError(errorMessage);
+				console.error('Model test error:', result);
 			}
 		} catch (err) {
-			setError(`Error testing model: ${err}`);
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			setError(`Network error: ${errorMsg}`);
+			console.error('Model test network error:', err);
 		} finally {
 			setLoading(false);
 		}
@@ -121,6 +127,8 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 			>
 				{loading ? 'Testing...' : 'Test Model on Dataset'}
 			</button>
+
+			<LoadingProgress isLoading={loading} message="Applying a model to your data..." />
 
 			{!canTest && <p style={{ marginTop: '1rem', color: '#ff9800' }}>Please select both a dataset and a model to test.</p>}
 

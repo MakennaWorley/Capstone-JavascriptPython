@@ -1,10 +1,8 @@
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+FROM nvidia/cuda:12.8.1-runtime-ubuntu24.04
 
-# Install Python 3.12
 RUN apt-get update && apt-get install -y \
-    python3.12 \
-    python3.12-dev \
-    python3-pip \
+    wget \
+    bzip2 \
     graphviz \
     libgsl-dev \
     libcurl4-openssl-dev \
@@ -12,7 +10,16 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+RUN wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O /tmp/miniforge.sh && \
+    bash /tmp/miniforge.sh -b -p /opt/conda && \
+    rm /tmp/miniforge.sh
+
+ENV PATH=/opt/conda/bin:$PATH
+
+# Python 3.12.12
+RUN conda create -y -n app python=3.12.12 && conda clean -afy
+
+SHELL ["conda", "run", "-n", "app", "/bin/bash", "-c"]
 
 WORKDIR /app
 
@@ -26,12 +33,13 @@ RUN python -m pip install psutil
 RUN python -m pip install torch torchvision torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
 
+RUN python -m pip install torch-geometric
+
 # Install JAX with CUDA 12 support
-RUN python -m pip install "jax[cuda12]" \
-    -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+RUN python -m pip install "jax[cuda12]"
 
 COPY backend /app
 
 ENV CORS_ORIGINS="http://localhost:5173,http://localhost:8501"
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["conda", "run", "--no-capture-output", "-n", "app", "python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
