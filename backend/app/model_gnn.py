@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from pycm import ConfusionMatrix
 
 try:
-	from torch_geometric.data import Data
+	from torch_geometric.data import Data, Dataset
 	from torch_geometric.data import DataLoader as GeometricDataLoader
 	from torch_geometric.nn import GraphConv, global_mean_pool
 
@@ -20,7 +20,7 @@ except ImportError:
 	TORCH_GEOMETRIC_AVAILABLE = False
 	print('Warning: torch_geometric not installed. Install with: pip install torch-geometric')
 
-from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
+from model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
 # Configure GPU acceleration for PyTorch
 try:
@@ -42,6 +42,23 @@ except Exception as e:
 	print(f'GPU detection warning: {e}')
 	DEVICE = torch.device('cpu')
 	GPU_AVAILABLE = False
+
+
+class LargeGeneticDataset(Dataset):
+	def __init__(self, X, y, edge_index):
+		super().__init__()
+		# Convert to tensors once, but keep them on CPU to save GPU VRAM
+		self.X = torch.from_numpy(X).float()
+		self.y = torch.from_numpy(y).long()
+		self.edge_index = edge_index
+
+	def len(self):
+		return len(self.y)
+
+	def get(self, idx):
+		# CORRECTED: Return a torch_geometric.data.Data object, NOT the dataset class
+		node_features = self.X[idx].unsqueeze(1)  # (n_features, 1)
+		return Data(x=node_features, edge_index=self.edge_index, y=self.y[idx])
 
 
 class GeneticDosageGNN(nn.Module):
@@ -331,21 +348,11 @@ class GNNDosageClassifier:
 		X_val, y_val = Xz[val_idx], y_int[val_idx]
 
 		# Create PyTorch Geometric Data objects for each sample
-		train_graphs = []
-		for i, (x_sample, y_sample) in enumerate(zip(X_train, y_train)):
-			# Node features are the feature values
-			node_features = torch.tensor(x_sample, dtype=torch.float32).unsqueeze(1)  # (n_features, 1)
-			graph = Data(x=node_features, edge_index=self.edge_index_, y=torch.tensor(y_sample, dtype=torch.long))
-			train_graphs.append(graph)
+		train_dataset = LargeGeneticDataset(X_train, y_train, self.edge_index_.cpu())
+		val_dataset = LargeGeneticDataset(X_val, y_val, self.edge_index_.cpu())
 
-		val_graphs = []
-		for i, (x_sample, y_sample) in enumerate(zip(X_val, y_val)):
-			node_features = torch.tensor(x_sample, dtype=torch.float32).unsqueeze(1)
-			graph = Data(x=node_features, edge_index=self.edge_index_, y=torch.tensor(y_sample, dtype=torch.long))
-			val_graphs.append(graph)
-
-		train_loader = GeometricDataLoader(train_graphs, batch_size=self.batch_size, shuffle=True)
-		val_loader = GeometricDataLoader(val_graphs, batch_size=self.batch_size, shuffle=False)
+		train_loader = GeometricDataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=2, pin_memory=True)
+		val_loader = GeometricDataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=2)
 
 		# Initialize model
 		self.model = GeneticDosageGNN(
@@ -539,13 +546,9 @@ class GNNDosageClassifier:
 		Xz = standardize_apply(X, self.feature_mean_, self.feature_std_)
 
 		# Create graph objects for each sample
-		test_graphs = []
-		for x_sample in Xz:
-			node_features = torch.tensor(x_sample, dtype=torch.float32).unsqueeze(1)
-			graph = Data(x=node_features, edge_index=self.edge_index_)
-			test_graphs.append(graph)
-
-		test_loader = GeometricDataLoader(test_graphs, batch_size=self.batch_size, shuffle=False)
+		dummy_y = np.zeros(len(Xz))
+		test_dataset = LargeGeneticDataset(Xz, dummy_y, self.edge_index_.cpu())
+		test_loader = GeometricDataLoader(test_dataset, batch_size=self.batch_size, shuffle=False)
 
 		self.model.eval()
 		all_probs = []

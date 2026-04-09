@@ -6,8 +6,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import pandas as pd
-
-from .functions import col_name, get_all_dataset_files
+from functions import col_name, get_all_dataset_files
 
 # -----------------------------
 # Classes
@@ -192,7 +191,7 @@ def make_example_for_target(
 	frac_observed = count_obs / rel_mat.shape[1]
 	count_relatives = np.full(rel_mat.shape[0], rel_mat.shape[1], dtype=float)
 
-	X = np.stack([mean_dosage, frac_observed, count_relatives], axis=1)  # (sites, 3)
+	X = np.stack([mean_dosage, frac_observed, count_relatives], axis=1).astype(np.float32)  # (sites, 3)
 
 	y = truth_df[tcol].to_numpy(dtype=np.int8)  # (sites,)
 	return X, y
@@ -231,11 +230,12 @@ def build_split_examples(
 	if not X_list:
 		# Return empty arrays with consistent ranks
 		n_sites = truth_df.shape[0]
-		return np.zeros((0, n_sites, 3), dtype=float), np.zeros((0, n_sites), dtype=np.int8), np.zeros((0,), dtype=int), []
+		return np.zeros((0, n_sites, 3), dtype=np.float32), np.zeros((0, n_sites), dtype=np.int8), np.zeros((0,), dtype=np.int32), []
 
-	X_all = np.stack(X_list, axis=0)
-	y_all = np.stack(y_list, axis=0)
-	g_all = np.array(g_list, dtype=int)
+	X_all = np.stack(X_list, axis=0).astype(np.float32)
+	y_all = np.stack(y_list, axis=0).astype(np.int8)
+	g_all = np.array(g_list, dtype=np.int32)
+
 	return X_all, y_all, g_all, target_ids
 
 
