@@ -162,7 +162,7 @@ class GNNDosageClassifier:
 		hidden_dims: Tuple[int, ...] = (256, 128, 64),
 		dropout_rate: float = 0.3,
 		learning_rate: float = 0.001,
-		batch_size: int = 256,
+		batch_size: int = 1024,
 		epochs: int = 100,
 		early_stopping_patience: int = 10,
 		weight_decay: float = 1e-4,
@@ -458,7 +458,7 @@ class GNNDosageClassifier:
 			# Learning rate scheduling
 			scheduler.step(val_loss)
 
-			if self.verbose and (epoch + 1) % 10 == 0:
+			if self.verbose and (epoch + 1) % 2 == 0:
 				print(
 					f'Epoch [{epoch + 1}/{self.epochs}] '
 					f'Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.4f} | '
@@ -479,7 +479,7 @@ class GNNDosageClassifier:
 					break
 
 			# checkpoint saving
-			if (epoch + 1) % 10 == 0:
+			if (epoch + 1) % 2 == 0:
 				temp_path = Path(f'{os.environ["MODELS_DIR"]}/checkpoint_epoch_{epoch + 1}.pt')
 				torch.save(self.model.state_dict(), temp_path)
 

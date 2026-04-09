@@ -18,14 +18,12 @@ class SklearnMultinomialClassifier:
 	This provides a 'simple' Frequentist comparison to your Bayesian model.
 	"""
 
-	def __init__(self, random_seed=None):
-		if random_seed is None:
-			random_seed = int(np.random.SeedSequence().entropy % (2**32))
+	def __init__(self, random_seed=123):
 		self.random_seed = random_seed
-
+		
 		# Set random seeds for reproducibility (consistent with DNN/GNN models)
 		np.random.seed(random_seed)
-
+		
 		self.model = LogisticRegression(class_weight='balanced', solver='lbfgs', max_iter=1000, random_state=random_seed)
 		self.scaler = StandardScaler()
 

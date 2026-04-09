@@ -48,18 +48,12 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 
 	# F1-Score (Macro) treats all classes equally regardless of frequency
 	# F1-Score (Weighted) accounts for class imbalance by weighting by support
-	try:
-		f1_macro = f1_score(y_int, y_pred_int, average='macro')
-		f1_weighted = f1_score(y_int, y_pred_int, average='weighted')
-	except Exception as e:
-		print(f'Warning: Could not calculate F1 scores: {e}')
-		f1_macro = None
-		f1_weighted = None
+	f1_macro = f1_score(y_int, y_pred_int, average='macro')
+	f1_weighted = f1_score(y_int, y_pred_int, average='weighted')
 
 	print(f'--- {name} ---')
 	print(f'Accuracy: {acc:.4f} | Balanced Accuracy: {bal_acc:.4f} | Macro-AUC: {auc_macro:.4f}')
-	if f1_macro is not None and f1_weighted is not None:
-		print(f'F1-Score (Macro):  {f1_macro:.4f} | F1-Score (Weighted): {f1_weighted:.4f}')
+	print(f'F1-Score (Macro):  {f1_macro:.4f} | F1-Score (Weighted): {f1_weighted:.4f}')
 	print('-' * 30)
 
 	# 3. Diagnostic Plots
@@ -80,15 +74,14 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 
 		# Finalize ROC Plot
 		axes[0].plot([0, 1], [0, 1], 'k--', lw=2)
-		title_name = name.replace('_test_', ' ')
-		axes[0].set_title(title_name)
+		axes[0].set_title(f'Multiclass ROC: {name}')
 		axes[0].set_xlabel('False Positive Rate')
 		axes[0].set_ylabel('True Positive Rate')
 		axes[0].legend(loc='lower right')
 		axes[0].grid(True, alpha=0.3)
 
 		# Finalize PR Plot
-		axes[1].set_title(title_name)
+		axes[1].set_title(f'Multiclass PR: {name}')
 		axes[1].set_xlabel('Recall')
 		axes[1].set_ylabel('Precision')
 		axes[1].legend(loc='upper right')
@@ -96,13 +89,7 @@ def evaluate_and_graph_clf(model, X, y, name, graph, **kwargs):
 
 		plt.tight_layout()
 
-	# Build return dict with safe handling
-	result = {'model': name, 'accuracy': acc, 'balanced_accuracy': bal_acc, 'auc_macro': auc_macro}
-	if f1_macro is not None:
-		result['f1_macro'] = f1_macro
-	if f1_weighted is not None:
-		result['f1_weighted'] = f1_weighted
-	return result
+	return {'model': name, 'accuracy': acc, 'balanced_accuracy': bal_acc, 'f1_macro': f1_macro, 'auc_macro': auc_macro}
 
 
 def evaluate_and_graph_reg(model, X, y, name, graph, **kwargs):
@@ -163,8 +150,7 @@ def evaluate_and_graph_reg(model, X, y, name, graph, **kwargs):
 		axs[0, 0].plot([y.min(), y.max()], [y.min(), y.max()], color='red', linestyle='--', label='Identity Line')
 		axs[0, 0].set_xlabel('True Values')
 		axs[0, 0].set_ylabel('Predicted Values')
-		title_name_reg = name.replace('_test_', ' ')
-		axs[0, 0].set_title(f'Predicted vs True: {title_name_reg}\n$R^2 = {r2:.3f}$')
+		axs[0, 0].set_title(f'Predicted vs True ({name})\n$R^2 = {r2:.3f}$')
 		axs[0, 0].legend()
 
 		# 2) Residual Histogram
@@ -201,8 +187,7 @@ def plot_confusion_matrix(y_true, y_pred, name, save_path):
 	plt.figure(figsize=(8, 6))
 	sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=[0, 1, 2], yticklabels=[0, 1, 2])
 
-	title_name_cm = name.replace('_test_', ' ')
-	plt.title(title_name_cm)
+	plt.title(f'Confusion Matrix: {name}')
 	plt.xlabel('Predicted Dosage')
 	plt.ylabel('True Dosage')
 	plt.tight_layout()

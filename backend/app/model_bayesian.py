@@ -6,8 +6,7 @@ from typing import Any, Dict, Optional
 import arviz as az
 import numpy as np
 import pymc as pm
-
-from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
+from model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
 # Configure PyMC to use JAX backend for GPU acceleration (if available)
 try:
@@ -59,7 +58,7 @@ class BayesianCategoricalDosageClassifier:
 		tune: int = 1000,
 		chains: int = 4,
 		target_accept: float = 0.95,
-		random_seed: Optional[int] = None,
+		random_seed: int = 123,
 		cores: int = 8,
 		use_gpu: bool = True,
 		gpu_strategy: str = 'aggressive',  # 'safe' uses 4 cores, 'aggressive' uses all cores
@@ -68,8 +67,6 @@ class BayesianCategoricalDosageClassifier:
 		self.tune = tune
 		self.chains = chains
 		self.target_accept = target_accept
-		if random_seed is None:
-			random_seed = int(np.random.SeedSequence().entropy % (2**32))
 		self.random_seed = random_seed
 		self.cores = cores
 		self.use_gpu = use_gpu

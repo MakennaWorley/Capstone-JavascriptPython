@@ -8,10 +8,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 from pycm import ConfusionMatrix
 from torch.utils.data import DataLoader, TensorDataset
-
-from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_common_meta, standardize_apply, standardize_fit
 
 # Configure GPU acceleration for PyTorch
 try:
@@ -157,7 +156,7 @@ class DNNDosageClassifier:
 		weight_decay: float = 1e-4,
 		use_batch_norm: bool = True,
 		use_residual: bool = True,
-		random_seed: Optional[int] = None,
+		random_seed: int = 123,
 		use_gpu: bool = True,
 		verbose: bool = True,
 		use_class_weights: bool = True,
@@ -175,7 +174,7 @@ class DNNDosageClassifier:
 			weight_decay: L2 regularization strength
 			use_batch_norm: Whether to use batch normalization
 			use_residual: Whether to use residual connections
-			random_seed: Random seed for reproducibility (auto-generated if None)
+			random_seed: Random seed for reproducibility
 			use_gpu: Whether to use GPU acceleration (if available)
 			verbose: Print training progress
 			use_class_weights: Whether to use class weights for imbalanced data
@@ -189,8 +188,6 @@ class DNNDosageClassifier:
 		self.weight_decay = weight_decay
 		self.use_batch_norm = use_batch_norm
 		self.use_residual = use_residual
-		if random_seed is None:
-			random_seed = int(np.random.SeedSequence().entropy % (2**32))
 		self.random_seed = random_seed
 		self.use_gpu = use_gpu and GPU_AVAILABLE
 		self.verbose = verbose

@@ -10,14 +10,11 @@ import pandas as pd
 from dotenv import load_dotenv
 from fastapi.responses import JSONResponse
 
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent
-load_dotenv(dotenv_path=ROOT_DIR / '.env')
+load_dotenv()
 
-DATASETS_DIR = (BASE_DIR / os.getenv('DATASETS_DIR')).resolve()
-PROTECTED_DATASETS_DIR = (BASE_DIR / os.getenv('PROTECTED_DATASETS_DIR')).resolve()
-MODELS_DIR = (BASE_DIR / os.getenv('MODELS_DIR')).resolve()
-IMAGES_DIR = (BASE_DIR / os.getenv('IMAGES_DIR')).resolve()
+
+DATASETS_DIR = os.getenv('DATASETS_DIR')
+MODELS_DIR = os.getenv('MODELS_DIR')
 
 # -----------------------------
 # API
@@ -260,7 +257,9 @@ def get_individual_family_tree_data(dataset_name: str, individual_id: int, datas
 	paths = _paths_for_dataset(dataset_name, datasets_dir=datasets_dir)
 	pedigree_path = paths['pedigree_csv']
 
+	print(f'DEBUG: Dashboard says pedigree is at: {pedigree_path}')
 	if not pedigree_path.exists():
+		print('file is missing')
 		raise FileNotFoundError(f'Missing file: {pedigree_path}')
 
 	ped = pd.read_csv(pedigree_path)
