@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FamilyTreeVisualization from './FamilyTreeVisualization.js';
 import LoadingProgress from './LoadingProgress.js';
@@ -343,7 +344,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 								alignItems: 'center',
 								gap: '0.4rem',
 								padding: '0.4rem 0.8rem',
-								backgroundColor: '#646cff',
+								backgroundColor: '#452ee4',
 								color: 'white',
 								border: 'none',
 								borderRadius: '4px',
@@ -351,8 +352,8 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 								fontSize: '0.9rem',
 								transition: 'background-color 0.2s'
 							}}
-							onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#747eff')}
-							onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#646cff')}
+							onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#241291')}
+							onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#452ee4')}
 						>
 							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
 								<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
@@ -467,6 +468,7 @@ function GenotypeTable({
 	columnPageIndex: number;
 	columnsPerPage: number;
 }) {
+	const theme = useTheme();
 	// Calculate which columns to show on this page (excluding index column 0)
 	const startColIdx = columnPageIndex * columnsPerPage + 1; // Start from 1 to skip index
 	const endColIdx = Math.min(startColIdx + columnsPerPage, headers.length);
@@ -482,12 +484,12 @@ function GenotypeTable({
 						<th
 							style={{
 								textAlign: 'left',
-								borderBottom: '1px solid #ccc',
+								borderBottom: `1px solid ${theme.palette.divider}`,
 								padding: '0.5rem',
 								whiteSpace: 'nowrap',
 								position: 'sticky',
 								left: 0,
-								backgroundColor: '#1a1a1a',
+								backgroundColor: theme.palette.background.paper,
 								zIndex: 10,
 								fontWeight: 'bold',
 								minWidth: '100px'
@@ -502,7 +504,7 @@ function GenotypeTable({
 								key={localIdx}
 								style={{
 									textAlign: 'left',
-									borderBottom: '1px solid #ccc',
+									borderBottom: `1px solid ${theme.palette.divider}`,
 									padding: '0.5rem',
 									whiteSpace: 'nowrap',
 									fontWeight: 'bold'

@@ -1,3 +1,5 @@
+import { useTheme } from '@mui/material/styles';
+
 type Model = {
 	model_name: string;
 	model_type: string;
@@ -54,10 +56,12 @@ const FALLBACK_INFO = {
 };
 
 export default function ModelDashboard({ model }: ModelDashboardProps) {
+	const theme = useTheme();
+	const isDark = theme.palette.mode === 'dark';
 	const info = MODEL_TYPE_INFO[model.model_type] ?? FALLBACK_INFO;
 
 	return (
-		<div style={{ marginTop: '1.25rem', padding: '1.5rem', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
+		<div style={{ marginTop: '1.25rem', padding: '1.5rem', backgroundColor: theme.palette.background.default, borderRadius: '8px' }}>
 			<h3 style={{ marginTop: 0 }}>Model Dashboard</h3>
 
 			{/* Identity */}
@@ -69,12 +73,46 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 					marginBottom: '1.5rem'
 				}}
 			>
-				<div style={{ padding: '1rem', backgroundColor: '#0a0a0a', borderRadius: '6px', border: '1px solid #333' }}>
-					<p style={{ margin: 0, fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Model Name</p>
+				<div
+					style={{
+						padding: '1rem',
+						backgroundColor: theme.palette.background.default,
+						borderRadius: '6px',
+						border: `1px solid ${theme.palette.divider}`
+					}}
+				>
+					<p
+						style={{
+							margin: 0,
+							fontSize: '0.75rem',
+							color: theme.palette.text.secondary,
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em'
+						}}
+					>
+						Model Name
+					</p>
 					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>{model.model_name}</p>
 				</div>
-				<div style={{ padding: '1rem', backgroundColor: '#0a0a0a', borderRadius: '6px', border: '1px solid #333' }}>
-					<p style={{ margin: 0, fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Model Type</p>
+				<div
+					style={{
+						padding: '1rem',
+						backgroundColor: theme.palette.background.default,
+						borderRadius: '6px',
+						border: `1px solid ${theme.palette.divider}`
+					}}
+				>
+					<p
+						style={{
+							margin: 0,
+							fontSize: '0.75rem',
+							color: theme.palette.text.secondary,
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em'
+						}}
+					>
+						Model Type
+					</p>
 					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>{info.label}</p>
 				</div>
 			</div>
@@ -99,16 +137,16 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 			<div
 				style={{
 					padding: '1rem',
-					backgroundColor: '#0d1f0d',
+					backgroundColor: isDark ? '#0d1f0d' : '#e8f5e9',
 					borderRadius: '6px',
-					border: '1px solid #1e4d1e'
+					border: `1px solid ${isDark ? '#1e4d1e' : '#66bb6a'}`
 				}}
 			>
 				<p
 					style={{
 						margin: 0,
 						fontSize: '0.75rem',
-						color: '#6fcf6f',
+						color: isDark ? '#6fcf6f' : '#2e7d32',
 						textTransform: 'uppercase',
 						letterSpacing: '0.05em',
 						marginBottom: '0.4rem'

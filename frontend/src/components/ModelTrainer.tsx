@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import LoadingProgress from './LoadingProgress.js';
 
@@ -44,6 +45,7 @@ type ApiError = {
 };
 
 export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, selectedModel, onTestComplete }: ModelTrainerProps) {
+	const theme = useTheme();
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -97,7 +99,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 	}
 
 	return (
-		<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
+		<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: theme.palette.background.default, borderRadius: '8px' }}>
 			<h3 style={{ marginTop: 0 }}>Model Trainer</h3>
 
 			<div style={{ marginBottom: '1rem' }}>
@@ -142,7 +144,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 					style={{
 						marginTop: '1rem',
 						padding: '1rem',
-						backgroundColor: '#3d1a1a',
+						backgroundColor: theme.palette.mode === 'dark' ? '#3d1a1a' : 'rgba(244, 67, 54, 0.08)',
 						borderLeft: '4px solid #f44336',
 						borderRadius: '4px'
 					}}

@@ -171,7 +171,7 @@ export default function DatasetModelCreationForm({
 		<Box component="form" onSubmit={submit} sx={{ display: 'grid', gap: '1.5rem', maxWidth: 720, pt: 2, pb: 2 }}>
 			{/* BASIC */}
 			<Box>
-				<Typography variant="h6" sx={{ mb: 2, color: '#fff' }}>
+				<Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
 					Basic Settings
 				</Typography>
 				<Stack spacing={2}>
@@ -186,14 +186,14 @@ export default function DatasetModelCreationForm({
 						size="small"
 						sx={{
 							'& .MuiOutlinedInput-root': {
-								color: '#fff',
-								'& fieldset': { borderColor: '#646cff' },
-								'&:hover fieldset': { borderColor: '#747eff' },
-								'&.Mui-focused fieldset': { borderColor: '#646cff' }
+								color: 'text.primary',
+								'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
+								'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
+								'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
 							},
-							'& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.5)', opacity: 1 },
-							'& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-							'& .MuiInputLabel-root.Mui-focused': { color: '#646cff' }
+							'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
+							'& .MuiInputLabel-root': { color: 'text.secondary' },
+							'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
 						}}
 					/>
 					<FormControlLabel
@@ -202,13 +202,13 @@ export default function DatasetModelCreationForm({
 								checked={advanced}
 								onChange={(e) => setAdvanced(e.target.checked)}
 								sx={{
-									color: '#646cff',
-									'&.Mui-checked': { color: '#646cff' }
+									color: '#452ee4',
+									'&.Mui-checked': { color: '#452ee4' }
 								}}
 							/>
 						}
 						label="Advanced Settings (scale individuals)"
-						sx={{ color: '#fff' }}
+						sx={{ color: 'text.primary' }}
 					/>
 				</Stack>
 			</Box>
@@ -216,7 +216,7 @@ export default function DatasetModelCreationForm({
 			{/* ADVANCED */}
 			{advanced && (
 				<Box>
-					<Typography variant="h6" sx={{ mb: 2, color: '#fff' }}>
+					<Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
 						Advanced Settings <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>(optional)</span>
 					</Typography>
 					<Stack spacing={2}>
@@ -232,14 +232,14 @@ export default function DatasetModelCreationForm({
 								size="small"
 								sx={{
 									'& .MuiOutlinedInput-root': {
-										color: '#fff',
-										'& fieldset': { borderColor: '#646cff' },
-										'&:hover fieldset': { borderColor: '#747eff' },
-										'&.Mui-focused fieldset': { borderColor: '#646cff' }
+										color: 'text.primary',
+										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
+										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
+										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
 									},
-									'& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.5)', opacity: 1 },
-									'& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-									'& .MuiInputLabel-root.Mui-focused': { color: '#646cff' }
+									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
+									'& .MuiInputLabel-root': { color: 'text.secondary' },
+									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
 								}}
 							/>
 							<TextField
@@ -253,14 +253,14 @@ export default function DatasetModelCreationForm({
 								size="small"
 								sx={{
 									'& .MuiOutlinedInput-root': {
-										color: '#fff',
-										'& fieldset': { borderColor: '#646cff' },
-										'&:hover fieldset': { borderColor: '#747eff' },
-										'&.Mui-focused fieldset': { borderColor: '#646cff' }
+										color: 'text.primary',
+										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
+										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
+										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
 									},
-									'& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.5)', opacity: 1 },
-									'& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-									'& .MuiInputLabel-root.Mui-focused': { color: '#646cff' }
+									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
+									'& .MuiInputLabel-root': { color: 'text.secondary' },
+									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
 								}}
 							/>
 							<TextField
@@ -274,18 +274,18 @@ export default function DatasetModelCreationForm({
 								size="small"
 								sx={{
 									'& .MuiOutlinedInput-root': {
-										color: '#fff',
-										'& fieldset': { borderColor: '#646cff' },
-										'&:hover fieldset': { borderColor: '#747eff' },
-										'&.Mui-focused fieldset': { borderColor: '#646cff' }
+										color: 'text.primary',
+										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
+										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
+										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
 									},
-									'& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.5)', opacity: 1 },
-									'& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.7)' },
-									'& .MuiInputLabel-root.Mui-focused': { color: '#646cff' }
+									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
+									'& .MuiInputLabel-root': { color: 'text.secondary' },
+									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
 								}}
 							/>
 						</Box>
-						<Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)', mt: 1 }}>
+						<Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
 							Total individuals: <strong>{derivedTotal ?? '—'}</strong>
 						</Typography>
 					</Stack>
@@ -299,10 +299,10 @@ export default function DatasetModelCreationForm({
 				variant="contained"
 				fullWidth
 				sx={{
-					backgroundColor: '#646cff',
+					backgroundColor: '#452ee4',
 					padding: '0.75rem',
 					fontSize: '1rem',
-					'&:hover': { backgroundColor: '#747eff' },
+					'&:hover': { backgroundColor: '#241291' },
 					'&:disabled': { backgroundColor: '#555', color: 'rgba(255, 255, 255, 0.5)' }
 				}}
 			>
@@ -327,8 +327,8 @@ export default function DatasetModelCreationForm({
 
 			{/* DEBUG JSON OUTPUT */}
 			{debugMode && responseJson && (
-				<Paper sx={{ p: 2, backgroundColor: '#0a0a0a', border: '1px solid #646cff', borderRadius: '4px' }}>
-					<Typography variant="caption" sx={{ color: '#646cff', display: 'block', mb: 1 }}>
+				<Paper sx={{ p: 2, bgcolor: 'background.default', border: '2px solid #452ee4', borderRadius: '4px' }}>
+					<Typography variant="caption" sx={{ color: '#452ee4', display: 'block', mb: 1 }}>
 						Debug: Response
 					</Typography>
 					<Box
@@ -336,7 +336,7 @@ export default function DatasetModelCreationForm({
 						sx={{
 							whiteSpace: 'pre-wrap',
 							wordWrap: 'break-word',
-							color: '#fff',
+							color: 'text.primary',
 							fontSize: '0.75rem',
 							overflow: 'auto',
 							maxHeight: '300px'

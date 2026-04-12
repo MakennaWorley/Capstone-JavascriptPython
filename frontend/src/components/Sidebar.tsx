@@ -1,6 +1,8 @@
 import AddIcon from '@mui/icons-material/Add';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import CloseIcon from '@mui/icons-material/Close';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 import MenuIcon from '@mui/icons-material/Menu';
 import { Box, Divider, Drawer, IconButton, List, ListItemButton, ListItemIcon } from '@mui/material';
 import { useState } from 'react';
@@ -9,12 +11,14 @@ const DRAWER_WIDTH_OPEN = 280;
 const DRAWER_WIDTH_CLOSED = 80;
 
 interface SidebarProps {
+	darkMode: boolean;
+	onThemeToggle: () => void;
 	debugMode: boolean;
 	onDebugToggle: () => void;
 	onCreateDataset: () => void;
 }
 
-export default function Sidebar({ debugMode, onDebugToggle, onCreateDataset }: SidebarProps) {
+export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugToggle, onCreateDataset }: SidebarProps) {
 	const [open, setOpen] = useState(true);
 
 	const drawerWidth = open ? DRAWER_WIDTH_OPEN : DRAWER_WIDTH_CLOSED;
@@ -30,8 +34,8 @@ export default function Sidebar({ debugMode, onDebugToggle, onCreateDataset }: S
 					'& .MuiDrawer-paper': {
 						width: drawerWidth,
 						boxSizing: 'border-box',
-						backgroundColor: '#1a1a1a',
-						borderRight: '1px solid #646cff',
+						backgroundColor: darkMode ? '#000000' : '#ffffff',
+						borderRight: '2px solid #452ee4',
 						transition: 'width 0.3s ease',
 						overflowX: 'hidden'
 					}
@@ -46,12 +50,12 @@ export default function Sidebar({ debugMode, onDebugToggle, onCreateDataset }: S
 								margin: open ? '0.5rem' : '0.5rem auto',
 								width: open ? 'auto' : '56px',
 								borderRadius: '8px',
-								backgroundColor: '#646cff',
+								backgroundColor: '#452ee4',
 								color: 'white',
 								justifyContent: open ? 'flex-start' : 'center',
 								px: open ? 1 : 0,
 								'&:hover': {
-									backgroundColor: '#747eff'
+									backgroundColor: '#241291'
 								}
 							}}
 						>
@@ -62,11 +66,32 @@ export default function Sidebar({ debugMode, onDebugToggle, onCreateDataset }: S
 						</ListItemButton>
 					</List>
 
-					<Divider sx={{ my: 1, backgroundColor: '#646cff', mx: open ? 1 : 0.5 }} />
+					<Divider sx={{ my: 1, backgroundColor: '#452ee4', mx: open ? 1 : 0.5 }} />
 
 					{/* Bottom menu items */}
 					<Box sx={{ marginTop: 'auto', pb: 2, px: open ? 1 : 0 }}>
 						<List>
+							<ListItemButton
+								onClick={onThemeToggle}
+								title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+								sx={{
+									margin: open ? '0.5rem' : '0.5rem auto',
+									width: open ? 'auto' : '56px',
+									borderRadius: '8px',
+									backgroundColor: darkMode ? '#333' : '#e0e0e0',
+									color: darkMode ? 'white' : '#111',
+									justifyContent: open ? 'flex-start' : 'center',
+									px: open ? 1 : 0,
+									'&:hover': {
+										backgroundColor: darkMode ? '#444' : '#cfcfcf'
+									}
+								}}
+							>
+								<ListItemIcon sx={{ color: darkMode ? 'white' : '#111', minWidth: open ? '40px' : 'auto' }}>
+									{darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+								</ListItemIcon>
+								{open && <span style={{ marginLeft: '0.5rem', whiteSpace: 'nowrap' }}>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+							</ListItemButton>
 							<ListItemButton
 								onClick={onDebugToggle}
 								title={`Debug: ${debugMode ? 'ON' : 'OFF'}`}
@@ -101,11 +126,11 @@ export default function Sidebar({ debugMode, onDebugToggle, onCreateDataset }: S
 					top: '1rem',
 					left: '1rem',
 					zIndex: 1300,
-					color: '#646cff',
-					backgroundColor: '#1a1a1a',
-					border: '1px solid #646cff',
+					color: '#452ee4',
+					backgroundColor: darkMode ? '#000000' : '#ffffff',
+					border: '2px solid #452ee4',
 					'&:hover': {
-						backgroundColor: 'rgba(100, 108, 255, 0.1)'
+						backgroundColor: 'rgba(69, 46, 228, 0.1)'
 					}
 				}}
 			>

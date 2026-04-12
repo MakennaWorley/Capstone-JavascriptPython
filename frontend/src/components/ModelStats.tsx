@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 
 type PredictionError = { individual: string; site: string; predicted: number; actual: number };
@@ -33,6 +34,7 @@ function formatValue(v: any): string {
 }
 
 export default function ModelStats({ paths, testMetrics, images, debugMode = false, predictionErrors }: ModelStatsProps) {
+	const theme = useTheme();
 	const [rowPageIndex, setRowPageIndex] = useState(0);
 	const ROWS_PER_PAGE = 10;
 
@@ -46,7 +48,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 
 	if (!paths && !images && !testMetrics) {
 		return (
-			<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
+			<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: theme.palette.background.default, borderRadius: '8px' }}>
 				<h3 style={{ marginTop: 0 }}>Model Statistics</h3>
 				<p style={{ opacity: 0.6 }}>No test results available. Run a test first.</p>
 			</div>
@@ -56,7 +58,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 	const metricRows = testMetrics ? Object.entries(testMetrics as Record<string, any>).filter(([k]) => !SKIP_KEYS.has(k)) : [];
 
 	return (
-		<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
+		<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: theme.palette.background.default, borderRadius: '8px' }}>
 			<h3 style={{ marginTop: 0 }}>Model Statistics</h3>
 
 			{/* Summary sentence */}
@@ -107,11 +109,13 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 						<tbody>
 							{metricRows.map(([key, value]) => (
 								<tr key={key}>
-									<td style={{ padding: '0.4rem 1rem', borderBottom: '1px solid #2a2a2a' }}>{METRIC_LABELS[key] ?? key}</td>
+									<td style={{ padding: '0.4rem 1rem', borderBottom: `1px solid ${theme.palette.divider}` }}>
+										{METRIC_LABELS[key] ?? key}
+									</td>
 									<td
 										style={{
 											padding: '0.4rem 1rem',
-											borderBottom: '1px solid #2a2a2a',
+											borderBottom: `1px solid ${theme.palette.divider}`,
 											textAlign: 'right',
 											fontVariantNumeric: 'tabular-nums'
 										}}
@@ -131,7 +135,14 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 					<h4>Performance Graphs</h4>
 					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1rem' }}>
 						{images.graph_test_base64 && (
-							<div style={{ backgroundColor: '#0a0a0a', padding: '1rem', borderRadius: '8px', border: '1px solid #333' }}>
+							<div
+								style={{
+									backgroundColor: theme.palette.background.default,
+									padding: '1rem',
+									borderRadius: '8px',
+									border: `1px solid ${theme.palette.divider}`
+								}}
+							>
 								<h5 style={{ marginTop: 0, marginBottom: '1rem' }}>Test Performance</h5>
 								<img
 									src={`data:image/png;base64,${images.graph_test_base64}`}
@@ -146,7 +157,14 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							</div>
 						)}
 						{images.graph_cm_base64 && (
-							<div style={{ backgroundColor: '#0a0a0a', padding: '1rem', borderRadius: '8px', border: '1px solid #333' }}>
+							<div
+								style={{
+									backgroundColor: theme.palette.background.default,
+									padding: '1rem',
+									borderRadius: '8px',
+									border: `1px solid ${theme.palette.divider}`
+								}}
+							>
 								<h5 style={{ marginTop: 0, marginBottom: '1rem' }}>Confusion Matrix</h5>
 								<img
 									src={`data:image/png;base64,${images.graph_cm_base64}`}
@@ -166,7 +184,14 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 			{debugMode && testMetrics && (
 				<div style={{ marginBottom: '2rem' }}>
 					<h4>Raw Response</h4>
-					<div style={{ backgroundColor: '#0a0a0a', padding: '1rem', borderRadius: '4px', border: '1px solid #333' }}>
+					<div
+						style={{
+							backgroundColor: theme.palette.background.default,
+							padding: '1rem',
+							borderRadius: '4px',
+							border: `1px solid ${theme.palette.divider}`
+						}}
+					>
 						<pre style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.6' }}>{JSON.stringify(testMetrics, null, 2)}</pre>
 					</div>
 				</div>
@@ -197,7 +222,14 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							type="button"
 							onClick={() => setRowPageIndex(Math.min(rowPageIndex + 1, Math.ceil(predictionErrors.length / ROWS_PER_PAGE) - 1))}
 							disabled={(rowPageIndex + 1) * ROWS_PER_PAGE >= predictionErrors.length}
-							style={{ padding: '0.3rem 0.7rem', cursor: 'pointer' }}
+							style={{
+								padding: '0.3rem 0.7rem',
+								cursor: 'pointer',
+								backgroundColor: theme.palette.background.paper,
+								color: theme.palette.text.primary,
+								border: `1px solid ${theme.palette.divider}`,
+								borderRadius: '4px'
+							}}
 						>
 							↓ Next
 						</button>
@@ -211,6 +243,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 }
 
 function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
+	const theme = useTheme();
 	return (
 		<div style={{ overflowX: 'hidden', width: '100%', boxSizing: 'border-box', minHeight: '120px' }}>
 			<table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'auto' }}>
@@ -221,7 +254,7 @@ function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
 								key={h}
 								style={{
 									textAlign: 'left',
-									borderBottom: '1px solid #ccc',
+									borderBottom: `1px solid ${theme.palette.divider}`,
 									padding: '0.5rem',
 									whiteSpace: 'nowrap',
 									fontWeight: 'bold'
@@ -235,11 +268,13 @@ function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
 				<tbody>
 					{errors.map((e, ridx) => (
 						<tr key={ridx}>
-							<td style={{ borderBottom: '1px solid #2a2a2a', padding: '0.5rem', whiteSpace: 'nowrap' }}>{e.individual}</td>
-							<td style={{ borderBottom: '1px solid #2a2a2a', padding: '0.5rem', whiteSpace: 'nowrap' }}>{e.site}</td>
+							<td style={{ borderBottom: `1px solid ${theme.palette.divider}`, padding: '0.5rem', whiteSpace: 'nowrap' }}>
+								{e.individual}
+							</td>
+							<td style={{ borderBottom: `1px solid ${theme.palette.divider}`, padding: '0.5rem', whiteSpace: 'nowrap' }}>{e.site}</td>
 							<td
 								style={{
-									borderBottom: '1px solid #2a2a2a',
+									borderBottom: `1px solid ${theme.palette.divider}`,
 									padding: '0.5rem',
 									whiteSpace: 'nowrap',
 									color: '#ff6b6b',
@@ -250,10 +285,10 @@ function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
 							</td>
 							<td
 								style={{
-									borderBottom: '1px solid #2a2a2a',
+									borderBottom: `1px solid ${theme.palette.divider}`,
 									padding: '0.5rem',
 									whiteSpace: 'nowrap',
-									color: '#00aa00',
+									color: theme.palette.mode === 'dark' ? '#00cc44' : '#2e7d32',
 									fontWeight: 'bold'
 								}}
 							>

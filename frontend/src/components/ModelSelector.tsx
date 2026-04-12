@@ -15,9 +15,7 @@ type ModelSelectorProps = {
 export default function ModelSelector({ models, selected, onSelect, disabled = false }: ModelSelectorProps) {
 	if (models.length === 0) {
 		return (
-			<span style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem' }}>
-				Failed to load models. Please check your connection and refresh the page.
-			</span>
+			<span style={{ color: 'inherit', fontSize: '0.9rem' }}>Failed to load models. Please check your connection and refresh the page.</span>
 		);
 	}
 
@@ -39,8 +37,8 @@ export default function ModelSelector({ models, selected, onSelect, disabled = f
 		<FormControl fullWidth size="small" disabled={disabled}>
 			<InputLabel
 				sx={{
-					color: 'rgba(255, 255, 255, 0.7)',
-					'&.Mui-focused': { color: '#646cff' }
+					color: 'text.secondary',
+					'&.Mui-focused': { color: '#452ee4' }
 				}}
 			>
 				Choose a model
@@ -50,11 +48,11 @@ export default function ModelSelector({ models, selected, onSelect, disabled = f
 				onChange={(e) => handleChange(e.target.value)}
 				label="Choose a model"
 				sx={{
-					color: '#fff',
-					'& .MuiOutlinedInput-notchedOutline': { borderColor: '#646cff' },
-					'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#747eff' },
-					'&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#646cff' },
-					'& .MuiSvgIcon-root': { color: '#646cff' }
+					color: 'text.primary',
+					'& .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
+					'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#241291', borderWidth: '2px' },
+					'&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
+					'& .MuiSvgIcon-root': { color: '#452ee4' }
 				}}
 			>
 				<MenuItem value="" disabled>
