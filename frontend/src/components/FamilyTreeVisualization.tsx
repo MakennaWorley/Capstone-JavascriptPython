@@ -98,7 +98,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 				<div style={{ overflowX: 'auto' }}>
 					<svg width={WIDTH} height={HEIGHT} style={{ border: '1px solid #eee', background: '#fff' }} aria-label="Family tree image">
 						{/* Draw Edges */}
-					{layout.filteredEdges.map((edge, i) => {
+						{layout.filteredEdges.map((edge, i) => {
 							const start = layout.nodesById.get(edge.source);
 							const end = layout.nodesById.get(edge.target);
 							if (!start || !end) return null;
@@ -117,48 +117,48 @@ export default function FamilyTreeVisualization({ data }: Props) {
 						})}
 
 						{/* Draw Nodes */}
-					{Array.from(layout.nodesById.values()).map(({ x, y, node }) => {
-						const hasGenetics = node.observed.some((v) => v !== null);
-						const nodeFill = node.id === data.focus_id ? '#3b82f6' : hasGenetics ? '#bbf7d0' : '#fecaca';
-						const nodeStroke = node.id === data.focus_id ? '#1d4ed8' : hasGenetics ? '#16a34a' : '#dc2626';
-						return (
-							<g key={node.id} style={{ cursor: 'pointer' }}>
-								<circle
-									cx={x}
-									cy={y}
-									r={NODE_RADIUS + 10}
-									fill="transparent"
-									pointerEvents="all"
-									onPointerEnter={() => {
-										setHoveredNode(node.id);
-									}}
-									onPointerLeave={() => {
-										setHoveredNode(null);
-									}}
-								/>
-								<circle
-									cx={x}
-									cy={y}
-									r={node.id === data.focus_id ? NODE_RADIUS + 4 : NODE_RADIUS}
-									fill={nodeFill}
-									stroke={nodeStroke}
-									strokeWidth={node.id === data.focus_id ? 3 : 1}
-									pointerEvents="none"
-								/>
-								<text
-									x={x}
-									y={y + 5}
-									textAnchor="middle"
-									fontSize="10px"
-									fontWeight="bold"
-									fill={node.id === data.focus_id ? '#fff' : '#000'}
-									pointerEvents="none"
-								>
-									{node.id}
-								</text>
-							</g>
-						);
-					})}
+						{Array.from(layout.nodesById.values()).map(({ x, y, node }) => {
+							const hasGenetics = node.observed.some((v) => v !== null);
+							const nodeFill = node.id === data.focus_id ? '#3b82f6' : hasGenetics ? '#bbf7d0' : '#fecaca';
+							const nodeStroke = node.id === data.focus_id ? '#1d4ed8' : hasGenetics ? '#16a34a' : '#dc2626';
+							return (
+								<g key={node.id} style={{ cursor: 'pointer' }}>
+									<circle
+										cx={x}
+										cy={y}
+										r={NODE_RADIUS + 10}
+										fill="transparent"
+										pointerEvents="all"
+										onPointerEnter={() => {
+											setHoveredNode(node.id);
+										}}
+										onPointerLeave={() => {
+											setHoveredNode(null);
+										}}
+									/>
+									<circle
+										cx={x}
+										cy={y}
+										r={node.id === data.focus_id ? NODE_RADIUS + 4 : NODE_RADIUS}
+										fill={nodeFill}
+										stroke={nodeStroke}
+										strokeWidth={node.id === data.focus_id ? 3 : 1}
+										pointerEvents="none"
+									/>
+									<text
+										x={x}
+										y={y + 5}
+										textAnchor="middle"
+										fontSize="10px"
+										fontWeight="bold"
+										fill={node.id === data.focus_id ? '#fff' : '#000'}
+										pointerEvents="none"
+									>
+										{node.id}
+									</text>
+								</g>
+							);
+						})}
 					</svg>
 				</div>
 
@@ -196,7 +196,8 @@ export default function FamilyTreeVisualization({ data }: Props) {
 			</div>
 
 			<p style={{ fontSize: '0.8rem', color: '#666', marginTop: '10px' }}>
-				* Vertical axis represents <b>Time</b>. Blue node is the focus individual. <span style={{ color: '#16a34a' }}>&#9632;</span> Known genotype &nbsp; <span style={{ color: '#dc2626' }}>&#9632;</span> Unknown genotype. Hover to see genotype vectors.
+				* Vertical axis represents <b>Time</b>. Blue node is the focus individual. <span style={{ color: '#16a34a' }}>&#9632;</span> Known
+				genotype &nbsp; <span style={{ color: '#dc2626' }}>&#9632;</span> Unknown genotype. Hover to see genotype vectors.
 			</p>
 		</div>
 	);

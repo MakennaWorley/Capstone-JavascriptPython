@@ -34,7 +34,8 @@ const MODEL_TYPE_INFO: Record<string, { label: string; description: string; stre
 		description:
 			'A graph-based deep learning model that operates over pedigree graphs. Message passing between connected individuals allows the model to leverage family-level genetic information.',
 		strengths: ['Leverages pedigree structure', 'Propagates information across relatives', 'Learns relational patterns'],
-		use_case: 'Most powerful when pedigree relationships are available and individuals share genetic material with close relatives in the dataset.'
+		use_case:
+			'Most powerful when pedigree relationships are available and individuals share genetic material with close relatives in the dataset.'
 	},
 	bayesian: {
 		label: 'Bayesian Classifier',
@@ -69,15 +70,11 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 				}}
 			>
 				<div style={{ padding: '1rem', backgroundColor: '#0a0a0a', borderRadius: '6px', border: '1px solid #333' }}>
-					<p style={{ margin: 0, fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-						Model Name
-					</p>
+					<p style={{ margin: 0, fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Model Name</p>
 					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>{model.model_name}</p>
 				</div>
 				<div style={{ padding: '1rem', backgroundColor: '#0a0a0a', borderRadius: '6px', border: '1px solid #333' }}>
-					<p style={{ margin: 0, fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-						Model Type
-					</p>
+					<p style={{ margin: 0, fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Model Type</p>
 					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>{info.label}</p>
 				</div>
 			</div>
@@ -107,7 +104,16 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 					border: '1px solid #1e4d1e'
 				}}
 			>
-				<p style={{ margin: 0, fontSize: '0.75rem', color: '#6fcf6f', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem' }}>
+				<p
+					style={{
+						margin: 0,
+						fontSize: '0.75rem',
+						color: '#6fcf6f',
+						textTransform: 'uppercase',
+						letterSpacing: '0.05em',
+						marginBottom: '0.4rem'
+					}}
+				>
 					Recommended Use Case
 				</p>
 				<p style={{ margin: 0, lineHeight: '1.6' }}>{info.use_case}</p>

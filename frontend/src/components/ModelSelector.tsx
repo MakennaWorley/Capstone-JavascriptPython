@@ -1,3 +1,5 @@
+import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+
 type Model = {
 	model_name: string;
 	model_type: string;
@@ -13,9 +15,9 @@ type ModelSelectorProps = {
 export default function ModelSelector({ models, selected, onSelect, disabled = false }: ModelSelectorProps) {
 	if (models.length === 0) {
 		return (
-			<p style={{ opacity: 0.8 }}>
-				Failed to load models. Please check your connection and refresh the page. If the problem persists, contact support.
-			</p>
+			<span style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem' }}>
+				Failed to load models. Please check your connection and refresh the page.
+			</span>
 		);
 	}
 
@@ -23,33 +25,50 @@ export default function ModelSelector({ models, selected, onSelect, disabled = f
 	const getModelKey = (model: Model) => `${model.model_name}::${model.model_type}`;
 	const selectedKey = selected ? getModelKey(selected) : '';
 
-	const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		const key = e.target.value;
-		if (!key) {
+	const handleChange = (value: string) => {
+		if (!value) {
 			onSelect(null);
 			return;
 		}
 
-		const model = models.find((m) => getModelKey(m) === key);
+		const model = models.find((m) => getModelKey(m) === value);
 		onSelect(model || null);
 	};
 
 	return (
-		<label>
-			<span style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Choose a model</span>
-			<select value={selectedKey} onChange={handleChange} disabled={disabled} style={{ padding: '0.4rem', minWidth: '260px' }}>
-				<option value="" disabled>
+		<FormControl fullWidth size="small" disabled={disabled}>
+			<InputLabel
+				sx={{
+					color: 'rgba(255, 255, 255, 0.7)',
+					'&.Mui-focused': { color: '#646cff' }
+				}}
+			>
+				Choose a model
+			</InputLabel>
+			<Select
+				value={selectedKey}
+				onChange={(e) => handleChange(e.target.value)}
+				label="Choose a model"
+				sx={{
+					color: '#fff',
+					'& .MuiOutlinedInput-notchedOutline': { borderColor: '#646cff' },
+					'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#747eff' },
+					'&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#646cff' },
+					'& .MuiSvgIcon-root': { color: '#646cff' }
+				}}
+			>
+				<MenuItem value="" disabled>
 					Select…
-				</option>
+				</MenuItem>
 				{models.map((model) => {
 					const key = getModelKey(model);
 					return (
-						<option key={key} value={key}>
+						<MenuItem key={key} value={key}>
 							{model.model_name} ({model.model_type})
-						</option>
+						</MenuItem>
 					);
 				})}
-			</select>
-		</label>
+			</Select>
+		</FormControl>
 	);
 }

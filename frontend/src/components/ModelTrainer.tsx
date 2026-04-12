@@ -11,7 +11,12 @@ type ModelTrainerProps = {
 	xApiKey: string;
 	selectedDataset: string;
 	selectedModel: Model | null;
-	onTestComplete?: (data: { paths: any; testMetrics: any; images: any; predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }> }) => void;
+	onTestComplete?: (data: {
+		paths: any;
+		testMetrics: any;
+		images: any;
+		predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }>;
+	}) => void;
 };
 
 type ApiSuccessTest = {
@@ -68,7 +73,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 
 			if (result.status === 'success') {
 				setError(null);
-			if (onTestComplete) {
+				if (onTestComplete) {
 					onTestComplete({
 						paths: result.data.paths,
 						testMetrics: result.data.test_metrics,

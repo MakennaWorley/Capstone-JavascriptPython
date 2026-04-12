@@ -1,3 +1,5 @@
+import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+
 type DatasetSelectorProps = {
 	datasets: string[];
 	selected: string;
@@ -8,25 +10,43 @@ type DatasetSelectorProps = {
 export default function DatasetSelector({ datasets, selected, onSelect, disabled = false }: DatasetSelectorProps) {
 	if (datasets.length === 0) {
 		return (
-			<p style={{ opacity: 0.8 }}>
-				Failed to load datasets. Please check your connection and refresh the page. If the problem persists, contact support.
-			</p>
+			<span style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.9rem' }}>
+				Failed to load datasets. Please check your connection and refresh the page.
+			</span>
 		);
 	}
 
 	return (
-		<label>
-			<span style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Choose a dataset</span>
-			<select value={selected} onChange={(e) => onSelect(e.target.value)} disabled={disabled} style={{ padding: '0.4rem', minWidth: '260px' }}>
-				<option value="" disabled>
+		<FormControl fullWidth size="small" disabled={disabled}>
+			<InputLabel
+				sx={{
+					color: 'rgba(255, 255, 255, 0.7)',
+					'&.Mui-focused': { color: '#646cff' }
+				}}
+			>
+				Choose a dataset
+			</InputLabel>
+			<Select
+				value={selected}
+				onChange={(e) => onSelect(e.target.value)}
+				label="Choose a dataset"
+				sx={{
+					color: '#fff',
+					'& .MuiOutlinedInput-notchedOutline': { borderColor: '#646cff' },
+					'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#747eff' },
+					'&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#646cff' },
+					'& .MuiSvgIcon-root': { color: '#646cff' }
+				}}
+			>
+				<MenuItem value="" disabled>
 					Select…
-				</option>
+				</MenuItem>
 				{datasets.map((d) => (
-					<option key={d} value={d}>
+					<MenuItem key={d} value={d}>
 						{d}
-					</option>
+					</MenuItem>
 				))}
-			</select>
-		</label>
+			</Select>
+		</FormControl>
 	);
 }

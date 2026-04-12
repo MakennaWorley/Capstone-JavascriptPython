@@ -36,10 +36,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 	const [rowPageIndex, setRowPageIndex] = useState(0);
 	const ROWS_PER_PAGE = 10;
 
-	const uniqueErrorSites = useMemo(
-		() => new Set((predictionErrors ?? []).map((e) => e.site)).size,
-		[predictionErrors]
-	);
+	const uniqueErrorSites = useMemo(() => new Set((predictionErrors ?? []).map((e) => e.site)).size, [predictionErrors]);
 
 	const pagedErrors = useMemo(() => {
 		const list = predictionErrors ?? [];
@@ -56,9 +53,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 		);
 	}
 
-	const metricRows = testMetrics
-		? Object.entries(testMetrics as Record<string, any>).filter(([k]) => !SKIP_KEYS.has(k))
-		: [];
+	const metricRows = testMetrics ? Object.entries(testMetrics as Record<string, any>).filter(([k]) => !SKIP_KEYS.has(k)) : [];
 
 	return (
 		<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
@@ -67,8 +62,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 			{/* Summary sentence */}
 			{testMetrics && (
 				<p style={{ marginBottom: '1.25rem' }}>
-					Model <strong>{testMetrics.model ?? '—'}</strong> was applied to dataset{' '}
-					<strong>{testMetrics.dataset ?? '—'}</strong>.
+					Model <strong>{testMetrics.model ?? '—'}</strong> was applied to dataset <strong>{testMetrics.dataset ?? '—'}</strong>.
 				</p>
 			)}
 
@@ -113,9 +107,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 						<tbody>
 							{metricRows.map(([key, value]) => (
 								<tr key={key}>
-									<td style={{ padding: '0.4rem 1rem', borderBottom: '1px solid #2a2a2a' }}>
-										{METRIC_LABELS[key] ?? key}
-									</td>
+									<td style={{ padding: '0.4rem 1rem', borderBottom: '1px solid #2a2a2a' }}>{METRIC_LABELS[key] ?? key}</td>
 									<td
 										style={{
 											padding: '0.4rem 1rem',
@@ -162,9 +154,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 									style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
 								/>
 								{paths?.graph_cm && (
-									<p style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '0.5rem', wordBreak: 'break-all' }}>
-										{paths.graph_cm}
-									</p>
+									<p style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '0.5rem', wordBreak: 'break-all' }}>{paths.graph_cm}</p>
 								)}
 							</div>
 						)}
@@ -188,11 +178,10 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 					<h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Prediction Error Analysis</h4>
 
 					<p style={{ marginTop: 0, opacity: 0.8, fontSize: '0.875rem' }}>
-						{predictionErrors.length} error{predictionErrors.length !== 1 ? 's' : ''} across{' '}
-						{uniqueErrorSites} site{uniqueErrorSites !== 1 ? 's' : ''}
+						{predictionErrors.length} error{predictionErrors.length !== 1 ? 's' : ''} across {uniqueErrorSites} site
+						{uniqueErrorSites !== 1 ? 's' : ''}
 						{'  ·  '}Showing {predictionErrors.length === 0 ? 0 : rowPageIndex * ROWS_PER_PAGE + 1}–
-						{Math.min((rowPageIndex + 1) * ROWS_PER_PAGE, predictionErrors.length)} of{' '}
-						{predictionErrors.length}
+						{Math.min((rowPageIndex + 1) * ROWS_PER_PAGE, predictionErrors.length)} of {predictionErrors.length}
 					</p>
 
 					<div style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -206,11 +195,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 						</button>
 						<button
 							type="button"
-							onClick={() =>
-								setRowPageIndex(
-									Math.min(rowPageIndex + 1, Math.ceil(predictionErrors.length / ROWS_PER_PAGE) - 1)
-								)
-							}
+							onClick={() => setRowPageIndex(Math.min(rowPageIndex + 1, Math.ceil(predictionErrors.length / ROWS_PER_PAGE) - 1))}
 							disabled={(rowPageIndex + 1) * ROWS_PER_PAGE >= predictionErrors.length}
 							style={{ padding: '0.3rem 0.7rem', cursor: 'pointer' }}
 						>
@@ -250,12 +235,8 @@ function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
 				<tbody>
 					{errors.map((e, ridx) => (
 						<tr key={ridx}>
-							<td style={{ borderBottom: '1px solid #2a2a2a', padding: '0.5rem', whiteSpace: 'nowrap' }}>
-								{e.individual}
-							</td>
-							<td style={{ borderBottom: '1px solid #2a2a2a', padding: '0.5rem', whiteSpace: 'nowrap' }}>
-								{e.site}
-							</td>
+							<td style={{ borderBottom: '1px solid #2a2a2a', padding: '0.5rem', whiteSpace: 'nowrap' }}>{e.individual}</td>
+							<td style={{ borderBottom: '1px solid #2a2a2a', padding: '0.5rem', whiteSpace: 'nowrap' }}>{e.site}</td>
 							<td
 								style={{
 									borderBottom: '1px solid #2a2a2a',
