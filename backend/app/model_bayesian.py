@@ -91,7 +91,7 @@ class BayesianCategoricalDosageClassifier:
 		self.feature_std_: Optional[np.ndarray] = None
 
 		# posterior means for fast inference
-		self._W_mean: Optional[np.ndarray] = None  # (k, 3)
+		self._w_mean: Optional[np.ndarray] = None  # (k, 3)
 		self._b_mean: Optional[np.ndarray] = None  # (3,)
 
 	@property
@@ -154,7 +154,7 @@ class BayesianCategoricalDosageClassifier:
 				**sampler_kwargs,
 			)
 
-		self._W_mean = self.idata.posterior['W'].mean(axis=(0, 1)).values
+		self._w_mean = self.idata.posterior['W'].mean(axis=(0, 1)).values
 		self._mu_b_mean = self.idata.posterior['mu_b'].mean(axis=(0, 1)).values
 		return self
 
@@ -181,7 +181,7 @@ class BayesianCategoricalDosageClassifier:
 			# Fallback to global category means
 			intercept = self._mu_b_mean  # shape (3,)
 
-		logits = intercept + Xz @ self._W_mean
+		logits = intercept + Xz @ self._w_mean
 		expz = np.exp(logits - logits.max(axis=1, keepdims=True))
 		return (expz / expz.sum(axis=1, keepdims=True)).astype(np.float32)
 
@@ -216,7 +216,7 @@ class BayesianCategoricalDosageClassifier:
 			'tag': self.tag,
 			'feature_mean': self.feature_mean_.tolist(),
 			'feature_std': self.feature_std_.tolist(),
-			'posterior_means': {'W': self._W_mean.tolist(), 'mu_b': self._mu_b_mean.tolist()},
+			'posterior_means': {'W': self._w_mean.tolist(), 'mu_b': self._mu_b_mean.tolist()},
 			'params': {
 				'draws': self.draws,
 				'tune': self.tune,
@@ -239,6 +239,6 @@ class BayesianCategoricalDosageClassifier:
 
 		m.feature_mean_ = np.array(meta['feature_mean'], dtype=np.float32)
 		m.feature_std_ = np.array(meta['feature_std'], dtype=np.float32)
-		m._W_mean = np.array(meta['posterior_means']['W'], dtype=np.float32)
+		m._w_mean = np.array(meta['posterior_means']['W'], dtype=np.float32)
 		m._mu_b_mean = np.array(meta['posterior_means']['mu_b'], dtype=np.float32)
 		return m

@@ -209,22 +209,22 @@ def _run_fold_parallel(args):
 	"""
 	fold_idx, X_t, X_v, y_t, y_v, g_t, model_label = args
 
-	ModelCls, _ = _select_model(model_label)
+	model_cls, _ = _select_model(model_label)
 
 	if model_label == 'bayes_softmax3':
 		# Bayesian with optimized settings for CV (faster but still accurate)
-		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
+		fold_model = model_cls(chains=2, draws=500, tune=500, cores=2)
 	elif model_label == 'hmm_dosage':
 		# HMM with optimized settings for CV
-		fold_model = ModelCls(n_iter=20, verbose=False)
+		fold_model = model_cls(n_iter=20, verbose=False)
 	elif model_label == 'dnn_dosage':
 		# DNN with optimized settings for CV
-		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
+		fold_model = model_cls(epochs=50, verbose=False, early_stopping_patience=5)
 	elif model_label == 'gnn_dosage':
 		# GNN with optimized settings for CV
-		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
+		fold_model = model_cls(epochs=50, verbose=False, early_stopping_patience=5)
 	else:
-		fold_model = ModelCls()
+		fold_model = model_cls()
 
 	# X_t and y_t are already resampled by the caller
 	fold_model.fit(X_t, y_t, groups=g_t)
@@ -366,7 +366,7 @@ def train_eval(
 			pass  # Continue without optimization
 
 	# 1. Setup Model Types
-	ModelCls, model_tag = _select_model(model_label)
+	model_cls, model_tag = _select_model(model_label)
 	paths = model_paths(models_dir, train_base, model_tag)
 
 	# Create images directory
@@ -385,7 +385,7 @@ def train_eval(
 	if exists_check and not force_retrain:
 		print(f'Model already exists: Loading {model_tag} from {paths["meta"]}')
 		print('  To retrain, use force_retrain=True')
-		model = ModelCls.load(paths)
+		model = model_cls.load(paths)
 		trained = False
 		return {
 			'trained': trained,
@@ -405,7 +405,7 @@ def train_eval(
 	# Handle different constructor signatures with auto-optimized settings
 	if model_label == 'bayes_softmax3':
 		optimal_config = get_optimal_training_config()
-		model = ModelCls(
+		model = model_cls(
 			draws=optimal_config['draws'],
 			tune=optimal_config['tune'],
 			chains=optimal_config['chains'],
@@ -415,13 +415,13 @@ def train_eval(
 			gpu_strategy=optimal_config['gpu_strategy'],
 		)
 	elif model_label == 'hmm_dosage':
-		model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
+		model = model_cls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
 	elif model_label == 'dnn_dosage':
-		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+		model = model_cls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	elif model_label == 'gnn_dosage':
-		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+		model = model_cls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	else:
-		model = ModelCls(random_seed=seed)
+		model = model_cls(random_seed=seed)
 
 	model.fit(X_resampled, y_resampled, groups=groups_resampled)
 	trained = True
@@ -445,7 +445,7 @@ def train_eval(
 	# Reinitialize and train on combined data with auto-optimized settings
 	if model_label == 'bayes_softmax3':
 		optimal_config = get_optimal_training_config()
-		model = ModelCls(
+		model = model_cls(
 			draws=optimal_config['draws'],
 			tune=optimal_config['tune'],
 			chains=optimal_config['chains'],
@@ -455,13 +455,13 @@ def train_eval(
 			gpu_strategy=optimal_config['gpu_strategy'],
 		)
 	elif model_label == 'hmm_dosage':
-		model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
+		model = model_cls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
 	elif model_label == 'dnn_dosage':
-		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+		model = model_cls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	elif model_label == 'gnn_dosage':
-		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+		model = model_cls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	else:
-		model = ModelCls(random_seed=seed)
+		model = model_cls(random_seed=seed)
 
 	model.fit(X_combined_resampled, y_combined_resampled, groups=groups_combined_resampled)
 
@@ -616,7 +616,7 @@ def test_on_new_data(
 		print('  Re-running prediction to return full stats and error analysis.')
 
 	# 1. Setup Model Types and Paths
-	ModelCls, model_tag = _select_model(model_type)
+	model_cls, model_tag = _select_model(model_type)
 	paths = model_paths(models_dir, model_name, model_tag)
 
 	# 2. Check if Model Exists
@@ -629,7 +629,7 @@ def test_on_new_data(
 
 	# 3. Load the Pre-trained Model
 	print(f'Loading existing {model_tag} from {paths["meta"]}')
-	model = ModelCls.load(paths)
+	model = model_cls.load(paths)
 
 	# Setup log file for test output
 	logs_dir = get_or_create_logs_dir()

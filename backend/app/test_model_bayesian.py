@@ -58,7 +58,7 @@ class TestBayesianCategoricalDosageClassifierInitialization:
 		assert model.idata is None
 		assert model.feature_mean_ is None
 		assert model.feature_std_ is None
-		assert model._W_mean is None
+		assert model._w_mean is None
 		assert model._b_mean is None
 
 
@@ -107,9 +107,9 @@ class TestBayesianCategoricalDosageClassifierFit:
 		groups = np.array([0, 0, 1], dtype=np.int32)
 
 		model.fit(X, y, groups)
-		assert model._W_mean is not None
+		assert model._w_mean is not None
 		assert model._mu_b_mean is not None
-		assert model._W_mean.shape == (2, 3)  # n_features x 3 classes
+		assert model._w_mean.shape == (2, 3)  # n_features x 3 classes
 		assert model._mu_b_mean.shape == (3,)
 
 
@@ -294,7 +294,7 @@ class TestBayesianCategoricalDosageClassifierPersistence:
 			# (values round-trip through JSON as Python floats, causing sub-epsilon differences)
 			np.testing.assert_allclose(loaded.feature_mean_, model.feature_mean_, rtol=1e-5)
 			np.testing.assert_allclose(loaded.feature_std_, model.feature_std_, rtol=1e-5)
-			np.testing.assert_allclose(loaded._W_mean, model._W_mean, rtol=1e-5)
+			np.testing.assert_allclose(loaded._w_mean, model._w_mean, rtol=1e-5)
 			np.testing.assert_allclose(loaded._mu_b_mean, model._mu_b_mean, rtol=1e-5)
 
 			# Predictions must match within float32 precision
