@@ -65,6 +65,10 @@ class TestHMMDosageClassifierInitialization:
 		assert model.feature_mean_ is None
 		assert model.feature_std_ is None
 		assert model.state_to_dosage_ is None
+		assert model.pycm_train_ is None
+		assert model.pycm_metrics_ is None
+		assert model.group_models == {}
+		assert model.use_groups is False
 
 	def test_tag_property(self):
 		"""Test tag property"""
@@ -154,9 +158,18 @@ class TestHMMDosageClassifierFitting:
 		model.fit(X, y)
 
 		assert model.pycm_metrics_ is not None
-		assert 'overall_accuracy' in model.pycm_metrics_
-		assert 'kappa' in model.pycm_metrics_
-		assert 'overall_f1' in model.pycm_metrics_
+		required_keys = {
+			'overall_accuracy',
+			'kappa',
+			'overall_f1',
+			'overall_precision',
+			'overall_recall',
+			'class_accuracy',
+			'class_f1',
+			'class_precision',
+			'class_recall',
+		}
+		assert required_keys <= set(model.pycm_metrics_.keys())
 
 
 class TestHMMDosageClassifierPrediction:
@@ -187,6 +200,15 @@ class TestHMMDosageClassifierPrediction:
 
 		with pytest.raises(RuntimeError, match='must be fitted'):
 			model.predict_proba(X)
+
+	def test_predict_class_not_fitted_raises(self):
+		"""Test that predict_class raises error if model not fitted"""
+		model = HMMDosageClassifier()
+
+		X = np.random.randn(10, 5).astype(np.float32)
+
+		with pytest.raises(RuntimeError, match='must be fitted'):
+			model.predict_class(X)
 
 	def test_predict_class_basic(self):
 		"""Test class prediction"""
@@ -292,7 +314,6 @@ class TestHMMDosageClassifierEvaluation:
 		assert hasattr(pycm_cm, 'Overall_ACC')
 		assert hasattr(pycm_cm, 'F1_Macro')
 
-	@pytest.mark.xfail(reason='model_hmm.py has covariance shape bug in predictions on different data')
 	def test_evaluate_pycm_different_data(self):
 		"""Test PYCM evaluation on different data"""
 		model = HMMDosageClassifier(n_iter=5, verbose=False)
@@ -348,7 +369,6 @@ class TestHMMDosageClassifierPersistence:
 			with pytest.raises(RuntimeError, match='No model to save'):
 				model.save(paths, extra_meta={})
 
-	@pytest.mark.xfail(reason='model_hmm.py has covariance shape bug in save/load')
 	def test_load_basic(self):
 		"""Test loading model"""
 		model = HMMDosageClassifier(n_iter=5, verbose=False, random_seed=42)
@@ -377,7 +397,6 @@ class TestHMMDosageClassifierPersistence:
 			assert loaded_model.feature_std_ is not None
 			assert loaded_model.state_to_dosage_ is not None
 
-	@pytest.mark.xfail(reason='model_hmm.py has covariance shape bug in save/load')
 	def test_load_predictions_match_original(self):
 		"""Test that predictions from loaded model match original"""
 		model = HMMDosageClassifier(n_iter=5, verbose=False, random_seed=42)
@@ -410,7 +429,6 @@ class TestHMMDosageClassifierPersistence:
 			np.testing.assert_array_equal(orig_pred, loaded_pred)
 			np.testing.assert_allclose(orig_proba, loaded_proba, rtol=1e-5)
 
-	@pytest.mark.xfail(reason='model_hmm.py has covariance shape bug in save/load')
 	def test_load_feature_scaling_preserved(self):
 		"""Test that feature scaling is preserved after load"""
 		model = HMMDosageClassifier(n_iter=5, verbose=False)
@@ -528,7 +546,6 @@ class TestHMMDosageClassifierEdgeCases:
 class TestHMMDosageClassifierIntegration:
 	"""Integration tests for HMMDosageClassifier"""
 
-	@pytest.mark.xfail(reason='model_hmm.py has covariance shape bug in save/load')
 	def test_full_workflow(self):
 		"""Test complete workflow: create, fit, predict, save, load"""
 		# Create and fit model

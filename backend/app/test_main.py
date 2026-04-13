@@ -130,6 +130,18 @@ class TestDatasetDashboardEndpoint:
 			assert data['status'] == 'error'
 			assert data['code'] == 'CSV_DECODE_FAILED'
 
+	def test_dashboard_generic_error(self):
+		"""Unexpected exceptions return 500 DASHBOARD_FAILED"""
+		with patch('app.main.get_dataset_dashboard_files') as mock_get_files:
+			mock_get_files.side_effect = RuntimeError('disk read error')
+
+			response = client.get('/api/dataset/test_dataset/dashboard')
+
+			assert response.status_code == 500
+			data = response.json()
+			assert data['status'] == 'error'
+			assert data['code'] == 'DASHBOARD_FAILED'
+
 
 class TestFamilyTreeEndpoint:
 	"""Tests for /api/dataset/{dataset_name}/tree/{individual_id} endpoint"""
@@ -169,6 +181,18 @@ class TestFamilyTreeEndpoint:
 			assert data['status'] == 'error'
 			assert data['code'] == 'FILE_NOT_FOUND'
 
+	def test_family_tree_generic_error(self):
+		"""Unexpected exceptions return 500 TREE_BUILD_FAILED"""
+		with patch('app.main.get_individual_family_tree_data') as mock_get_tree:
+			mock_get_tree.side_effect = RuntimeError('graph traversal failed')
+
+			response = client.get('/api/dataset/test_dataset/tree/1')
+
+			assert response.status_code == 500
+			data = response.json()
+			assert data['status'] == 'error'
+			assert data['code'] == 'TREE_BUILD_FAILED'
+
 
 class TestDatasetDownloadEndpoint:
 	"""Tests for /api/dataset/{dataset_name}/download endpoint"""
@@ -203,6 +227,18 @@ class TestDatasetDownloadEndpoint:
 			data = response.json()
 			assert data['status'] == 'error'
 			assert data['code'] == 'DATASET_FILES_MISSING'
+
+	def test_download_generic_error(self):
+		"""Unexpected exceptions return 500 DATASET_ZIP_FAILED"""
+		with patch('app.main.get_all_dataset_files') as mock_get_files:
+			mock_get_files.side_effect = RuntimeError('I/O error')
+
+			response = client.get('/api/dataset/test_dataset/download')
+
+			assert response.status_code == 500
+			data = response.json()
+			assert data['status'] == 'error'
+			assert data['code'] == 'DATASET_ZIP_FAILED'
 
 
 class TestModelsListEndpoint:
@@ -284,6 +320,19 @@ class TestCreateDatasetEndpoint:
 		assert data['status'] == 'error'
 		assert data['code'] == 'INVALID_PARAMS'
 
+	def test_create_dataset_value_error(self):
+		"""ValueError (e.g. dataset already exists) returns 400 VALIDATION_ERROR"""
+		with patch('app.main.create_data_from_params') as mock_create:
+			mock_create.side_effect = ValueError('Dataset "test_dataset" already exists')
+
+			payload = {'params': {'name': 'test_dataset', 'num_individuals': 100}}
+			response = client.post('/api/create/data', json=payload)
+
+			assert response.status_code == 400
+			data = response.json()
+			assert data['status'] == 'error'
+			assert data['code'] == 'VALIDATION_ERROR'
+
 	def test_create_dataset_generic_error(self):
 		"""Test dataset creation with generic error"""
 		with patch('app.main.create_data_from_params') as mock_create:
@@ -301,22 +350,21 @@ class TestCreateDatasetEndpoint:
 class TestModelTestEndpoint:
 	"""Tests for /api/models/test endpoint"""
 
-	def test_test_model_success(self, tmp_path):
-		"""Test successful model testing"""
-		# Create a dummy log file that the endpoint will try to read
-		log_file = tmp_path / 'model.bayes_softmax3.test_dataset.txt'
-		log_file.write_text('Test results here')
-
+	def test_test_model_success(self):
+		"""Test successful model testing returns 200 with expected data keys"""
 		with patch('app.main.test_on_new_data') as mock_test:
-			mock_test.return_value = {'test_metrics': {'accuracy': 0.85}, 'paths': {}}
+			mock_test.return_value = {'test_metrics': {'accuracy': 0.85}, 'paths': {}, 'prediction_errors': []}
 
-			with patch('app.main.MODELS_DIR', tmp_path):
-				payload = {'dataset_name': 'dataset', 'model_name': 'model', 'model_type': 'bayes_softmax3'}
-				response = client.post('/api/models/test', json=payload)
+			payload = {'dataset_name': 'dataset', 'model_name': 'model', 'model_type': 'bayes_softmax3'}
+			response = client.post('/api/models/test', json=payload)
 
-				# The endpoint tries to load a log file from a hardcoded location, so it will fail
-				# For now, just test that the error handling works properly
-				assert response.status_code in [200, 500]
+			assert response.status_code == 200
+			data = response.json()
+			assert data['status'] == 'success'
+			assert 'test_metrics' in data['data']
+			assert 'images' in data['data']
+			assert 'prediction_errors' in data['data']
+			assert data['data']['test_metrics'] == {'accuracy': 0.85}
 
 	def test_test_model_invalid_json(self):
 		"""Test model testing with invalid JSON"""
@@ -351,7 +399,7 @@ class TestModelTestEndpoint:
 			assert data['code'] == 'MODEL_NOT_FOUND'
 
 	def test_test_model_invalid_type(self):
-		"""Test model testing with invalid model type"""
+		"""Test model testing with invalid model type — ValueError maps to VALIDATION_ERROR"""
 		with patch('app.main.test_on_new_data') as mock_test:
 			mock_test.side_effect = ValueError('Unknown model label: invalid_model')
 
@@ -361,7 +409,20 @@ class TestModelTestEndpoint:
 			assert response.status_code == 400
 			data = response.json()
 			assert data['status'] == 'error'
-			assert data['code'] == 'INVALID_MODEL_TYPE'
+			assert data['code'] == 'VALIDATION_ERROR'
+
+	def test_test_model_generic_error(self):
+		"""Test model testing with unexpected error returns MODEL_TEST_FAILED"""
+		with patch('app.main.test_on_new_data') as mock_test:
+			mock_test.side_effect = RuntimeError('GPU out of memory')
+
+			payload = {'dataset_name': 'dataset', 'model_name': 'model', 'model_type': 'bayes_softmax3'}
+			response = client.post('/api/models/test', json=payload)
+
+			assert response.status_code == 500
+			data = response.json()
+			assert data['status'] == 'error'
+			assert data['code'] == 'MODEL_TEST_FAILED'
 
 
 class TestResponseFormat:

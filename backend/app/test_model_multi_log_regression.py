@@ -12,13 +12,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-# Handle module cleanup for proper imports
-if 'app.model_multi_log_regression' in sys.modules:
-	del sys.modules['app.model_multi_log_regression']
-if 'model_multi_log_regression' in sys.modules:
-	del sys.modules['model_multi_log_regression']
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from model_multi_log_regression import SklearnMultinomialClassifier
+# test_model_main.py mocks this module at import time; clear it so we get the real class
+sys.modules.pop('app.model_multi_log_regression', None)
+
+from app.model_multi_log_regression import SklearnMultinomialClassifier
 
 
 class TestSklearnMultinomialClassifierInitialization:
@@ -223,6 +222,14 @@ class TestSklearnMultinomialClassifierPrediction:
 		with pytest.raises(RuntimeError, match='must be fitted'):
 			model.predict_class(X)
 
+	def test_predict_unfitted_raises_error(self):
+		"""Test that predict raises error on unfitted model (via predict_proba)."""
+		model = SklearnMultinomialClassifier()
+		X = np.random.randn(10, 5).astype(np.float32)
+
+		with pytest.raises(RuntimeError, match='must be fitted'):
+			model.predict(X)
+
 	def test_predict_with_groups_ignored(self, fitted_model):
 		"""Test that groups parameter is accepted."""
 		X = np.random.randn(20, 8).astype(np.float32)
@@ -330,6 +337,34 @@ class TestSklearnMultinomialClassifierPersistence:
 			paths = {'dir': model_dir, 'meta': meta_path}
 			with pytest.raises(RuntimeError, match='must be fitted'):
 				model.save(paths, extra_meta={})
+
+	def test_save_extra_meta_preserved(self, fitted_model):
+		"""Test that extra_meta dict is stored under the 'extra' key."""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			model_dir = Path(tmpdir) / 'models'
+			model_dir.mkdir(parents=True)
+			meta_path = model_dir / 'test_model.json'
+
+			paths = {'dir': model_dir, 'meta': meta_path}
+			fitted_model.save(paths, extra_meta={'version': '2.0', 'train_src': 'tiny.training'})
+
+			data = json.loads(meta_path.read_text())
+			assert data['extra']['version'] == '2.0'
+			assert data['extra']['train_src'] == 'tiny.training'
+
+	def test_save_includes_random_seed(self, fitted_model):
+		"""Test that random_seed is stored in the saved JSON."""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			model_dir = Path(tmpdir) / 'models'
+			model_dir.mkdir(parents=True)
+			meta_path = model_dir / 'test_model.json'
+
+			paths = {'dir': model_dir, 'meta': meta_path}
+			fitted_model.save(paths, extra_meta={})
+
+			data = json.loads(meta_path.read_text())
+			assert 'random_seed' in data
+			assert isinstance(data['random_seed'], int)
 
 	def test_load_basic(self, fitted_model):
 		"""Test basic load functionality."""

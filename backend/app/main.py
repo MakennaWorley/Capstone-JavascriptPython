@@ -259,9 +259,9 @@ async def test_model_on_dataset(request: Request):
 		graph_cm_path = Path(paths_data.get('graph_cm', ''))
 
 		image_data = {}
-		if graph_test_path.exists():
+		if graph_test_path.is_file():
 			image_data['graph_test_base64'] = base64.b64encode(graph_test_path.read_bytes()).decode('ascii')
-		if graph_cm_path.exists():
+		if graph_cm_path.is_file():
 			image_data['graph_cm_base64'] = base64.b64encode(graph_cm_path.read_bytes()).decode('ascii')
 
 		return api_success(

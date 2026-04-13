@@ -89,43 +89,48 @@ class TestColName:
 class TestGetDatasetNames:
 	"""Test dataset name retrieval"""
 
-	def test_get_dataset_names_with_file(self):
-		"""Test reading dataset names from file"""
+	def test_returns_names_in_order(self):
+		"""Names are returned in file order"""
 		with tempfile.TemporaryDirectory() as tmpdir:
 			datasets_dir = Path(tmpdir)
-			names_file = datasets_dir / 'datasets.txt'
-
-			content = """dataset1
-            dataset2
-            # comment line
-            
-            dataset3
-            dataset1"""
-
-			names_file.write_text(content)
-
+			(datasets_dir / 'datasets.txt').write_text('alpha\nbeta\ngamma\n')
 			with patch('functions.DATASETS_DIR', datasets_dir):
-				with patch('functions.Path') as mock_path:
-					mock_path.return_value.parent = datasets_dir / 'app'
-					mock_path.return_value.resolve.return_value = datasets_dir / 'app'
-					mock_path.return_value.__truediv__.return_value = names_file
-					result = get_dataset_names()
+				result = get_dataset_names()
+			assert result == ['alpha', 'beta', 'gamma']
 
-			# Should deduplicate and preserve order, skip comments/blanks
-			assert 'dataset1' in result or len(result) >= 0
-
-	def test_get_dataset_names_no_file(self):
-		"""Test when datasets.txt doesn't exist"""
+	def test_deduplicates_while_preserving_order(self):
+		"""Duplicate entries are removed while keeping first occurrence"""
 		with tempfile.TemporaryDirectory() as tmpdir:
 			datasets_dir = Path(tmpdir)
-
+			(datasets_dir / 'datasets.txt').write_text('ds1\nds2\nds1\nds3\nds2\n')
 			with patch('functions.DATASETS_DIR', datasets_dir):
-				with patch('functions.Path') as mock_path:
-					mock_path.return_value.parent = datasets_dir
-					mock_path.return_value.resolve.return_value = datasets_dir
-					mock_path.return_value.__truediv__.return_value = datasets_dir / 'datasets.txt'
-					result = get_dataset_names()
+				result = get_dataset_names()
+			assert result == ['ds1', 'ds2', 'ds3']
 
+	def test_skips_blank_lines_and_comments(self):
+		"""Blank lines and lines starting with '#' are ignored"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)
+			(datasets_dir / 'datasets.txt').write_text('# header\n\nds1\n\n# note\nds2\n')
+			with patch('functions.DATASETS_DIR', datasets_dir):
+				result = get_dataset_names()
+			assert result == ['ds1', 'ds2']
+
+	def test_strips_whitespace(self):
+		"""Leading/trailing whitespace on each line is stripped"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)
+			(datasets_dir / 'datasets.txt').write_text('  ds1  \n\tds2\t\n')
+			with patch('functions.DATASETS_DIR', datasets_dir):
+				result = get_dataset_names()
+			assert result == ['ds1', 'ds2']
+
+	def test_returns_empty_list_when_file_missing(self):
+		"""Returns [] when datasets.txt does not exist"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)  # no datasets.txt created
+			with patch('functions.DATASETS_DIR', datasets_dir):
+				result = get_dataset_names()
 			assert result == []
 
 
@@ -258,9 +263,8 @@ class TestGetAllDatasetFiles:
 		with tempfile.TemporaryDirectory() as tmpdir:
 			datasets_dir = Path(tmpdir)
 
-			# Create all required files
-			base = datasets_dir / 'test'
-			(datasets_dir / 'test.trees').write_bytes(b'tree data')
+			trees_bytes = b'tree data'
+			(datasets_dir / 'test.trees').write_bytes(trees_bytes)
 			(datasets_dir / 'test.truth_genotypes.csv').write_text('truth,data')
 			(datasets_dir / 'test.observed_genotypes.csv').write_text('observed,data')
 			(datasets_dir / 'test.pedigree.csv').write_text('pedigree,data')
@@ -269,11 +273,13 @@ class TestGetAllDatasetFiles:
 			result = get_all_dataset_files('test', datasets_dir)
 
 			assert result['dataset'] == 'test'
-			assert 'trees_base64' in result
-			assert 'trees_name' in result
 			assert result['trees_name'] == 'test.trees'
-			assert 'truth_genotypes_csv' in result
-			assert 'observed_genotypes_csv' in result
+			assert result['trees_byte_length'] == len(trees_bytes)
+			assert result['trees_base64'] == base64.b64encode(trees_bytes).decode('ascii')
+			assert result['truth_genotypes_csv'] == 'truth,data'
+			assert result['observed_genotypes_csv'] == 'observed,data'
+			assert result['pedigree_csv'] == 'pedigree,data'
+			assert result['run_metadata_json'] == '{"meta": "data"}'
 
 	def test_get_all_dataset_files_missing(self):
 		"""Test error when files are missing"""
@@ -326,6 +332,13 @@ class TestGetGeneticDataFromId:
 
 			assert result == [0, 1, 2]
 
+	def test_get_genetic_data_from_id_file_not_found(self):
+		"""FileNotFoundError when no df and the CSV doesn't exist"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)  # no CSV created
+			with pytest.raises(FileNotFoundError):
+				get_genetic_data_from_id('nonexistent', 0, datasets_dir=datasets_dir)
+
 
 class TestGetIndividualFamilyTreeData:
 	"""Test family tree data retrieval"""
@@ -376,3 +389,52 @@ class TestGetIndividualFamilyTreeData:
 
 			with pytest.raises(FileNotFoundError):
 				get_individual_family_tree_data('test', 0, datasets_dir)
+
+	def test_get_individual_family_tree_data_missing_observed_file(self):
+		"""FileNotFoundError when the observed genotypes CSV is absent"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)
+
+			ped_df = pd.DataFrame({'individual_id': [0], 'time': [0.0], 'parent_0_id': [-1], 'parent_1_id': [-1]})
+			ped_df.to_csv(datasets_dir / 'test.pedigree.csv', index=False)
+			# observed_genotypes.csv intentionally omitted
+
+			with pytest.raises(FileNotFoundError):
+				get_individual_family_tree_data('test', 0, datasets_dir)
+
+	def test_get_individual_family_tree_data_missing_pedigree_columns(self):
+		"""ValueError when required columns are absent from the pedigree CSV"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)
+
+			# Pedigree missing parent columns
+			ped_df = pd.DataFrame({'individual_id': [0, 1], 'time': [1.0, 0.0]})
+			ped_df.to_csv(datasets_dir / 'test.pedigree.csv', index=False)
+
+			with pytest.raises(ValueError, match='missing columns'):
+				get_individual_family_tree_data('test', 0, datasets_dir)
+
+	def test_get_individual_family_tree_data_node_and_edge_structure(self):
+		"""Returned nodes and edges have the expected keys"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)
+
+			ped_df = pd.DataFrame({'individual_id': [0, 1, 2], 'time': [2.0, 1.0, 0.0], 'parent_0_id': [-1, 0, 0], 'parent_1_id': [-1, -1, 1]})
+			ped_df.to_csv(datasets_dir / 'test.pedigree.csv', index=False)
+
+			obs_df = pd.DataFrame({'i_0000': [0, 1], 'i_0001': [1, 0], 'i_0002': [0, 1]})
+			obs_df.to_csv(datasets_dir / 'test.observed_genotypes.csv', index=False)
+
+			result = get_individual_family_tree_data('test', 2, datasets_dir)
+
+			# Every node must have id, time, and observed keys
+			for node in result['nodes']:
+				assert 'id' in node, f'Node missing id: {node}'
+				assert 'time' in node, f'Node missing time: {node}'
+				assert 'observed' in node, f'Node missing observed: {node}'
+				assert isinstance(node['observed'], list)
+
+			# Every edge must have source and target keys
+			for edge in result['edges']:
+				assert 'source' in edge, f'Edge missing source: {edge}'
+				assert 'target' in edge, f'Edge missing target: {edge}'

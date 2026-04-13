@@ -267,6 +267,18 @@ class TestStandardizeApply:
 		X_train_std_verify = standardize_apply(X_train, mu, sd)
 		assert np.allclose(X_train_std, X_train_std_verify)
 
+	def test_standardize_apply_known_values(self):
+		"""Test standardize_apply with explicit mu/sd produces correct values"""
+		X = np.array([[4.0, 100.0], [6.0, 200.0]], dtype=np.float32)
+		mu = np.array([2.0, 50.0], dtype=np.float32)
+		sd = np.array([2.0, 50.0], dtype=np.float32)
+
+		X_std = standardize_apply(X, mu, sd)
+
+		# (4-2)/2=1, (100-50)/50=1, (6-2)/2=2, (200-50)/50=3
+		expected = np.array([[1.0, 1.0], [2.0, 3.0]], dtype=np.float32)
+		assert np.allclose(X_std, expected)
+
 
 class TestCoerceDosageClasses:
 	"""Test coerce_dosage_classes function"""
@@ -306,6 +318,14 @@ class TestCoerceDosageClasses:
 		y_coerced = coerce_dosage_classes(y)
 
 		assert np.all(y_coerced >= 0)
+
+	def test_coerce_bankers_rounding_at_half(self):
+		"""Test that np.rint uses banker's rounding (round-half-to-even)"""
+		# np.rint(0.5) -> 0 (rounds to even), np.rint(1.5) -> 2 (rounds to even)
+		# np.rint(2.5) -> 2 (rounds to even, then clipped to 2)
+		y = np.array([0.5, 1.5, 2.5], dtype=np.float32)
+		y_coerced = coerce_dosage_classes(y)
+		assert np.array_equal(y_coerced, [0, 2, 2])
 
 
 class TestModelPaths:
@@ -351,6 +371,19 @@ class TestModelPaths:
 
 			assert isinstance(paths['dir'], Path)
 			assert paths['dir'] == Path(tmpdir)
+
+	def test_model_paths_embeds_base_name_and_tag(self):
+		"""Test that base_name and model_tag are embedded in all non-dir paths"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			base_name = 'run1.training'
+			model_tag = 'bayes_softmax3'
+
+			paths = model_paths(tmpdir, base_name, model_tag)
+
+			for key in ('idata', 'meta', 'graph_test', 'graph_cm'):
+				name = paths[key].name
+				assert base_name in name, f'{key} path missing base_name'
+				assert model_tag in name, f'{key} path missing model_tag'
 
 
 class TestSaveAndLoadMeta:
@@ -460,3 +493,19 @@ class TestSaveAndLoadMeta:
 			assert parsed == payload
 			# Verify it's indented (human readable)
 			assert '\n' in json_text
+
+	def test_save_meta_keys_sorted(self):
+		"""Test that keys are written in sorted order (sort_keys=True)"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			tmpdir_path = Path(tmpdir)
+			paths = {'dir': tmpdir_path, 'meta': tmpdir_path / 'meta.json'}
+
+			payload = {'zebra': 1, 'alpha': 2, 'middle': 3}
+			save_common_meta(paths, payload)
+
+			json_text = paths['meta'].read_text(encoding='utf-8')
+			# Keys must appear in alphabetical order in the raw text
+			alpha_pos = json_text.index('alpha')
+			middle_pos = json_text.index('middle')
+			zebra_pos = json_text.index('zebra')
+			assert alpha_pos < middle_pos < zebra_pos

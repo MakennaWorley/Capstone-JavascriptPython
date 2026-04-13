@@ -7,13 +7,10 @@ and main optimization workflow.
 
 import os
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-# Handle module cleanup for proper imports
-if 'app.optimize_system' in sys.modules:
-	del sys.modules['app.optimize_system']
-if 'optimize_system' in sys.modules:
-	del sys.modules['optimize_system']
+sys.path.insert(0, str(Path(__file__).parent))
 
 from optimize_system import check_system_specs, install_missing_packages, optimize_system, set_environment_variables
 
@@ -95,13 +92,11 @@ class TestSetEnvironmentVariables:
 class TestCheckSystemSpecs:
 	"""Test system specification checking."""
 
-	@patch('optimize_system.sys')
-	def test_prints_header(self, mock_sys, capsys):
+	def test_prints_header(self, capsys):
 		"""Test that system specs header is printed."""
-		with patch('sys.stdout'):  # Suppress printing
-			pass
 		check_system_specs()
-		# Just verify function doesn't raise
+		captured = capsys.readouterr()
+		assert 'System Specifications' in captured.out
 
 	def test_handles_missing_psutil(self, capsys):
 		"""Test graceful handling when psutil is missing."""

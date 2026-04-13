@@ -37,6 +37,7 @@ class TestEvaluateAndGraphClf:
 		assert 'accuracy' in result
 		assert 'balanced_accuracy' in result
 		assert 'f1_macro' in result
+		assert 'f1_weighted' in result
 		assert 'auc_macro' in result
 		assert 0 <= result['accuracy'] <= 1
 		assert 0 <= result['balanced_accuracy'] <= 1
@@ -118,6 +119,33 @@ class TestEvaluateAndGraphClf:
 		call_args = model.predict_class.call_args
 		np.testing.assert_array_equal(call_args[0][0], X)
 		np.testing.assert_array_equal(call_args[1]['groups'], np.array([0, 0, 0]))
+
+	def test_evaluate_clf_fallback_no_predict_class(self):
+		"""Test fallback to model.predict() when predict_class is absent"""
+		model = MagicMock(spec=['predict', 'predict_proba'])  # no predict_class
+		model.predict = MagicMock(return_value=np.array([0, 1, 2]))
+		model.predict_proba = MagicMock(return_value=np.array([[0.9, 0.05, 0.05], [0.1, 0.8, 0.1], [0.1, 0.1, 0.8]]))
+
+		X = np.random.randn(3, 10).astype(np.float32)
+		y = np.array([0, 1, 2], dtype=np.float32)
+
+		result = evaluate_and_graph_clf(model, X, y, 'fallback_model', graph=False)
+
+		model.predict.assert_called_once()
+		assert result['accuracy'] == 1.0
+
+	def test_evaluate_clf_fallback_no_predict_proba(self):
+		"""Test fallback to label_binarize when predict_proba is absent"""
+		model = MagicMock(spec=['predict_class'])  # no predict_proba
+		model.predict_class = MagicMock(return_value=np.array([0, 1, 2]))
+
+		X = np.random.randn(3, 10).astype(np.float32)
+		y = np.array([0, 1, 2], dtype=np.float32)
+
+		result = evaluate_and_graph_clf(model, X, y, 'no_proba_model', graph=False)
+
+		assert 'accuracy' in result
+		assert 'auc_macro' in result
 
 
 class TestEvaluateAndGraphReg:
