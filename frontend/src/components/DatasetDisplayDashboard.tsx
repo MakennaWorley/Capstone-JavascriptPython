@@ -91,6 +91,8 @@ function clampText(s: string, maxLen = 80): string {
 }
 
 export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, maxPreviewRows = 10 }: DatasetDashboardProps) {
+	const theme = useTheme();
+	const isDark = theme.palette.mode === 'dark';
 	const [loading, setLoading] = useState(false);
 	const [showLoadingProgress, setShowLoadingProgress] = useState(false);
 	const [data, setData] = useState<DashboardState>({});
@@ -351,13 +353,29 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 
 					<p style={{ marginTop: 0, opacity: 0.8, display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
 						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-							<span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 2, backgroundColor: '#00aa00' }} />
-							<span style={{ color: '#00aa00', fontWeight: 'bold' }}>Known</span>
+							<span
+								style={{
+									display: 'inline-block',
+									width: 12,
+									height: 12,
+									borderRadius: 2,
+									backgroundColor: isDark ? '#66bb6a' : '#2e7d32'
+								}}
+							/>
+							<span style={{ color: isDark ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Known</span>
 							<span style={{ opacity: 0.7 }}>= observed matches truth</span>
 						</span>
 						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-							<span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 2, backgroundColor: '#ff6b6b' }} />
-							<span style={{ color: '#ff6b6b', fontWeight: 'bold' }}>Inferred</span>
+							<span
+								style={{
+									display: 'inline-block',
+									width: 12,
+									height: 12,
+									borderRadius: 2,
+									backgroundColor: isDark ? '#ff6b6b' : '#c62828'
+								}}
+							/>
+							<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Inferred</span>
 							<span style={{ opacity: 0.7 }}>= missing or unobserved</span>
 						</span>
 					</p>
@@ -540,7 +558,13 @@ function GenotypeTable({
 											sx={{
 												whiteSpace: 'nowrap',
 												fontWeight: isKnown ? 'bold' : 'normal',
-												color: isKnown ? '#00aa00' : '#ff6b6b'
+												color: isKnown
+													? theme.palette.mode === 'dark'
+														? '#66bb6a'
+														: '#2e7d32'
+													: theme.palette.mode === 'dark'
+														? '#ff6b6b'
+														: '#c62828'
 											}}
 											title={item.displayed[colIdx] ?? ''}
 										>

@@ -134,8 +134,12 @@ export default function FamilyTreeVisualization({ data }: Props) {
 						width={WIDTH}
 						height={HEIGHT}
 						style={{ border: `1px solid ${theme.palette.divider}`, background: theme.palette.background.default }}
-						aria-label="Family tree image"
+						role="img"
+						aria-label={`Family tree diagram for ${data.dataset}, focused on individual ${data.focus_id}`}
 					>
+						<title>
+							Family tree diagram for {data.dataset}, focused on individual {data.focus_id}
+						</title>
 						{/* Family tree connectors */}
 						{layout.familyGroups.map((group, gi) => {
 							const stroke = theme.palette.text.secondary;
@@ -345,20 +349,32 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							const hasGenetics = node.observed.some((v) => v !== null);
 							const isFocus = node.id === data.focus_id;
 							const focusMissingGenetics = isFocus && !hasGenetics;
-							const nodeFill = isFocus ? '#3b82f6' : hasGenetics ? '#bbf7d0' : '#fecaca';
+							const nodeFill = isFocus ? '#2563eb' : hasGenetics ? '#bbf7d0' : '#fecaca';
 							const nodeStroke = isFocus ? (hasGenetics ? '#1d4ed8' : '#dc2626') : hasGenetics ? '#16a34a' : '#dc2626';
 							return (
-								<g key={node.id} style={{ cursor: 'pointer' }}>
+								<g
+									key={node.id}
+									style={{ cursor: 'pointer' }}
+									role="img"
+									aria-label={`Individual ${node.id}${isFocus ? ' (focus)' : ''}, ${hasGenetics ? 'known' : 'unknown'} genotype`}
+								>
 									<circle
 										cx={x}
 										cy={y}
 										r={NODE_RADIUS + 10}
 										fill="transparent"
 										pointerEvents="all"
+										tabIndex={0}
 										onPointerEnter={() => {
 											setHoveredNode(node.id);
 										}}
 										onPointerLeave={() => {
+											setHoveredNode(null);
+										}}
+										onFocus={() => {
+											setHoveredNode(node.id);
+										}}
+										onBlur={() => {
 											setHoveredNode(null);
 										}}
 									/>
@@ -442,7 +458,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							width: 12,
 							height: 12,
 							borderRadius: '50%',
-							backgroundColor: '#3b82f6',
+							backgroundColor: '#2563eb',
 							border: '2px solid #1d4ed8'
 						}}
 					/>
@@ -459,7 +475,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							border: '2px solid #16a34a'
 						}}
 					/>
-					<span style={{ color: '#16a34a', fontWeight: 'bold' }}>Known genotype</span>
+					<span style={{ color: theme.palette.mode === 'dark' ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Known genotype</span>
 				</span>
 				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
 					<span
@@ -472,7 +488,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							border: '2px solid #dc2626'
 						}}
 					/>
-					<span style={{ color: '#dc2626', fontWeight: 'bold' }}>Unknown genotype</span>
+					<span style={{ color: theme.palette.mode === 'dark' ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Unknown genotype</span>
 				</span>
 				<span style={{ opacity: 0.7 }}>Vertical axis = Time. Hover nodes to see genotype vectors.</span>
 				<span style={{ opacity: 0.7 }}>

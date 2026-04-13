@@ -72,7 +72,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 		return (
 			<div style={{ marginTop: '2rem' }}>
 				<h3 style={{ marginTop: 0 }}>Model Statistics</h3>
-				<p style={{ opacity: 0.6 }}>No test results available. Run a test first.</p>
+				<p style={{ opacity: 0.7 }}>No test results available. Run a test first.</p>
 			</div>
 		);
 	}
@@ -274,7 +274,11 @@ function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
 									{e.individual}
 								</TableCell>
 								<TableCell sx={{ whiteSpace: 'nowrap' }}>{e.site}</TableCell>
-								<TableCell sx={{ whiteSpace: 'nowrap', color: '#ff6b6b', fontWeight: 'bold' }}>{e.predicted}</TableCell>
+								<TableCell
+									sx={{ whiteSpace: 'nowrap', color: theme.palette.mode === 'dark' ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}
+								>
+									{e.predicted}
+								</TableCell>
 								<TableCell
 									sx={{ whiteSpace: 'nowrap', color: theme.palette.mode === 'dark' ? '#00aa00' : '#2e7d32', fontWeight: 'bold' }}
 								>
@@ -284,7 +288,7 @@ function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
 						))}
 						{errors.length === 0 && (
 							<TableRow>
-								<TableCell colSpan={4} sx={{ opacity: 0.6 }}>
+								<TableCell colSpan={4} sx={{ opacity: 0.7 }}>
 									No prediction errors.
 								</TableCell>
 							</TableRow>

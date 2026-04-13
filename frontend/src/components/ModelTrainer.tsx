@@ -1,4 +1,4 @@
-import { Button } from '@mui/material';
+import { Alert, Button } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import LoadingProgress from './LoadingProgress.js';
@@ -129,7 +129,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 						Selected Dataset
 					</p>
 					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
-						{selectedDataset || <em style={{ opacity: 0.6, fontStyle: 'italic' }}>None</em>}
+						{selectedDataset || <em style={{ opacity: 0.7, fontStyle: 'italic' }}>None</em>}
 					</p>
 				</div>
 				<div style={{ padding: '1rem', borderRadius: '6px', border: `1px solid ${theme.palette.divider}` }}>
@@ -148,7 +148,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 						{selectedModel ? (
 							`${capitalize(selectedModel.model_name)} ${MODEL_TYPE_SHORT_NAMES[selectedModel.model_type] ?? selectedModel.model_type}`
 						) : (
-							<em style={{ opacity: 0.6, fontStyle: 'italic' }}>None</em>
+							<em style={{ opacity: 0.7, fontStyle: 'italic' }}>None</em>
 						)}
 					</p>
 				</div>
@@ -165,10 +165,15 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 
 			<LoadingProgress isLoading={loading} message="Applying a model to your data..." />
 
-			{!canTest && <p style={{ marginTop: '1rem', color: '#ff9800' }}>Please select both a dataset and a model to test.</p>}
+			{!canTest && (
+				<Alert severity="warning" sx={{ mt: 2 }}>
+					Please select both a dataset and a model to test.
+				</Alert>
+			)}
 
 			{error && (
 				<div
+					role="alert"
 					style={{
 						marginTop: '1rem',
 						padding: '1rem',

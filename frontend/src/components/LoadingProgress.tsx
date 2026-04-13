@@ -11,6 +11,8 @@ export default function LoadingProgress({ isLoading, message }: LoadingProgressP
 
 	return (
 		<div
+			role="status"
+			aria-live="polite"
 			style={{
 				marginTop: '1rem',
 				padding: '1rem',

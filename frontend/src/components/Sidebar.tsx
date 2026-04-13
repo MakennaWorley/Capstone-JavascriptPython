@@ -41,11 +41,12 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 					}
 				}}
 			>
-				<Box sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
+				<Box component="nav" aria-label="Main navigation" sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 					<List sx={{ px: open ? 1 : 0, mt: '3.5rem' }}>
 						<ListItemButton
 							onClick={onCreateDataset}
 							title="Create new dataset"
+							aria-label="Create new dataset"
 							sx={{
 								margin: open ? '0.5rem' : '0.5rem auto',
 								width: open ? 'auto' : '56px',
@@ -74,6 +75,7 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 							<ListItemButton
 								onClick={onThemeToggle}
 								title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+								aria-label={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
 								sx={{
 									margin: open ? '0.5rem' : '0.5rem auto',
 									width: open ? 'auto' : '56px',
@@ -95,6 +97,7 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 							<ListItemButton
 								onClick={onDebugToggle}
 								title={`Debug: ${debugMode ? 'ON' : 'OFF'}`}
+								aria-label={`Debug: ${debugMode ? 'ON' : 'OFF'}`}
 								sx={{
 									margin: open ? '0.5rem' : '0.5rem auto',
 									width: open ? 'auto' : '56px',
@@ -121,6 +124,7 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 			{/* Fixed Toggle Button at top left */}
 			<IconButton
 				onClick={() => setOpen(!open)}
+				aria-label={open ? 'Close navigation' : 'Open navigation'}
 				sx={{
 					position: 'fixed',
 					top: '1rem',
