@@ -60,19 +60,19 @@ def check_gpu_status():
 
 		gpu_devices = jax.devices('gpu')
 		if gpu_devices:
-			print(f'🚀 GPU acceleration available: {len(gpu_devices)} GPU(s) detected')
+			print(f'GPU acceleration available: {len(gpu_devices)} GPU(s) detected')
 			for i, device in enumerate(gpu_devices):
 				print(f'  GPU {i}: {device}')
 		else:
-			print('💻 Running on CPU (no GPU devices found)')
+			print('Running on CPU (no GPU devices found)')
 
 		# Update this for your computer, this was running on my i9-12900k
 		os.environ['OMP_NUM_THREADS'] = '12'
 		os.environ['MKL_NUM_THREADS'] = '12'
 	except ImportError:
-		print('💻 Running on CPU (JAX not installed)')
+		print('Running on CPU (JAX not installed)')
 	except Exception as e:
-		print(f'💻 Running on CPU (GPU check failed: {e})')
+		print(f'Running on CPU (GPU check failed: {e})')
 
 
 def get_optimal_training_config():
@@ -118,21 +118,21 @@ def get_optimal_training_config():
 		optimal_draws = 1500  # More samples for better accuracy
 		optimal_tune = 1500
 		strategy = 'aggressive'
-		print('🚀 High-end system detected: Using aggressive optimization')
+		print('High-end system detected: Using aggressive optimization')
 	elif has_gpu:  # GPU but less RAM
 		optimal_chains = min(6, physical_cores)
 		optimal_cores = min(logical_cores - 1, 12)
 		optimal_draws = 1200
 		optimal_tune = 1200
 		strategy = 'aggressive'
-		print('🚀 GPU system detected: Using moderate optimization')
+		print('GPU system detected: Using moderate optimization')
 	else:  # CPU only
 		optimal_chains = min(4, physical_cores)
 		optimal_cores = min(logical_cores, 8)
 		optimal_draws = 1000
 		optimal_tune = 1000
 		strategy = 'safe'
-		print('💻 CPU-only system: Using conservative settings')
+		print('CPU-only system: Using conservative settings')
 
 	config = {'chains': optimal_chains, 'cores': optimal_cores, 'draws': optimal_draws, 'tune': optimal_tune, 'gpu_strategy': strategy}
 
@@ -383,7 +383,7 @@ def train_eval(
 
 	# EARLY EXIT: Skip training if model already exists and force_retrain is False
 	if exists_check and not force_retrain:
-		print(f'✓ Model already exists: Loading {model_tag} from {paths["meta"]}')
+		print(f'Model already exists: Loading {model_tag} from {paths["meta"]}')
 		print('  To retrain, use force_retrain=True')
 		model = ModelCls.load(paths)
 		trained = False
@@ -612,7 +612,7 @@ def test_on_new_data(
 	# 0.5 Check if this model has already been tested on this dataset (log it, but always re-run to return full stats)
 	cached_result = check_model_already_applied(model_name, model_type, test_base)
 	if cached_result:
-		print(f'✓ Model "{model_name}" ({model_type}) previously tested on "{test_base}" ({cached_result["applied_date"]})')
+		print(f'Model "{model_name}" ({model_type}) previously tested on "{test_base}" ({cached_result["applied_date"]})')
 		print('  Re-running prediction to return full stats and error analysis.')
 
 	# 1. Setup Model Types and Paths
@@ -753,7 +753,7 @@ def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECT
 
 	# EARLY EXIT: All models exist
 	if all_exist:
-		print(f'✓ All models already trained for {train_f}')
+		print(f'All models already trained for {train_f}')
 		print(f'  All model types exist: {", ".join(model_labels)}')
 		print('  Skipping training. Use force_retrain=True in train_eval() to retrain.')
 		return {'status': 'skipped', 'reason': 'All models already exist', 'train_f': train_f}

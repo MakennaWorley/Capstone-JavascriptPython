@@ -129,19 +129,19 @@ class BayesianCategoricalDosageClassifier:
 					# Balanced GPU Mode: Parallel chains + GPU, but fewer chains for stability
 					effective_chains = min(self.chains, 4)  # Keep your original chain count
 					effective_cores = min(self.cores, 4)  # Use multiple cores but not all
-					print(f'🚀 GPU Balanced Mode: {effective_chains} chains across {effective_cores} cores')
-					print('  → Parallel chains + GPU acceleration (fork warnings are OK)')
+					print(f'GPU Balanced Mode: {effective_chains} chains across {effective_cores} cores')
+					print('  Parallel chains + GPU acceleration (fork warnings are OK)')
 				else:
 					# Aggressive GPU Mode: Use everything
 					effective_chains = self.chains
 					effective_cores = self.cores
-					print(f'🚀 GPU Max Mode: {effective_chains} chains across {effective_cores} cores')
-					print('  → Maximum parallelism + GPU (ignore fork warnings)')
+					print(f'GPU Max Mode: {effective_chains} chains across {effective_cores} cores')
+					print('  Maximum parallelism + GPU (ignore fork warnings)')
 			else:
 				# CPU Mode: Use all resources
 				effective_chains = self.chains
 				effective_cores = self.cores
-				print(f'💻 CPU Mode: {effective_chains} chains across {effective_cores} cores')
+				print(f'CPU Mode: {effective_chains} chains across {effective_cores} cores')
 
 			self.idata = pm.sample(
 				draws=self.draws,

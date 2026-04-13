@@ -220,7 +220,7 @@ class TestTrainEvalAll:
 	def test_train_eval_all_skipped_result_structure(self):
 		"""Early-exit result has the expected keys when all models already appear to exist."""
 		# model_paths is fully mocked so paths['meta'].exists() returns a truthy MagicMock
-		# → all_exist is True → function returns the skipped dict immediately
+		# all_exist is True, so the function returns the skipped dict immediately
 		results = train_eval_all('train', 'val', 'test')
 		assert results.get('status') == 'skipped'
 		assert 'reason' in results

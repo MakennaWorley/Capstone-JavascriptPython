@@ -35,12 +35,12 @@ def set_environment_variables():
 		os.environ[key] = value
 		print(f'  {key} = {value}')
 
-	print('✅ Environment variables configured!')
+	print('Environment variables configured!')
 
 
 def check_system_specs():
 	"""Check and display system specifications."""
-	print('🖥️ System Specifications:')
+	print('System Specifications:')
 
 	try:
 		import psutil
@@ -69,19 +69,19 @@ def install_missing_packages():
 	"""Install packages needed for optimal performance."""
 	packages = ['psutil', 'jax[cuda11_pip]', 'jaxlib']  # Adjust CUDA version as needed
 
-	print('📦 Checking required packages...')
+	print('Checking required packages...')
 	for package in ['psutil']:  # Only install psutil automatically
 		try:
 			__import__(package)
-			print(f'  ✅ {package} is installed')
+			print(f'  {package} is installed')
 		except ImportError:
-			print(f'  📥 Installing {package}...')
+			print(f'  Installing {package}...')
 			subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
 
 
 def optimize_system():
 	"""Main optimization function."""
-	print('🚀 Optimizing system for high-performance Bayesian training')
+	print('Optimizing system for high-performance Bayesian training')
 	print('=' * 60)
 
 	install_missing_packages()
@@ -93,14 +93,14 @@ def optimize_system():
 	set_environment_variables()
 	print()
 
-	print('🎯 Recommendations for RTX 3070ti + 64GB RAM:')
+	print('Recommendations for RTX 3070ti + 64GB RAM:')
 	print('  • Use 6-8 chains for optimal GPU utilization')
 	print('  • Set cores=16-20 to use most of your CPU')
 	print('  • Increase draws/tune to 1500+ for better accuracy')
 	print("  • Use 'aggressive' GPU strategy")
 	print('  • Monitor GPU memory usage (should use ~6-7GB)')
 	print()
-	print('✅ System optimization complete! Run your training now.')
+	print('System optimization complete! Run your training now.')
 
 
 if __name__ == '__main__':

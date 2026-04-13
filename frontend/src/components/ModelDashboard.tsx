@@ -35,7 +35,7 @@ const MODEL_TYPE_INFO: Record<
 		simple_use_case:
 			'Best for large datasets (100+ individuals) where you want the highest possible accuracy and are not pressed for training time.',
 		description:
-			'A fully connected deep neural network trained to predict genotype dosage values. Stacks multiple hidden layers (256 → 128 → 64 neurons) with batch normalization, dropout regularization, and residual connections for stable training on high-dimensional genomic inputs. Outputs a soft dosage estimate over classes 0, 1, and 2.',
+			'A fully connected deep neural network trained to predict genotype dosage values. Stacks multiple hidden layers (256 > 128 > 64 neurons) with batch normalization, dropout regularization, and residual connections for stable training on high-dimensional genomic inputs. Outputs a soft dosage estimate over classes 0, 1, and 2.',
 		strengths: [
 			'Captures complex non-linear interactions between loci',
 			'Scales well as dataset size grows',
@@ -89,7 +89,7 @@ const MODEL_TYPE_INFO: Record<
 		],
 		simple_use_case: 'Best when you have family or pedigree data and want the model to use those relationships to improve accuracy.',
 		description:
-			'A deep learning architecture that operates directly over pedigree graphs. Each individual is a node; edges represent parent-offspring or sibling relationships. Message-passing layers (256 → 128 → 64 hidden dimensions) aggregate genetic signals from neighbours, enabling the model to exploit Mendelian inheritance patterns across an entire family. GPU-accelerated via PyTorch.',
+			'A deep learning architecture that operates directly over pedigree graphs. Each individual is a node; edges represent parent-offspring or sibling relationships. Message-passing layers (256 > 128 > 64 hidden dimensions) aggregate genetic signals from neighbours, enabling the model to exploit Mendelian inheritance patterns across an entire family. GPU-accelerated via PyTorch.',
 		strengths: [
 			'Leverages pedigree structure for superior accuracy in family cohorts',
 			'Propagates genotype signals across multiple generations',

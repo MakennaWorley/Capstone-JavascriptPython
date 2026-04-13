@@ -75,7 +75,7 @@ class TestDataPreparation:
 
 		cols = genotype_columns(df)
 		assert set(cols) == {'i_0000', 'i_0001', 'i_0002'}, f'Expected i_* columns, got {cols}'
-		print(f'✓ Found columns: {cols}')
+		print(f'[OK] Found columns: {cols}')
 		print()
 
 	def test_genotype_columns_empty(self):
@@ -111,7 +111,7 @@ class TestDataPreparation:
 		assert 4 in adj[1], 'Edge 1-4 missing'
 		assert 4 in adj[2], 'Edge 2-4 missing'
 
-		print(f'✓ Adjacency list built correctly for {len(adj)} individuals')
+		print(f'[OK] Adjacency list built correctly for {len(adj)} individuals')
 		print(f'  Sample node 0 neighbors: {adj[0]}')
 		print()
 
@@ -145,7 +145,7 @@ class TestDataPreparation:
 		comp_sizes = sorted([len(c) for c in comps])
 		assert comp_sizes == [2, 4], f'Expected sizes [2, 4], got {comp_sizes}'
 
-		print(f'✓ Found {len(comps)} connected components')
+		print(f'[OK] Found {len(comps)} connected components')
 		for i, comp in enumerate(comps):
 			print(f'  Component {i + 1}: {len(comp)} individuals: {sorted(comp)}')
 		print()
@@ -188,8 +188,8 @@ class TestDataPreparation:
 		assert 3 not in neighbors_1, '3 should NOT be in 1-hop (not directly connected)'
 		assert 3 in neighbors_2, '3 should be in 2-hop (via parent 0 or 1)'
 
-		print(f'✓ 1-hop neighbors of 2: {sorted(neighbors_1)}')
-		print(f'✓ 2-hop neighbors of 2: {sorted(neighbors_2)}')
+		print(f'[OK] 1-hop neighbors of 2: {sorted(neighbors_1)}')
+		print(f'[OK] 2-hop neighbors of 2: {sorted(neighbors_2)}')
 		print()
 
 	def test_k_hop_neighborhood_k_zero(self):
@@ -224,9 +224,9 @@ class TestDataPreparation:
 		# Column not present in df should return False (not a masked target)
 		assert not is_fully_missing_individual(obs, 99), 'Missing column should return False'
 
-		print('✓ Individual 0 (i_0000): observed')
-		print('✓ Individual 1 (i_0001): fully masked')
-		print('✓ Individual 2 (i_0002): partially masked')
+		print('[OK] Individual 0 (i_0000): observed')
+		print('[OK] Individual 1 (i_0001): fully masked')
+		print('[OK] Individual 2 (i_0002): partially masked')
 		print()
 
 	def test_make_example_for_target(self):
@@ -247,7 +247,7 @@ class TestDataPreparation:
 				assert X.shape[1] == 3, f'X should have 3 features, got {X.shape[1]}'
 				assert X.shape[0] == truth.shape[0], 'X rows should match sites'
 				assert y.shape[0] == truth.shape[0], 'y rows should match sites'
-				print(f'✓ Generated features for individual {target_id}')
+				print(f'[OK] Generated features for individual {target_id}')
 				print(f'  X shape: {X.shape}, y shape: {y.shape}')
 				print(
 					f'  Feature ranges: mean_dosage [{X[:, 0].min():.2f}, {X[:, 0].max():.2f}], '
@@ -286,7 +286,7 @@ class TestDataPreparation:
 		assert len(target_ids) == X.shape[0], 'target_ids length should match example count'
 		assert all(isinstance(tid, (int, np.integer)) for tid in target_ids), 'target_ids should be integers'
 
-		print(f'✓ Built examples from {len(comps)} families')
+		print(f'[OK] Built examples from {len(comps)} families')
 		print(f'  X shape: {X.shape}')
 		print(f'  y shape: {y.shape}')
 		print(f'  groups shape: {g.shape}')
@@ -321,8 +321,8 @@ class TestDataPreparation:
 		X_resampled, y_resampled, g_resampled = resample_training_data(X, y, groups)
 
 		unique, counts = np.unique(y_resampled, return_counts=True)
-		print(f'✓ Original class distribution: {dict(zip(*np.unique(y, return_counts=True)))}')
-		print(f'✓ Resampled class distribution: {dict(zip(unique, counts))}')
+		print(f'[OK] Original class distribution: {dict(zip(*np.unique(y, return_counts=True)))}')
+		print(f'[OK] Resampled class distribution: {dict(zip(unique, counts))}')
 		print(f'  All classes now have {counts[0]} samples')
 		assert all(c == counts[0] for c in counts), 'All classes should have same count after resampling'
 		print()
@@ -346,7 +346,7 @@ class TestDataPreparation:
 		assert result['X'].ndim == 3, 'X should be 3D (examples x sites x features)'
 		assert result['y'].ndim == 2, 'y should be 2D (examples x sites)'
 		assert result['X'].shape[0] == result['y'].shape[0], 'X and y example counts must match'
-		print(f'✓ prepare_data() returned X={result["X"].shape}, y={result["y"].shape}')
+		print(f'[OK] prepare_data() returned X={result["X"].shape}, y={result["y"].shape}')
 		print()
 
 	def test_prep_config_defaults(self):
