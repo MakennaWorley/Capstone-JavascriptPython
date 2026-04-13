@@ -58,6 +58,8 @@ class TestBayesianCategoricalDosageClassifierInitialization:
 		assert model.idata is None
 		assert model.feature_mean_ is None
 		assert model.feature_std_ is None
+		assert model._W_mean is None
+		assert model._b_mean is None
 
 
 class TestBayesianCategoricalDosageClassifierFit:
@@ -141,6 +143,36 @@ class TestBayesianCategoricalDosageClassifierPredict:
 
 		assert probas.shape == (2, 3)
 
+	def test_predict_proba_with_valid_groups(self):
+		"""Test predict_proba with valid group indices uses group-specific intercepts"""
+		model = BayesianCategoricalDosageClassifier(draws=10, tune=10, chains=1)
+		X_train = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float32)
+		y_train = np.array([0.0, 1.0, 2.0], dtype=np.float32)
+		groups_train = np.array([0, 0, 1], dtype=np.int32)
+		model.fit(X_train, y_train, groups_train)
+
+		X_test = np.array([[2.0, 3.0], [4.0, 5.0]], dtype=np.float32)
+		groups_test = np.array([0, 1], dtype=np.int32)
+		probas = model.predict_proba(X_test, groups=groups_test)
+
+		assert probas.shape == (2, 3)
+		assert np.allclose(probas.sum(axis=1), 1.0)
+		assert np.all(probas >= 0.0) and np.all(probas <= 1.0)
+
+	def test_predict_proba_values_in_range(self):
+		"""All individual probability values must be in [0, 1]"""
+		model = BayesianCategoricalDosageClassifier(draws=10, tune=10, chains=1)
+		X_train = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float32)
+		y_train = np.array([0.0, 1.0, 2.0], dtype=np.float32)
+		groups_train = np.array([0, 0, 1], dtype=np.int32)
+		model.fit(X_train, y_train, groups_train)
+
+		X_test = np.array([[2.0, 3.0], [4.0, 5.0]], dtype=np.float32)
+		probas = model.predict_proba(X_test)
+
+		assert np.all(probas >= 0.0), 'All probabilities must be >= 0'
+		assert np.all(probas <= 1.0), 'All probabilities must be <= 1'
+
 	def test_predict_proba_unfitted_raises(self):
 		"""Test predict_proba raises error when model not fitted"""
 		model = BayesianCategoricalDosageClassifier()
@@ -148,6 +180,14 @@ class TestBayesianCategoricalDosageClassifierPredict:
 
 		with pytest.raises(RuntimeError, match='Model must be fitted'):
 			model.predict_proba(X_test)
+
+	def test_predict_class_unfitted_raises(self):
+		"""predict_class should raise RuntimeError when model not fitted"""
+		model = BayesianCategoricalDosageClassifier()
+		X_test = np.array([[1.0, 2.0]], dtype=np.float32)
+
+		with pytest.raises(RuntimeError, match='Model must be fitted'):
+			model.predict_class(X_test)
 
 	def test_predict_class_shape(self):
 		"""Test predict_class returns correct shape"""
@@ -176,6 +216,21 @@ class TestBayesianCategoricalDosageClassifierPredict:
 
 		assert predictions.shape == (2,)
 		assert all(0 <= p <= 2 for p in predictions)  # Expected values in [0, 2]
+
+	def test_predict_expected_dosage_formula(self):
+		"""predict() must equal E[y] = sum(c * p(c)) for c in {0, 1, 2}"""
+		model = BayesianCategoricalDosageClassifier(draws=10, tune=10, chains=1)
+		X_train = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float32)
+		y_train = np.array([0.0, 1.0, 2.0], dtype=np.float32)
+		groups_train = np.array([0, 0, 1], dtype=np.int32)
+		model.fit(X_train, y_train, groups_train)
+
+		X_test = np.array([[2.0, 3.0], [4.0, 5.0]], dtype=np.float32)
+		probas = model.predict_proba(X_test)
+		expected_dosage = (probas * np.array([0.0, 1.0, 2.0], dtype=np.float32)).sum(axis=1)
+		predictions = model.predict(X_test)
+
+		np.testing.assert_array_almost_equal(predictions, expected_dosage)
 
 
 class TestBayesianCategoricalDosageClassifierPersistence:
@@ -219,3 +274,30 @@ class TestBayesianCategoricalDosageClassifierPersistence:
 
 			with pytest.raises(Exception):  # FileNotFoundError or similar
 				BayesianCategoricalDosageClassifier.load(paths)
+
+	def test_save_load_roundtrip(self):
+		"""Save then load restores parameters and produces identical predictions"""
+		model = BayesianCategoricalDosageClassifier(draws=10, tune=10, chains=1)
+		X_train = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=np.float32)
+		y_train = np.array([0.0, 1.0, 2.0], dtype=np.float32)
+		groups_train = np.array([0, 0, 1], dtype=np.int32)
+		model.fit(X_train, y_train, groups_train)
+
+		with tempfile.TemporaryDirectory() as tmpdir:
+			tmpdir_path = Path(tmpdir)
+			paths = {'dir': tmpdir_path, 'idata': tmpdir_path / 'idata.nc', 'meta': tmpdir_path / 'meta.json'}
+			model.save(paths, {'dataset': 'roundtrip_test'})
+
+			loaded = BayesianCategoricalDosageClassifier.load(paths)
+
+			# Parameters must be restored within float32 precision
+			# (values round-trip through JSON as Python floats, causing sub-epsilon differences)
+			np.testing.assert_allclose(loaded.feature_mean_, model.feature_mean_, rtol=1e-5)
+			np.testing.assert_allclose(loaded.feature_std_, model.feature_std_, rtol=1e-5)
+			np.testing.assert_allclose(loaded._W_mean, model._W_mean, rtol=1e-5)
+			np.testing.assert_allclose(loaded._mu_b_mean, model._mu_b_mean, rtol=1e-5)
+
+			# Predictions must match within float32 precision
+			X_test = np.array([[2.0, 3.0], [4.0, 5.0]], dtype=np.float32)
+			np.testing.assert_allclose(loaded.predict(X_test), model.predict(X_test), rtol=1e-5)
+			np.testing.assert_array_equal(loaded.predict_class(X_test), model.predict_class(X_test))

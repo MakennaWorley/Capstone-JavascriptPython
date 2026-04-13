@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 from dotenv import load_dotenv
 
 # Handle relative imports
@@ -24,6 +25,7 @@ from app.data_preparation import (
 	is_fully_missing_individual,
 	k_hop_neighborhood,
 	make_example_for_target,
+	prepare_data,
 	resample_training_data,
 )
 
@@ -76,6 +78,11 @@ class TestDataPreparation:
 		print(f'✓ Found columns: {cols}')
 		print()
 
+	def test_genotype_columns_empty(self):
+		"""genotype_columns on a DataFrame with no i_* columns returns empty list"""
+		df = pd.DataFrame({'index': [0], 'other': [1]})
+		assert genotype_columns(df) == []
+
 	def test_pedigree_adjacency(self):
 		"""Test building adjacency list from pedigree"""
 		print('=' * 60)
@@ -108,6 +115,12 @@ class TestDataPreparation:
 		print(f'  Sample node 0 neighbors: {adj[0]}')
 		print()
 
+	def test_pedigree_adjacency_missing_columns(self):
+		"""build_adjacency_from_pedigree should raise ValueError when required columns are absent"""
+		ped = pd.DataFrame({'individual_id': [0, 1], 'time': [1.0, 0.0]})
+		with pytest.raises(ValueError, match='missing columns'):
+			build_adjacency_from_pedigree(ped)
+
 	def test_connected_components(self):
 		"""Test finding connected components in pedigree graph"""
 		print('=' * 60)
@@ -136,6 +149,14 @@ class TestDataPreparation:
 		for i, comp in enumerate(comps):
 			print(f'  Component {i + 1}: {len(comp)} individuals: {sorted(comp)}')
 		print()
+
+	def test_connected_components_single_isolated_node(self):
+		"""A pedigree with one individual and no parents produces one component of size 1"""
+		ped = pd.DataFrame({'individual_id': [0], 'parent_0_id': [-1], 'parent_1_id': [-1], 'time': [0.0], 'num_nodes': [2]})
+		adj = build_adjacency_from_pedigree(ped)
+		comps = connected_components(adj)
+		assert len(comps) == 1
+		assert 0 in comps[0]
 
 	def test_k_hop_neighborhood(self):
 		"""Test k-hop neighborhood computation"""
@@ -171,6 +192,16 @@ class TestDataPreparation:
 		print(f'✓ 2-hop neighbors of 2: {sorted(neighbors_2)}')
 		print()
 
+	def test_k_hop_neighborhood_k_zero(self):
+		"""k=0 should always return the empty set"""
+		adj = {0: {1, 2}, 1: {0}, 2: {0}}
+		assert k_hop_neighborhood(adj, 0, 0) == set()
+
+	def test_k_hop_neighborhood_isolated_node(self):
+		"""A node with no neighbours returns an empty set regardless of k"""
+		adj = {0: set()}
+		assert k_hop_neighborhood(adj, 0, 3) == set()
+
 	def test_is_fully_missing_individual(self):
 		"""Test detection of fully masked individuals"""
 		print('=' * 60)
@@ -189,6 +220,9 @@ class TestDataPreparation:
 		assert not is_fully_missing_individual(obs, 0), 'i_0000 should not be fully masked'
 		assert is_fully_missing_individual(obs, 1), 'i_0001 should be fully masked'
 		assert not is_fully_missing_individual(obs, 2), 'i_0002 should not be fully masked'
+
+		# Column not present in df should return False (not a masked target)
+		assert not is_fully_missing_individual(obs, 99), 'Missing column should return False'
 
 		print('✓ Individual 0 (i_0000): observed')
 		print('✓ Individual 1 (i_0001): fully masked')
@@ -241,7 +275,7 @@ class TestDataPreparation:
 			only_predict_masked=False,  # Include all individuals
 		)
 
-		X, y, g = build_split_examples(truth, obs, adj, comps, cfg, ped)
+		X, y, g, target_ids = build_split_examples(truth, obs, adj, comps, cfg, ped)
 
 		assert X.ndim == 3, f'X should be 3D, got shape {X.shape}'
 		assert X.shape[1] == truth.shape[0], f'X should have {truth.shape[0]} sites'
@@ -249,13 +283,28 @@ class TestDataPreparation:
 		assert y.shape[0] == X.shape[0], 'y should have same number of examples as X'
 		assert y.shape[1] == truth.shape[0], 'y should have same number of sites as X'
 		assert g.shape[0] == X.shape[0], 'groups should have same length as examples'
+		assert len(target_ids) == X.shape[0], 'target_ids length should match example count'
+		assert all(isinstance(tid, (int, np.integer)) for tid in target_ids), 'target_ids should be integers'
 
 		print(f'✓ Built examples from {len(comps)} families')
 		print(f'  X shape: {X.shape}')
 		print(f'  y shape: {y.shape}')
 		print(f'  groups shape: {g.shape}')
+		print(f'  target_ids (first 5): {target_ids[:5]}')
 		print(f'  Generation times: min={g.min()}, max={g.max()}')
 		print()
+
+	def test_build_split_examples_empty_when_no_masked(self):
+		"""Returns empty arrays with correct ranks when only_predict_masked=True and nobody is masked"""
+		truth = pd.DataFrame({'index': [0, 1], 'i_0000': [0, 1], 'i_0001': [1, 0]})
+		obs = pd.DataFrame({'index': [0, 1], 'i_0000': [0.0, 1.0], 'i_0001': [1.0, 0.0]})  # fully observed
+		ped = pd.DataFrame({'individual_id': [0, 1], 'parent_0_id': [-1, 0], 'parent_1_id': [-1, -1], 'time': [1.0, 0.0], 'num_nodes': [2, 2]})
+		adj = build_adjacency_from_pedigree(ped)
+		comps = connected_components(adj)
+		cfg = PrepConfig(dataset_name='test', only_predict_masked=True)
+		X, y, g, ids = build_split_examples(truth, obs, adj, comps, cfg, ped)
+		assert X.ndim == 3
+		assert X.shape[0] == 0, 'Should produce no examples when none are masked'
 
 	def test_resample_training_data(self):
 		"""Test random oversampling for class balance"""
@@ -278,20 +327,40 @@ class TestDataPreparation:
 		assert all(c == counts[0] for c in counts), 'All classes should have same count after resampling'
 		print()
 
-	def test_prepare_data_single(self):
-		"""Test prepare_data() - integration test (relies on prepared datasets)"""
+	def test_prepare_data_returns_expected_keys(self):
+		"""prepare_data() returns a dict with X, y, and groups arrays."""
 		print('=' * 60)
 		print('Test: prepare_data()')
 		print('=' * 60)
-		print('✓ prepare_data() function is callable')
-		print('  (Full test requires running with: prepare_data_triplet to generate splits)')
+
+		truth, obs, ped, _, tmpdir = self.setup_test_dataset(DATASETS_DIR)
+
+		cfg = PrepConfig(dataset_name='test_prep', max_hops=2, only_predict_masked=True, datasets_dir=tmpdir)
+
+		result = prepare_data(cfg)
+
+		assert set(result.keys()) >= {'X', 'y', 'groups'}, f'Missing keys in result: {result.keys()}'
+		assert isinstance(result['X'], np.ndarray), 'X should be ndarray'
+		assert isinstance(result['y'], np.ndarray), 'y should be ndarray'
+		assert isinstance(result['groups'], np.ndarray), 'groups should be ndarray'
+		assert result['X'].ndim == 3, 'X should be 3D (examples x sites x features)'
+		assert result['y'].ndim == 2, 'y should be 2D (examples x sites)'
+		assert result['X'].shape[0] == result['y'].shape[0], 'X and y example counts must match'
+		print(f'✓ prepare_data() returned X={result["X"].shape}, y={result["y"].shape}')
 		print()
 
-	def test_prepare_data_triplet(self):
-		"""Test prepare_data_triplet() -integration test"""
-		print('=' * 60)
-		print('Test: prepare_data_triplet()')
-		print('=' * 60)
-		print('✓ prepare_data_triplet() function is callable')
-		print('  (Full test requires train/val/test splits generated with --full-data)')
-		print()
+	def test_prep_config_defaults(self):
+		"""PrepConfig has expected defaults"""
+		cfg = PrepConfig(dataset_name='dummy')
+		assert cfg.train_frac == 0.70
+		assert cfg.val_frac == 0.15
+		assert cfg.test_frac == 0.15
+		assert cfg.max_hops == 2
+		assert cfg.only_predict_masked is True
+		assert cfg.datasets_dir is None
+
+	def test_prep_config_frozen(self):
+		"""PrepConfig is frozen — mutation should raise"""
+		cfg = PrepConfig(dataset_name='dummy')
+		with pytest.raises((AttributeError, TypeError)):
+			cfg.seed = 0  # type: ignore[misc]
