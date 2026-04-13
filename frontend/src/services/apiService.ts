@@ -1,5 +1,5 @@
-import { Observable, interval, of } from 'rxjs';
-import { catchError, startWith, switchMap } from 'rxjs/operators';
+import { Observable, interval } from 'rxjs';
+import { startWith, switchMap } from 'rxjs/operators';
 
 export type Model = {
 	model_name: string;
@@ -92,11 +92,6 @@ class ApiService {
 							subscriber.error(error);
 						});
 				});
-			}),
-			catchError((error) => {
-				console.error('Dataset polling error:', error);
-				// Return empty array on error to continue polling
-				return of([]);
 			})
 		);
 	}
@@ -120,11 +115,6 @@ class ApiService {
 							subscriber.error(error);
 						});
 				});
-			}),
-			catchError((error) => {
-				console.error('Model polling error:', error);
-				// Return empty array on error to continue polling
-				return of([]);
 			})
 		);
 	}
