@@ -1,5 +1,5 @@
 import { Alert, Box, Button, Checkbox, FormControlLabel, Paper, Stack, TextField, Typography } from '@mui/material';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import LoadingProgress from './LoadingProgress.js';
 
 // ---------- helpers ----------
@@ -64,6 +64,7 @@ export default function DatasetModelCreationForm({
 	const [sending, setSending] = useState(false);
 	const [status, setStatus] = useState('');
 	const [responseJson, setResponseJson] = useState<any>(null);
+	const [submitted, setSubmitted] = useState(false);
 
 	const [cfg, setCfg] = useState<SimConfig>(DEFAULTS);
 
@@ -108,9 +109,15 @@ export default function DatasetModelCreationForm({
 	}, [cfg, advanced]);
 
 	// ---------- submit ----------
-	async function submit(e: React.FormEvent) {
-		e.preventDefault();
+	function handleSubmit() {
+		setSubmitted(true);
 
+		if (errors.length > 0) return;
+
+		performSubmit();
+	}
+
+	async function performSubmit() {
 		setSending(true);
 		setStatus('');
 		setResponseJson(null);
@@ -174,7 +181,7 @@ export default function DatasetModelCreationForm({
 	}
 
 	return (
-		<Box component="form" onSubmit={submit} sx={{ display: 'grid', gap: '1.5rem', maxWidth: 720, pt: 2, pb: 2 }}>
+		<Box component="form" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} sx={{ display: 'grid', gap: '1.5rem', maxWidth: 720, pt: 2, pb: 2 }}>
 			{/* BASIC */}
 			<Box>
 				<Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
@@ -300,8 +307,9 @@ export default function DatasetModelCreationForm({
 
 			{/* SUBMIT BUTTON */}
 			<Button
-				type="submit"
+				type="button"
 				disabled={sending}
+				onClick={handleSubmit}
 				variant="contained"
 				fullWidth
 				sx={{
@@ -312,10 +320,26 @@ export default function DatasetModelCreationForm({
 					'&:disabled': { backgroundColor: '#555', color: 'rgba(255, 255, 255, 0.5)' }
 				}}
 			>
-				{sending ? 'Generating...' : 'Generate Data'}
+				{sending ? 'Generating Dataset...' : 'Generate Dataset'}
 			</Button>
 
 			<LoadingProgress isLoading={sending} message="Generating your data..." />
+
+			{/* VALIDATION ERRORS */}
+			{submitted && errors.length > 0 && (
+				<Alert
+					severity="error"
+					sx={{
+						backgroundColor: 'rgba(255, 107, 107, 0.1)',
+						color: '#ff6b6b',
+						border: '1px solid #ff6b6b'
+					}}
+				>
+					{errors.map((error, i) => (
+						<div key={i}>{error}</div>
+					))}
+				</Alert>
+			)}
 
 			{/* STATUS MESSAGE - ERRORS ONLY */}
 			{status && (
