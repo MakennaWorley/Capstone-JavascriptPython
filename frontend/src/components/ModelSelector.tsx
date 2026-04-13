@@ -12,6 +12,19 @@ type ModelSelectorProps = {
 	disabled?: boolean;
 };
 
+const MODEL_TYPE_SHORT_NAMES: Record<string, string> = {
+	bayes_softmax3: 'Bayesian Inference',
+	multi_log_regression: 'Multinomial Logistic Regression',
+	hmm_dosage: 'Hidden Markov Model',
+	dnn_dosage: 'Deep Neural Network',
+	gnn_dosage: 'Graph Neural Network'
+};
+
+function capitalize(s: string): string {
+	if (!s) return s;
+	return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function ModelSelector({ models, selected, onSelect, disabled = false }: ModelSelectorProps) {
 	if (models.length === 0) {
 		return (
@@ -60,9 +73,11 @@ export default function ModelSelector({ models, selected, onSelect, disabled = f
 			</MenuItem>
 			{models.map((model) => {
 				const key = getModelKey(model);
+				const shortName = MODEL_TYPE_SHORT_NAMES[model.model_type] ?? model.model_type;
+				const sizeName = capitalize(model.model_name);
 				return (
 					<MenuItem key={key} value={key}>
-						{model.model_name} ({model.model_type})
+						{sizeName} {shortName}
 					</MenuItem>
 				);
 			})}
