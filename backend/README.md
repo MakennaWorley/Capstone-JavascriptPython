@@ -38,7 +38,61 @@ This script focuses on Probabilistic Ancestral Inference. It simulates how genet
 
 ### ⚙️ Example Command
 
-run `source .venv/bin/activate` to activate the python environment.
+#### Setting Up a Local Conda Environment
+
+To run the backend files outside of Docker, create a conda environment:
+
+```bash
+conda create -y -n capstone python=3.12
+conda activate capstone
+```
+
+Install the production dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+For development (testing, linting, build tools), install the full local set instead:
+
+```bash
+pip install -r requirements_local.txt
+```
+
+If you need PyTorch (for DNN/GNN models), install it separately:
+
+```bash
+# CPU only (Mac / no GPU)
+pip install torch torchvision torchaudio torch-geometric
+
+# NVIDIA GPU
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+pip install torch-geometric
+```
+
+For PyMC's JAX sampler (optional, improves Bayesian model performance):
+
+```bash
+# CPU only
+pip install jax jaxlib
+
+# NVIDIA GPU
+pip install "jax[cuda12]"
+```
+
+You also need Graphviz installed at the system level for pedigree SVG generation:
+
+```bash
+# macOS
+brew install graphviz
+
+# Ubuntu / Debian
+sudo apt-get install graphviz
+```
+
+#### Running Scripts
+
+run `conda activate capstone` to activate the environment.
 
 ```bash
 python data_generation.py \
