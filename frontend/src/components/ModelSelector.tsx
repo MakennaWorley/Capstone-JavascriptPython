@@ -1,4 +1,4 @@
-import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { MenuItem, TextField } from '@mui/material';
 
 type Model = {
 	model_name: string;
@@ -34,39 +34,38 @@ export default function ModelSelector({ models, selected, onSelect, disabled = f
 	};
 
 	return (
-		<FormControl fullWidth size="small" disabled={disabled}>
-			<InputLabel
-				sx={{
-					color: 'text.secondary',
-					'&.Mui-focused': { color: '#452ee4' }
-				}}
-			>
-				Choose a model
-			</InputLabel>
-			<Select
-				value={selectedKey}
-				onChange={(e) => handleChange(e.target.value)}
-				label="Choose a model"
-				sx={{
-					color: 'text.primary',
-					'& .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
-					'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#241291', borderWidth: '2px' },
-					'&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
-					'& .MuiSvgIcon-root': { color: '#452ee4' }
-				}}
-			>
-				<MenuItem value="" disabled>
-					Select…
-				</MenuItem>
-				{models.map((model) => {
-					const key = getModelKey(model);
-					return (
-						<MenuItem key={key} value={key}>
-							{model.model_name} ({model.model_type})
-						</MenuItem>
-					);
-				})}
-			</Select>
-		</FormControl>
+		<TextField
+			select
+			fullWidth
+			size="small"
+			disabled={disabled}
+			label="Choose a model"
+			value={selectedKey}
+			onChange={(e) => handleChange(e.target.value)}
+			slotProps={{
+				inputLabel: {
+					sx: { color: 'text.secondary', '&.Mui-focused': { color: '#452ee4' } }
+				}
+			}}
+			sx={{
+				'& .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
+				'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#241291', borderWidth: '2px' },
+				'& .Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
+				'& .MuiSvgIcon-root': { color: '#452ee4' },
+				'& .MuiInputBase-input': { color: 'text.primary' }
+			}}
+		>
+			<MenuItem value="" disabled>
+				Select…
+			</MenuItem>
+			{models.map((model) => {
+				const key = getModelKey(model);
+				return (
+					<MenuItem key={key} value={key}>
+						{model.model_name} ({model.model_type})
+					</MenuItem>
+				);
+			})}
+		</TextField>
 	);
 }

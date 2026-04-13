@@ -1,3 +1,5 @@
+import DownloadIcon from '@mui/icons-material/Download';
+import { Button, MenuItem, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FamilyTreeVisualization from './FamilyTreeVisualization.js';
@@ -114,15 +116,17 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 	const hasLoadedDashboard = !!(data.observedCsvRaw || data.truthCsvRaw);
 
 	// Previews
+	const MAX_PARSE_ROWS = 1000;
+
 	const observedPreview = useMemo(() => {
 		if (!data.observedCsvRaw) return null;
-		return parseCsvPreview(data.observedCsvRaw, maxPreviewRows);
-	}, [data.observedCsvRaw, maxPreviewRows]);
+		return parseCsvPreview(data.observedCsvRaw, MAX_PARSE_ROWS);
+	}, [data.observedCsvRaw]);
 
 	const truthPreview = useMemo(() => {
 		if (!data.truthCsvRaw) return null;
-		return parseCsvPreview(data.truthCsvRaw, maxPreviewRows);
-	}, [data.truthCsvRaw, maxPreviewRows]);
+		return parseCsvPreview(data.truthCsvRaw, MAX_PARSE_ROWS);
+	}, [data.truthCsvRaw]);
 
 	// Merged preview for overlay table
 	const mergedPreview = useMemo(() => {
@@ -324,7 +328,6 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 					style={{
 						marginTop: '1rem',
 						padding: '0.9rem',
-						border: '1px solid #ddd',
 						borderRadius: 10,
 						width: '100%',
 						maxWidth: '100%',
@@ -334,81 +337,41 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 				>
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
 						<h4 style={{ marginTop: 0 }}>Genotypes (preview)</h4>
-						<button
-							type="button"
+						<Button
+							variant="contained"
+							startIcon={<DownloadIcon />}
 							onClick={downloadAllDatasetZip}
 							disabled={loading || !selectedDataset}
-							title="Download all dataset files"
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: '0.4rem',
-								padding: '0.4rem 0.8rem',
-								backgroundColor: '#452ee4',
-								color: 'white',
-								border: 'none',
-								borderRadius: '4px',
-								cursor: 'pointer',
-								fontSize: '0.9rem',
-								transition: 'background-color 0.2s'
-							}}
-							onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#241291')}
-							onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#452ee4')}
+							size="small"
+							sx={{ backgroundColor: '#452ee4', '&:hover': { backgroundColor: '#241291' } }}
 						>
-							<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-								<path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-							</svg>
 							{loading ? 'Preparing…' : 'Download Dataset'}
-						</button>
+						</Button>
 					</div>
 
-					<p style={{ marginTop: 0, opacity: 0.8 }}>
-						<b>Green Text</b> = known data (matches truth) | <b>Red Text</b> = inferred/missing data
-						<br />
-						Showing first <b>{Math.min(mergedPreview.mergedRows.length, maxPreviewRows)}</b>
-						{typeof mergedPreview.estimatedTotalRows === 'number' ? (
-							<>
-								{' '}
-								of about <b>{mergedPreview.estimatedTotalRows.toLocaleString()}</b> rows
-							</>
-						) : null}
-						.
+					<p style={{ marginTop: 0, opacity: 0.8, display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+							<span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 2, backgroundColor: '#00aa00' }} />
+							<span style={{ color: '#00aa00', fontWeight: 'bold' }}>Known</span>
+							<span style={{ opacity: 0.7 }}>= observed matches truth</span>
+						</span>
+						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+							<span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: 2, backgroundColor: '#ff6b6b' }} />
+							<span style={{ color: '#ff6b6b', fontWeight: 'bold' }}>Inferred</span>
+							<span style={{ opacity: 0.7 }}>= missing or unobserved</span>
+						</span>
 					</p>
-
-					{/* Column pagination controls */}
 					{mergedPreview.headers.length > COLUMNS_PER_PAGE && (
-						<div
-							style={{
-								marginBottom: '1rem',
-								display: 'flex',
-								gap: '0.5rem',
-								alignItems: 'center',
-								width: '100%',
-								boxSizing: 'border-box'
-							}}
-						>
-							<button
-								type="button"
-								onClick={() => setColumnPageIndex(Math.max(0, columnPageIndex - 1))}
-								disabled={columnPageIndex === 0}
-								style={{ padding: '0.4rem 0.8rem', width: '90px', flexShrink: 0, cursor: 'pointer' }}
-							>
-								← Previous
-							</button>
-							<span style={{ minWidth: '200px', textAlign: 'center', fontSize: '0.9rem', flexShrink: 0 }}>
-								Columns {columnPageIndex * COLUMNS_PER_PAGE + 2}–
-								{Math.min((columnPageIndex + 1) * COLUMNS_PER_PAGE + 1, mergedPreview.headers.length)} of{' '}
-								{mergedPreview.headers.length - 1}
-							</span>
-							<button
-								type="button"
-								onClick={() => setColumnPageIndex(columnPageIndex + 1)}
-								disabled={(columnPageIndex + 1) * COLUMNS_PER_PAGE + 1 >= mergedPreview.headers.length}
-								style={{ padding: '0.4rem 0.8rem', width: '70px', flexShrink: 0, cursor: 'pointer' }}
-							>
-								Next →
-							</button>
-						</div>
+						<TablePagination
+							component="div"
+							count={mergedPreview.headers.length - 1}
+							page={columnPageIndex}
+							onPageChange={(_, newPage) => setColumnPageIndex(newPage)}
+							rowsPerPage={COLUMNS_PER_PAGE}
+							onRowsPerPageChange={() => {}}
+							rowsPerPageOptions={[]}
+							labelDisplayedRows={({ from, to, count }) => `Columns ${from}–${to} of ${count}`}
+						/>
 					)}
 
 					<GenotypeTable
@@ -424,35 +387,33 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 			{data.observedCsvRaw && (
 				<div
 					style={{
-						marginTop: '1.5rem',
-						padding: '1rem',
-						border: '2px solid #3b82f6',
+						marginTop: '1rem',
+						padding: '0.9rem',
 						borderRadius: 10,
 						width: '100%',
 						boxSizing: 'border-box',
 						overflow: 'hidden'
 					}}
 				>
-					<h4>Family Tree Explorer</h4>
-					<label>
-						<span style={{ display: 'block', fontSize: '0.8rem' }}>Select Individual ID</span>
-						<select
-							value={selectedIndId}
-							onChange={(e) => setSelectedIndId(e.target.value)}
-							style={{ padding: '0.4rem', minWidth: '150px' }}
-						>
-							<option value="">-- Choose ID --</option>
-							{availableIds.map((id) => (
-								<option key={id} value={id}>
-									Individual {id}
-								</option>
-							))}
-						</select>
-					</label>
+					<h4 style={{ marginTop: 0 }}>Family Tree Explorer</h4>
+					<TextField
+						select
+						size="small"
+						label="Select Individual ID"
+						value={selectedIndId}
+						onChange={(e) => setSelectedIndId(e.target.value)}
+						sx={{ minWidth: 200 }}
+					>
+						<MenuItem value="">-- Choose ID --</MenuItem>
+						{availableIds.map((id) => (
+							<MenuItem key={id} value={id}>
+								Individual {id}
+							</MenuItem>
+						))}
+					</TextField>
+					{familyTreeData && <FamilyTreeVisualization data={familyTreeData} />}
 				</div>
 			)}
-
-			{familyTreeData && <FamilyTreeVisualization data={familyTreeData} />}
 		</div>
 	);
 }
@@ -469,103 +430,114 @@ function GenotypeTable({
 	columnsPerPage: number;
 }) {
 	const theme = useTheme();
+	const tableRef = useRef<HTMLTableElement>(null);
 	// Calculate which columns to show on this page (excluding index column 0)
 	const startColIdx = columnPageIndex * columnsPerPage + 1; // Start from 1 to skip index
 	const endColIdx = Math.min(startColIdx + columnsPerPage, headers.length);
 	const visibleHeaders = headers.slice(startColIdx, endColIdx);
 	const visibleIndices = Array.from({ length: endColIdx - startColIdx }, (_, i) => startColIdx + i);
 
+	const hoverColor = theme.palette.action.hover;
+
+	const handleMouseOver = (e: React.MouseEvent<HTMLTableElement>) => {
+		const cell = (e.target as HTMLElement).closest('td, th') as HTMLElement | null;
+		if (!cell || !tableRef.current) return;
+		const row = cell.parentElement;
+		if (!row) return;
+		const colIndex = Array.from(row.children).indexOf(cell);
+		tableRef.current.querySelectorAll<HTMLElement>('[data-col-h]').forEach((el) => {
+			el.style.backgroundColor = '';
+			delete el.dataset.colH;
+		});
+		if (colIndex > 0) {
+			tableRef.current.querySelectorAll<HTMLElement>(`tr > *:nth-child(${colIndex + 1})`).forEach((el) => {
+				el.style.backgroundColor = hoverColor;
+				el.dataset.colH = '1';
+			});
+		}
+	};
+
+	const handleMouseLeave = () => {
+		tableRef.current?.querySelectorAll<HTMLElement>('[data-col-h]').forEach((el) => {
+			el.style.backgroundColor = '';
+			delete el.dataset.colH;
+		});
+	};
+
 	return (
-		<div style={{ overflowX: 'hidden', width: '100%', boxSizing: 'border-box', minHeight: '200px' }}>
-			<table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'auto' }}>
-				<thead>
-					<tr>
-						{/* Sticky Index Header */}
-						<th
-							style={{
-								textAlign: 'left',
-								borderBottom: `1px solid ${theme.palette.divider}`,
-								padding: '0.5rem',
+		<TableContainer component={Paper} sx={{ width: '100%', maxHeight: 400, overflow: 'auto' }}>
+			<Table ref={tableRef} size="small" sx={{ tableLayout: 'auto' }} onMouseOver={handleMouseOver} onMouseLeave={handleMouseLeave}>
+				<TableHead>
+					<TableRow>
+						<TableCell
+							sx={{
+								fontWeight: 'bold',
 								whiteSpace: 'nowrap',
 								position: 'sticky',
 								left: 0,
-								backgroundColor: theme.palette.background.paper,
+								backgroundColor: 'inherit',
 								zIndex: 10,
-								fontWeight: 'bold',
 								minWidth: '100px'
 							}}
 							title={headers[0]}
 						>
 							{clampText(headers[0], 40)}
-						</th>
-						{/* Data Headers */}
-						{visibleHeaders.map((h, localIdx) => (
-							<th
-								key={localIdx}
-								style={{
-									textAlign: 'left',
-									borderBottom: `1px solid ${theme.palette.divider}`,
-									padding: '0.5rem',
-									whiteSpace: 'nowrap',
-									fontWeight: 'bold'
-								}}
-								title={h}
-							>
-								{clampText(h, 40)}
-							</th>
-						))}
-					</tr>
-				</thead>
-				<tbody>
-					{mergedRows.map((item, ridx) => (
-						<tr key={ridx}>
-							{/* Sticky Index Column */}
-							<td
-								style={{
-									borderBottom: '1px solid #eee',
-									padding: '0.5rem',
-									whiteSpace: 'nowrap',
-									fontWeight: 'bold',
-									position: 'sticky',
-									left: 0,
-									backgroundColor: '#0d0d0d',
-									zIndex: 9
-								}}
-								title={item.displayed[0] ?? ''}
-							>
-								{clampText(String(item.displayed[0] ?? ''), 60)}
-							</td>
-							{/* Data Columns */}
-							{visibleIndices.map((colIdx) => {
-								const isKnown = item.knownMask[colIdx];
-								return (
-									<td
-										key={colIdx}
-										style={{
-											borderBottom: '1px solid #eee',
-											padding: '0.5rem',
-											whiteSpace: 'nowrap',
-											fontWeight: isKnown ? 'bold' : 'normal',
-											color: isKnown ? '#00aa00' : '#ff6b6b' // Green for known, red for inferred
-										}}
-										title={item.displayed[colIdx] ?? ''}
-									>
-										{clampText(String(item.displayed[colIdx] ?? ''), 60)}
-									</td>
-								);
-							})}
-						</tr>
+						</TableCell>
+{visibleHeaders.map((h, localIdx) => (
+						<TableCell
+							key={localIdx}
+							sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
+							title={h}
+						>
+							{clampText(h, 40)}
+						</TableCell>
 					))}
-					{mergedRows.length === 0 && (
-						<tr>
-							<td colSpan={(visibleHeaders.length || 0) + 1} style={{ padding: '0.5rem', opacity: 0.75 }}>
-								No rows to display.
-							</td>
-						</tr>
-					)}
-				</tbody>
-			</table>
-		</div>
+				</TableRow>
+			</TableHead>
+			<TableBody>
+				{mergedRows.map((item, ridx) => (
+					<TableRow key={ridx} hover>
+						<TableCell
+							sx={{
+								fontWeight: 'bold',
+								whiteSpace: 'nowrap',
+								position: 'sticky',
+								left: 0,
+								backgroundColor: 'inherit',
+								zIndex: 9
+							}}
+							title={item.displayed[0] ?? ''}
+						>
+							{clampText(String(item.displayed[0] ?? ''), 60)}
+						</TableCell>
+						{visibleIndices.map((colIdx) => {
+							const isKnown = item.knownMask[colIdx];
+							return (
+								<TableCell
+									key={colIdx}
+									sx={{
+										whiteSpace: 'nowrap',
+										fontWeight: isKnown ? 'bold' : 'normal',
+										color: isKnown ? '#00aa00' : '#ff6b6b'
+									}}
+									title={item.displayed[colIdx] ?? ''}
+								>
+									{clampText(String(item.displayed[colIdx] ?? ''), 60)}
+								</TableCell>
+							);
+						})}
+					</TableRow>
+				))}
+				{mergedRows.length === 0 && (
+					<TableRow>
+						<TableCell colSpan={(visibleHeaders.length || 0) + 1} sx={{ opacity: 0.75 }}>
+							No rows to display.
+						</TableCell>
+					</TableRow>
+				)}
+			</TableBody>
+		</Table>
+		</TableContainer>
 	);
 }
 

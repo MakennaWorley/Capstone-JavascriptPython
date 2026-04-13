@@ -1,4 +1,4 @@
-import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { MenuItem, TextField } from '@mui/material';
 
 type DatasetSelectorProps = {
 	datasets: string[];
@@ -15,36 +15,35 @@ export default function DatasetSelector({ datasets, selected, onSelect, disabled
 	}
 
 	return (
-		<FormControl fullWidth size="small" disabled={disabled}>
-			<InputLabel
-				sx={{
-					color: 'text.secondary',
-					'&.Mui-focused': { color: '#452ee4' }
-				}}
-			>
-				Choose a dataset
-			</InputLabel>
-			<Select
-				value={selected}
-				onChange={(e) => onSelect(e.target.value)}
-				label="Choose a dataset"
-				sx={{
-					color: 'text.primary',
-					'& .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
-					'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#241291', borderWidth: '2px' },
-					'&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
-					'& .MuiSvgIcon-root': { color: '#452ee4' }
-				}}
-			>
-				<MenuItem value="" disabled>
-					Select…
+		<TextField
+			select
+			fullWidth
+			size="small"
+			disabled={disabled}
+			label="Choose a dataset"
+			value={selected}
+			onChange={(e) => onSelect(e.target.value)}
+			slotProps={{
+				inputLabel: {
+					sx: { color: 'text.secondary', '&.Mui-focused': { color: '#452ee4' } }
+				}
+			}}
+			sx={{
+				'& .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
+				'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#241291', borderWidth: '2px' },
+				'& .Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
+				'& .MuiSvgIcon-root': { color: '#452ee4' },
+				'& .MuiInputBase-input': { color: 'text.primary' }
+			}}
+		>
+			<MenuItem value="" disabled>
+				Select…
+			</MenuItem>
+			{datasets.map((d) => (
+				<MenuItem key={d} value={d}>
+					{d}
 				</MenuItem>
-				{datasets.map((d) => (
-					<MenuItem key={d} value={d}>
-						{d}
-					</MenuItem>
-				))}
-			</Select>
-		</FormControl>
+			))}
+		</TextField>
 	);
 }
