@@ -1,3 +1,4 @@
+import { Alert, Box, Button, Checkbox, FormControlLabel, Paper, Stack, TextField, Typography } from '@mui/material';
 import React, { useMemo, useState } from 'react';
 import LoadingProgress from './LoadingProgress.js';
 
@@ -33,17 +34,26 @@ type Props = {
 	xApiKey: string;
 	endpoint?: string;
 	debugMode?: boolean;
+	onSuccess?: () => void;
+	onSuccessNotification?: (message: string) => void;
 };
 
 // ---------- defaults ----------
 const DEFAULTS: SimConfig = {
 	name: '',
-	sequence_length: 5,
-	n_generations: 0,
+	sequence_length: 100,
+	n_generations: 5,
 	samples_per_generation: 50
 };
 
-export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = '/api/create/data', debugMode = false }: Props) {
+export default function DatasetModelCreationForm({
+	apiBase,
+	xApiKey,
+	endpoint = '/api/create/data',
+	debugMode = false,
+	onSuccess,
+	onSuccessNotification
+}: Props) {
 	const [advanced, setAdvanced] = useState(false);
 	const [sending, setSending] = useState(false);
 	const [status, setStatus] = useState('');
@@ -94,7 +104,6 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 	// ---------- submit ----------
 	async function submit(e: React.FormEvent) {
 		e.preventDefault();
-		if (errors.length) return;
 
 		setSending(true);
 		setStatus('');
@@ -143,8 +152,13 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 				return;
 			}
 
-			setStatus('Success!');
 			setResponseJson(maybeJson ?? text);
+			if (onSuccessNotification) {
+				onSuccessNotification('Dataset created successfully!');
+			}
+			if (onSuccess) {
+				onSuccess();
+			}
 		} catch (err) {
 			console.error(err);
 			setStatus('Network error');
@@ -154,96 +168,184 @@ export default function DatasetModelCreationForm({ apiBase, xApiKey, endpoint = 
 	}
 
 	return (
-		<form onSubmit={submit} style={{ display: 'grid', gap: '0.9rem', maxWidth: 720 }}>
-			<h2>Create Dataset</h2>
-
+		<Box component="form" onSubmit={submit} sx={{ display: 'grid', gap: '1.5rem', maxWidth: 720, pt: 2, pb: 2 }}>
 			{/* BASIC */}
-			<fieldset style={{ padding: '1rem' }}>
-				<legend>Basic</legend>
-
-				<label style={{ display: 'grid', gap: 6 }}>
-					Dataset name (alphanumeric, no spaces)
-					<input
+			<Box>
+				<Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
+					Basic Settings
+				</Typography>
+				<Stack spacing={2}>
+					<TextField
+						label="Dataset name (alphanumeric, no spaces)"
 						value={cfg.name}
 						onChange={(e) => update('name', e.target.value)}
 						placeholder="mydataset01"
-						style={{ padding: '0.5rem' }}
+						fullWidth
+						required
+						variant="outlined"
+						size="small"
+						sx={{
+							'& .MuiOutlinedInput-root': {
+								color: 'text.primary',
+								'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
+								'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
+								'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
+							},
+							'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
+							'& .MuiInputLabel-root': { color: 'text.secondary' },
+							'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
+						}}
 					/>
-				</label>
-
-				<label style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-					<input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} />
-					Advanced Settings (scale individuals)
-				</label>
-			</fieldset>
+					<FormControlLabel
+						control={
+							<Checkbox
+								checked={advanced}
+								onChange={(e) => setAdvanced(e.target.checked)}
+								sx={{
+									color: '#452ee4',
+									'&.Mui-checked': { color: '#452ee4' }
+								}}
+							/>
+						}
+						label="Advanced Settings (scale individuals)"
+						sx={{ color: 'text.primary' }}
+					/>
+				</Stack>
+			</Box>
 
 			{/* ADVANCED */}
 			{advanced && (
-				<fieldset style={{ padding: '1rem' }}>
-					<legend>
-						Advanced <span style={{ fontSize: '0.8rem', fontWeight: 'normal' }}>(optional)</span>
-					</legend>
-
-					<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-						<label>
-							Sequence Length
-							<input
+				<Box>
+					<Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
+						Advanced Settings <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>(optional)</span>
+					</Typography>
+					<Stack spacing={2}>
+						<Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+							<TextField
+								label="Sequence Length"
 								type="number"
 								value={Number.isFinite(cfg.sequence_length) ? cfg.sequence_length : ''}
 								placeholder="100"
 								onChange={(e) => update('sequence_length', Number(e.target.value))}
-								min={1}
-								step={1}
-								style={{ padding: '0.5rem' }}
+								inputProps={{ min: 1, step: 1 }}
+								variant="outlined"
+								size="small"
+								sx={{
+									'& .MuiOutlinedInput-root': {
+										color: 'text.primary',
+										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
+										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
+										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
+									},
+									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
+									'& .MuiInputLabel-root': { color: 'text.secondary' },
+									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
+								}}
 							/>
-						</label>
-
-						<label>
-							Number of generations
-							<input
+							<TextField
+								label="Number of generations"
 								type="number"
 								value={Number.isFinite(cfg.n_generations) ? cfg.n_generations : ''}
 								placeholder="5"
 								onChange={(e) => update('n_generations', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
-								min={1}
-								step={1}
-								style={{ padding: '0.5rem' }}
+								inputProps={{ min: 1, step: 1 }}
+								variant="outlined"
+								size="small"
+								sx={{
+									'& .MuiOutlinedInput-root': {
+										color: 'text.primary',
+										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
+										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
+										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
+									},
+									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
+									'& .MuiInputLabel-root': { color: 'text.secondary' },
+									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
+								}}
 							/>
-						</label>
-
-						<label>
-							Individuals per generation
-							<input
+							<TextField
+								label="Individuals per generation"
 								type="number"
 								value={Number.isFinite(cfg.samples_per_generation) ? cfg.samples_per_generation : ''}
 								placeholder="50"
 								onChange={(e) => update('samples_per_generation', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
-								min={1}
-								step={1}
-								style={{ padding: '0.5rem' }}
+								inputProps={{ min: 1, step: 1 }}
+								variant="outlined"
+								size="small"
+								sx={{
+									'& .MuiOutlinedInput-root': {
+										color: 'text.primary',
+										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
+										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
+										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
+									},
+									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
+									'& .MuiInputLabel-root': { color: 'text.secondary' },
+									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
+								}}
 							/>
-						</label>
-					</div>
-
-					<p style={{ fontSize: '0.9rem', marginTop: 10 }}>
-						Total individuals: <strong>{derivedTotal ?? '—'}</strong>
-					</p>
-				</fieldset>
+						</Box>
+						<Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+							Total individuals: <strong>{derivedTotal ?? '—'}</strong>
+						</Typography>
+					</Stack>
+				</Box>
 			)}
 
-			<button type="submit" disabled={sending || errors.length > 0} style={{ padding: '0.75rem' }}>
+			{/* SUBMIT BUTTON */}
+			<Button
+				type="submit"
+				disabled={sending}
+				variant="contained"
+				fullWidth
+				sx={{
+					backgroundColor: '#452ee4',
+					padding: '0.75rem',
+					fontSize: '1rem',
+					'&:hover': { backgroundColor: '#241291' },
+					'&:disabled': { backgroundColor: '#555', color: 'rgba(255, 255, 255, 0.5)' }
+				}}
+			>
 				{sending ? 'Generating...' : 'Generate Data'}
-			</button>
+			</Button>
 
 			<LoadingProgress isLoading={sending} message="Generating your data..." />
 
-			{status && <p>{status}</p>}
-
-			{debugMode && responseJson && (
-				<pre style={{ whiteSpace: 'pre-wrap', padding: '0.75rem', border: '1px solid #ddd' }}>
-					{typeof responseJson === 'string' ? responseJson : JSON.stringify(responseJson, null, 2)}
-				</pre>
+			{/* STATUS MESSAGE - ERRORS ONLY */}
+			{status && status !== 'Dataset created successfully!' && (
+				<Alert
+					severity="error"
+					sx={{
+						backgroundColor: 'rgba(255, 107, 107, 0.1)',
+						color: '#ff6b6b',
+						border: '1px solid #ff6b6b'
+					}}
+				>
+					{status}
+				</Alert>
 			)}
-		</form>
+
+			{/* DEBUG JSON OUTPUT */}
+			{debugMode && responseJson && (
+				<Paper sx={{ p: 2, bgcolor: 'background.default', border: '2px solid #452ee4', borderRadius: '4px' }}>
+					<Typography variant="caption" sx={{ color: '#452ee4', display: 'block', mb: 1 }}>
+						Debug: Response
+					</Typography>
+					<Box
+						component="pre"
+						sx={{
+							whiteSpace: 'pre-wrap',
+							wordWrap: 'break-word',
+							color: 'text.primary',
+							fontSize: '0.75rem',
+							overflow: 'auto',
+							maxHeight: '300px'
+						}}
+					>
+						{typeof responseJson === 'string' ? responseJson : JSON.stringify(responseJson, null, 2)}
+					</Box>
+				</Paper>
+			)}
+		</Box>
 	);
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import ApiService, { type Model } from '../services/apiService.js';
 
 /**
@@ -8,6 +8,7 @@ export function useDatasetsPoll(apiBase: string, apiKey: string, intervalMs: num
 	const [datasets, setDatasets] = useState<string[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
+	const [refreshTick, setRefreshTick] = useState(0);
 
 	useEffect(() => {
 		setIsLoading(true);
@@ -29,9 +30,11 @@ export function useDatasetsPoll(apiBase: string, apiKey: string, intervalMs: num
 		return () => {
 			datasetsSubscription.unsubscribe();
 		};
-	}, [apiBase, apiKey, intervalMs]);
+	}, [apiBase, apiKey, intervalMs, refreshTick]);
 
-	return { datasets, error, isLoading };
+	const refresh = useCallback(() => setRefreshTick((t) => t + 1), []);
+
+	return { datasets, error, isLoading, refresh };
 }
 
 /**

@@ -1,3 +1,5 @@
+import { MenuItem, TextField } from '@mui/material';
+
 type DatasetSelectorProps = {
 	datasets: string[];
 	selected: string;
@@ -8,25 +10,42 @@ type DatasetSelectorProps = {
 export default function DatasetSelector({ datasets, selected, onSelect, disabled = false }: DatasetSelectorProps) {
 	if (datasets.length === 0) {
 		return (
-			<p style={{ opacity: 0.8 }}>
-				Failed to load datasets. Please check your connection and refresh the page. If the problem persists, contact support.
-			</p>
+			<span style={{ color: 'inherit', fontSize: '0.9rem' }}>Failed to load datasets. Please check your connection and refresh the page.</span>
 		);
 	}
 
 	return (
-		<label>
-			<span style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.25rem' }}>Choose a dataset</span>
-			<select value={selected} onChange={(e) => onSelect(e.target.value)} disabled={disabled} style={{ padding: '0.4rem', minWidth: '260px' }}>
-				<option value="" disabled>
-					Select…
-				</option>
-				{datasets.map((d) => (
-					<option key={d} value={d}>
+		<TextField
+			select
+			fullWidth
+			size="small"
+			disabled={disabled}
+			label="Choose a dataset"
+			value={selected}
+			onChange={(e) => onSelect(e.target.value)}
+			slotProps={{
+				inputLabel: {
+					sx: { color: 'text.secondary', '&.Mui-focused': { color: '#452ee4' } }
+				}
+			}}
+			sx={{
+				'& .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
+				'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#241291', borderWidth: '2px' },
+				'& .Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
+				'& .MuiSvgIcon-root': { color: '#452ee4' },
+				'& .MuiInputBase-input': { color: 'text.primary' }
+			}}
+		>
+			<MenuItem value="" disabled>
+				Select…
+			</MenuItem>
+			{[...datasets]
+				.sort((a, b) => a.localeCompare(b))
+				.map((d) => (
+					<MenuItem key={d} value={d}>
 						{d}
-					</option>
+					</MenuItem>
 				))}
-			</select>
-		</label>
+		</TextField>
 	);
 }

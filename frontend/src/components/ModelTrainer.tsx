@@ -1,5 +1,20 @@
+import { Alert, Button } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import LoadingProgress from './LoadingProgress.js';
+
+const MODEL_TYPE_SHORT_NAMES: Record<string, string> = {
+	bayes_softmax3: 'Bayesian Inference',
+	multi_log_regression: 'Multinomial Logistic Regression',
+	hmm_dosage: 'Hidden Markov Model',
+	dnn_dosage: 'Deep Neural Network',
+	gnn_dosage: 'Graph Neural Network'
+};
+
+function capitalize(s: string): string {
+	if (!s) return s;
+	return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 type Model = {
 	model_name: string;
@@ -11,7 +26,12 @@ type ModelTrainerProps = {
 	xApiKey: string;
 	selectedDataset: string;
 	selectedModel: Model | null;
-	onTestComplete?: (data: { paths: any; testMetrics: any; images: any; predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }> }) => void;
+	onTestComplete?: (data: {
+		paths: any;
+		testMetrics: any;
+		images: any;
+		predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }>;
+	}) => void;
 };
 
 type ApiSuccessTest = {
@@ -39,6 +59,7 @@ type ApiError = {
 };
 
 export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, selectedModel, onTestComplete }: ModelTrainerProps) {
+	const theme = useTheme();
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +89,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 
 			if (result.status === 'success') {
 				setError(null);
-			if (onTestComplete) {
+				if (onTestComplete) {
 					onTestComplete({
 						paths: result.data.paths,
 						testMetrics: result.data.test_metrics,
@@ -92,52 +113,71 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 	}
 
 	return (
-		<div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#1a1a1a', borderRadius: '8px' }}>
-			<h3 style={{ marginTop: 0 }}>Model Trainer</h3>
-
-			<div style={{ marginBottom: '1rem' }}>
-				<p style={{ marginBottom: '0.5rem' }}>
-					<strong>Selected Dataset:</strong> {selectedDataset || <em style={{ opacity: 0.6 }}>None</em>}
-				</p>
-				<p style={{ marginBottom: '0.5rem' }}>
-					<strong>Selected Model:</strong>{' '}
-					{selectedModel ? (
-						<>
-							{selectedModel.model_name} ({selectedModel.model_type})
-						</>
-					) : (
-						<em style={{ opacity: 0.6 }}>None</em>
-					)}
-				</p>
+		<div style={{ marginTop: '2rem' }}>
+			{/* Identity cards */}
+			<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+				<div style={{ padding: '1rem', borderRadius: '6px', border: `1px solid ${theme.palette.divider}` }}>
+					<p
+						style={{
+							margin: 0,
+							fontSize: '0.75rem',
+							color: theme.palette.text.secondary,
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em'
+						}}
+					>
+						Selected Dataset
+					</p>
+					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
+						{selectedDataset || <em style={{ opacity: 0.7, fontStyle: 'italic' }}>None</em>}
+					</p>
+				</div>
+				<div style={{ padding: '1rem', borderRadius: '6px', border: `1px solid ${theme.palette.divider}` }}>
+					<p
+						style={{
+							margin: 0,
+							fontSize: '0.75rem',
+							color: theme.palette.text.secondary,
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em'
+						}}
+					>
+						Selected Model
+					</p>
+					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
+						{selectedModel ? (
+							`${capitalize(selectedModel.model_name)} ${MODEL_TYPE_SHORT_NAMES[selectedModel.model_type] ?? selectedModel.model_type}`
+						) : (
+							<em style={{ opacity: 0.7, fontStyle: 'italic' }}>None</em>
+						)}
+					</p>
+				</div>
 			</div>
 
-			<button
-				type="button"
+			<Button
+				variant="contained"
 				onClick={handleTestModel}
 				disabled={!canTest || loading}
-				style={{
-					padding: '0.6rem 1.2rem',
-					backgroundColor: canTest && !loading ? '#4CAF50' : '#555',
-					color: 'white',
-					border: 'none',
-					borderRadius: '4px',
-					cursor: canTest && !loading ? 'pointer' : 'not-allowed',
-					fontSize: '1rem'
-				}}
+				sx={{ backgroundColor: '#452ee4', '&:hover': { backgroundColor: '#241291' } }}
 			>
-				{loading ? 'Testing...' : 'Test Model on Dataset'}
-			</button>
+				Test Model on Dataset
+			</Button>
 
 			<LoadingProgress isLoading={loading} message="Applying a model to your data..." />
 
-			{!canTest && <p style={{ marginTop: '1rem', color: '#ff9800' }}>Please select both a dataset and a model to test.</p>}
+			{!canTest && (
+				<Alert severity="warning" sx={{ mt: 2 }}>
+					Please select both a dataset and a model to test.
+				</Alert>
+			)}
 
 			{error && (
 				<div
+					role="alert"
 					style={{
 						marginTop: '1rem',
 						padding: '1rem',
-						backgroundColor: '#3d1a1a',
+						backgroundColor: theme.palette.mode === 'dark' ? '#3d1a1a' : 'rgba(244, 67, 54, 0.08)',
 						borderLeft: '4px solid #f44336',
 						borderRadius: '4px'
 					}}

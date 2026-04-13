@@ -480,7 +480,9 @@ def train_eval(
 		print(f'--- Phase 3: Final Testing {model_tag} on {test_base} ---')
 		X_test, y_test, groups_test = load_whole_dataset(test_base, prep_cfg)
 
-		test_metrics = evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True)
+		test_metrics = evaluate_and_graph_clf(
+			model, X_test, y_test, groups=groups_test, name=f'{model_base_name} {model_tag} {test_base}', graph=True
+		)
 
 		# Create graph paths based on the test dataset name
 		test_graph_path = images_path / f'{model_tag}_test_{test_base}.png'
@@ -493,7 +495,7 @@ def train_eval(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} {test_base}', save_path=test_cm_path)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_base_name} {model_tag} {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 
@@ -607,21 +609,11 @@ def test_on_new_data(
 	if prep_cfg is None:
 		prep_cfg = PrepConfig(dataset_name='unused', datasets_dir=str(datasets_dir))
 
-	# 0.5 Check if this model has already been tested on this dataset
+	# 0.5 Check if this model has already been tested on this dataset (log it, but always re-run to return full stats)
 	cached_result = check_model_already_applied(model_name, model_type, test_base)
 	if cached_result:
-		print(f'✓ Model "{model_name}" ({model_type}) already tested on "{test_base}"')
-		print(f'  Using cached results from {cached_result["applied_date"]}')
-
-		return {
-			'test_metrics': {'model': f'{model_name} {model_type}', 'dataset': test_base},  # Include model and dataset info
-			'paths': {
-				'graph_test': cached_result['graph_test'],
-				'graph_cm': cached_result['graph_cm'],
-				'model_dir': str(Path(models_dir) / model_name / model_type),
-			},
-			'from_cache': True,
-		}
+		print(f'✓ Model "{model_name}" ({model_type}) previously tested on "{test_base}" ({cached_result["applied_date"]})')
+		print('  Re-running prediction to return full stats and error analysis.')
 
 	# 1. Setup Model Types and Paths
 	ModelCls, model_tag = _select_model(model_type)
@@ -677,7 +669,10 @@ def test_on_new_data(
 			)
 
 		# 5. Predict and Evaluate
-		test_metrics = evaluate_and_graph_clf(model, X_test, y_test, groups=groups_test, name=f'{model_tag}_test_{test_base}', graph=True)
+		model_name_base = model_name.split('.')[0]  # Extract base name (e.g., 'tiny' from 'tiny.training')
+		test_metrics = evaluate_and_graph_clf(
+			model, X_test, y_test, groups=groups_test, name=f'{model_name_base} {model_type} {test_base}', graph=True
+		)
 
 		# 6. Save Graphs to logs directory
 		test_graph_path = logs_dir / f'{model_name}-{model_tag}-{test_base}_{timestamp}_graph.png'
@@ -690,7 +685,7 @@ def test_on_new_data(
 
 		# Confusion Matrix
 		y_pred_cm = model.predict_class(X_test, groups=groups_test)
-		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_tag} {test_base}', save_path=test_cm_path)
+		plot_confusion_matrix(y_true=y_test, y_pred=y_pred_cm, name=f'{model_name_base} {model_type} {test_base}', save_path=test_cm_path)
 		print(f'Saved confusion matrix to {test_cm_path}')
 		print(f'\nTest log saved to {log_file_path}')
 

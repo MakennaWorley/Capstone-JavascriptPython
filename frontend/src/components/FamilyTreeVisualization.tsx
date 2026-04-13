@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 
 type GeneticValue = number | null;
@@ -26,6 +27,7 @@ type Props = {
 
 export default function FamilyTreeVisualization({ data }: Props) {
 	const [hoveredNode, setHoveredNode] = useState<number | null>(null);
+	const theme = useTheme();
 
 	// Constants for layout
 	const NODE_RADIUS = 20;
@@ -38,21 +40,39 @@ export default function FamilyTreeVisualization({ data }: Props) {
 	const layout = useMemo(() => {
 		const focusId = data.focus_id;
 
-		// Filter edges to only those directly connected to the focus individual
-		const filteredEdges = data.edges.filter((edge) => edge.source === focusId || edge.target === focusId);
+		const allNodesById = new Map<number, FamilyNode>();
+		data.nodes.forEach((n) => allNodesById.set(n.id, n));
 
-		// Collect IDs of all directly connected nodes (focus + parents + children)
-		const connectedIds = new Set<number>([focusId]);
-		filteredEdges.forEach((edge) => {
-			connectedIds.add(edge.source);
-			connectedIds.add(edge.target);
+		// Determine parent/child direction using time (higher time = older = parent)
+		const parentMap = new Map<number, number[]>(); // childId -> [parentIds]
+		const childMap = new Map<number, number[]>(); // parentId -> [childIds]
+
+		data.edges.forEach((edge) => {
+			const sNode = allNodesById.get(edge.source);
+			const tNode = allNodesById.get(edge.target);
+			if (!sNode || !tNode) return;
+			let parentId: number, childId: number;
+			if (sNode.time >= tNode.time) {
+				parentId = edge.source;
+				childId = edge.target;
+			} else {
+				parentId = edge.target;
+				childId = edge.source;
+			}
+			if (!parentMap.has(childId)) parentMap.set(childId, []);
+			parentMap.get(childId)!.push(parentId);
+			if (!childMap.has(parentId)) childMap.set(parentId, []);
+			childMap.get(parentId)!.push(childId);
 		});
 
-		const visibleNodes = data.nodes.filter((node) => connectedIds.has(node.id));
+		const focusParents = parentMap.get(focusId) ?? [];
+		const focusChildren = childMap.get(focusId) ?? [];
 
-		const nodesById = new Map<number, { x: number; y: number; node: FamilyNode }>();
+		// Only show: parents of focus, focus itself, children of focus
+		const visibleIds = new Set([focusId, ...focusParents, ...focusChildren]);
+		const visibleNodes = data.nodes.filter((n) => visibleIds.has(n.id));
 
-		// 1. Group nodes by their time (generation)
+		// Group visible nodes by generation (time)
 		const layers: { [time: number]: FamilyNode[] } = {};
 		visibleNodes.forEach((node) => {
 			if (!layers[node.time]) layers[node.time] = [];
@@ -62,141 +82,418 @@ export default function FamilyTreeVisualization({ data }: Props) {
 		const sortedTimes = Object.keys(layers)
 			.map(Number)
 			.sort((a, b) => a - b);
-		const minTime = sortedTimes[0];
-		const maxTime = sortedTimes[sortedTimes.length - 1];
+		const minTime = sortedTimes[0] ?? 0;
+		const maxTime = sortedTimes[sortedTimes.length - 1] ?? 0;
 		const timeRange = maxTime - minTime || 1;
 
-		// 2. Calculate coordinates for each layer
+		const nodesById = new Map<number, { x: number; y: number; node: FamilyNode }>();
+
 		sortedTimes.forEach((time) => {
 			const nodesInLayer = layers[time];
-			// Sort by ID within layer to keep the tree consistent
 			nodesInLayer.sort((a, b) => a.id - b.id);
-
 			const t = (time - minTime) / timeRange;
 			const y = PADDING + (1 - t) * (HEIGHT - 2 * PADDING);
-
 			nodesInLayer.forEach((node, idx) => {
-				// Spread nodes horizontally relative to the count IN THIS LAYER
 				const x = nodesInLayer.length === 1 ? WIDTH / 2 : PADDING + (idx / (nodesInLayer.length - 1)) * (WIDTH - 2 * PADDING);
-
 				nodesById.set(node.id, { x, y, node });
 			});
 		});
 
-		return { nodesById, filteredEdges };
+		const familyGroups: { parents: number[]; children: number[] }[] = [];
+
+		// Parents → focus group
+		if (focusParents.length > 0) {
+			familyGroups.push({
+				parents: [...focusParents].sort((a, b) => a - b),
+				children: [focusId]
+			});
+		}
+
+		// Focus → children group
+		if (focusChildren.length > 0) {
+			familyGroups.push({
+				parents: [focusId],
+				children: [...focusChildren].sort((a, b) => a - b)
+			});
+		}
+
+		return { nodesById, familyGroups };
 	}, [data]);
 
 	const hovered = hoveredNode !== null ? layout.nodesById.get(hoveredNode) : undefined;
 
 	return (
-		<div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #ddd', borderRadius: '12px' }}>
+		<div style={{ padding: '1rem', borderRadius: '12px' }}>
 			<h3>
 				Family Tree: {data.dataset} (Focus: {data.focus_id})
 			</h3>
 
 			<div style={{ position: 'relative' }}>
 				<div style={{ overflowX: 'auto' }}>
-					<svg width={WIDTH} height={HEIGHT} style={{ border: '1px solid #eee', background: '#fff' }} aria-label="Family tree image">
-						{/* Draw Edges */}
-					{layout.filteredEdges.map((edge, i) => {
-							const start = layout.nodesById.get(edge.source);
-							const end = layout.nodesById.get(edge.target);
-							if (!start || !end) return null;
-							return (
-								<line
-									key={`edge-${i}`}
-									x1={start.x}
-									y1={start.y}
-									x2={end.x}
-									y2={end.y}
-									stroke="#999"
-									strokeWidth="2"
-									pointerEvents="none"
-								/>
-							);
+					<svg
+						width={WIDTH}
+						height={HEIGHT}
+						style={{ border: `1px solid ${theme.palette.divider}`, background: theme.palette.background.default }}
+						role="img"
+						aria-label={`Family tree diagram for ${data.dataset}, focused on individual ${data.focus_id}`}
+					>
+						<title>
+							Family tree diagram for {data.dataset}, focused on individual {data.focus_id}
+						</title>
+						{/* Family tree connectors */}
+						{layout.familyGroups.map((group, gi) => {
+							const stroke = theme.palette.text.secondary;
+							const sw = 2;
+
+							const parentPos = group.parents
+								.map((id) => layout.nodesById.get(id))
+								.filter((p): p is NonNullable<typeof p> => p != null);
+							const childPos = group.children
+								.map((id) => layout.nodesById.get(id))
+								.filter((c): c is NonNullable<typeof c> => c != null);
+
+							if (parentPos.length === 0 || childPos.length === 0) return null;
+
+							const childrenY = childPos[0].y;
+							const lines: React.ReactElement[] = [];
+
+							if (parentPos.length >= 2) {
+								const sorted = [...parentPos].sort((a, b) => a.x - b.x);
+								const p1 = sorted[0];
+								const p2 = sorted[sorted.length - 1];
+								const midX = (p1.x + p2.x) / 2;
+								const parentY = p1.y;
+								const junctionY = (parentY + childrenY) / 2;
+
+								// Couple horizontal line
+								lines.push(
+									<line
+										key={`${gi}-c`}
+										x1={p1.x}
+										y1={parentY}
+										x2={p2.x}
+										y2={parentY}
+										stroke={stroke}
+										strokeWidth={sw}
+										pointerEvents="none"
+									/>
+								);
+								// Drop from midpoint to junction
+								lines.push(
+									<line
+										key={`${gi}-d`}
+										x1={midX}
+										y1={parentY}
+										x2={midX}
+										y2={junctionY}
+										stroke={stroke}
+										strokeWidth={sw}
+										pointerEvents="none"
+									/>
+								);
+
+								if (childPos.length === 1) {
+									const cx = childPos[0].x;
+									// Horizontal from midpoint to child x, then vertical down
+									lines.push(
+										<line
+											key={`${gi}-sh`}
+											x1={midX}
+											y1={junctionY}
+											x2={cx}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									lines.push(
+										<line
+											key={`${gi}-sv`}
+											x1={cx}
+											y1={junctionY}
+											x2={cx}
+											y2={childrenY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+								} else {
+									const sortedC = [...childPos].sort((a, b) => a.x - b.x);
+									const barLeft = Math.min(sortedC[0].x, midX);
+									const barRight = Math.max(sortedC[sortedC.length - 1].x, midX);
+									// Sibling bar
+									lines.push(
+										<line
+											key={`${gi}-b`}
+											x1={barLeft}
+											y1={junctionY}
+											x2={barRight}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									// Vertical to each child
+									sortedC.forEach((c, ci) => {
+										lines.push(
+											<line
+												key={`${gi}-v${ci}`}
+												x1={c.x}
+												y1={junctionY}
+												x2={c.x}
+												y2={childrenY}
+												stroke={stroke}
+												strokeWidth={sw}
+												pointerEvents="none"
+											/>
+										);
+									});
+								}
+							} else {
+								// Single parent
+								const p = parentPos[0];
+								const junctionY = (p.y + childrenY) / 2;
+
+								if (childPos.length === 1) {
+									const cx = childPos[0].x;
+									// Vertical from parent down to junction, horizontal to child x, vertical to child
+									lines.push(
+										<line
+											key={`${gi}-pd`}
+											x1={p.x}
+											y1={p.y}
+											x2={p.x}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									lines.push(
+										<line
+											key={`${gi}-sh`}
+											x1={p.x}
+											y1={junctionY}
+											x2={cx}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									lines.push(
+										<line
+											key={`${gi}-sv`}
+											x1={cx}
+											y1={junctionY}
+											x2={cx}
+											y2={childrenY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+								} else {
+									const sortedC = [...childPos].sort((a, b) => a.x - b.x);
+									const barLeft = Math.min(sortedC[0].x, p.x);
+									const barRight = Math.max(sortedC[sortedC.length - 1].x, p.x);
+									lines.push(
+										<line
+											key={`${gi}-d`}
+											x1={p.x}
+											y1={p.y}
+											x2={p.x}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									lines.push(
+										<line
+											key={`${gi}-b`}
+											x1={barLeft}
+											y1={junctionY}
+											x2={barRight}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									sortedC.forEach((c, ci) => {
+										lines.push(
+											<line
+												key={`${gi}-v${ci}`}
+												x1={c.x}
+												y1={junctionY}
+												x2={c.x}
+												y2={childrenY}
+												stroke={stroke}
+												strokeWidth={sw}
+												pointerEvents="none"
+											/>
+										);
+									});
+								}
+							}
+
+							return <g key={gi}>{lines}</g>;
 						})}
 
 						{/* Draw Nodes */}
-					{Array.from(layout.nodesById.values()).map(({ x, y, node }) => {
-						const hasGenetics = node.observed.some((v) => v !== null);
-						const nodeFill = node.id === data.focus_id ? '#3b82f6' : hasGenetics ? '#bbf7d0' : '#fecaca';
-						const nodeStroke = node.id === data.focus_id ? '#1d4ed8' : hasGenetics ? '#16a34a' : '#dc2626';
-						return (
-							<g key={node.id} style={{ cursor: 'pointer' }}>
-								<circle
-									cx={x}
-									cy={y}
-									r={NODE_RADIUS + 10}
-									fill="transparent"
-									pointerEvents="all"
-									onPointerEnter={() => {
-										setHoveredNode(node.id);
-									}}
-									onPointerLeave={() => {
-										setHoveredNode(null);
-									}}
-								/>
-								<circle
-									cx={x}
-									cy={y}
-									r={node.id === data.focus_id ? NODE_RADIUS + 4 : NODE_RADIUS}
-									fill={nodeFill}
-									stroke={nodeStroke}
-									strokeWidth={node.id === data.focus_id ? 3 : 1}
-									pointerEvents="none"
-								/>
-								<text
-									x={x}
-									y={y + 5}
-									textAnchor="middle"
-									fontSize="10px"
-									fontWeight="bold"
-									fill={node.id === data.focus_id ? '#fff' : '#000'}
-									pointerEvents="none"
+						{Array.from(layout.nodesById.values()).map(({ x, y, node }) => {
+							const hasGenetics = node.observed.some((v) => v !== null);
+							const isFocus = node.id === data.focus_id;
+							const focusMissingGenetics = isFocus && !hasGenetics;
+							const nodeFill = isFocus ? '#2563eb' : hasGenetics ? '#bbf7d0' : '#fecaca';
+							const nodeStroke = isFocus ? (hasGenetics ? '#1d4ed8' : '#dc2626') : hasGenetics ? '#16a34a' : '#dc2626';
+							return (
+								<g
+									key={node.id}
+									style={{ cursor: 'pointer' }}
+									role="img"
+									aria-label={`Individual ${node.id}${isFocus ? ' (focus)' : ''}, ${hasGenetics ? 'known' : 'unknown'} genotype`}
 								>
-									{node.id}
-								</text>
-							</g>
-						);
-					})}
+									<circle
+										cx={x}
+										cy={y}
+										r={NODE_RADIUS + 10}
+										fill="transparent"
+										pointerEvents="all"
+										tabIndex={0}
+										onPointerEnter={() => {
+											setHoveredNode(node.id);
+										}}
+										onPointerLeave={() => {
+											setHoveredNode(null);
+										}}
+										onFocus={() => {
+											setHoveredNode(node.id);
+										}}
+										onBlur={() => {
+											setHoveredNode(null);
+										}}
+									/>
+									<circle
+										cx={x}
+										cy={y}
+										r={isFocus ? NODE_RADIUS + 4 : NODE_RADIUS}
+										fill={nodeFill}
+										stroke={nodeStroke}
+										strokeWidth={isFocus ? 3 : 1}
+										strokeDasharray={focusMissingGenetics ? '6 3' : undefined}
+										pointerEvents="none"
+									/>
+									<text
+										x={x}
+										y={y + 5}
+										textAnchor="middle"
+										fontSize="10px"
+										fontWeight="bold"
+										fill={node.id === data.focus_id ? '#fff' : '#000'}
+										pointerEvents="none"
+									>
+										{node.id}
+									</text>
+								</g>
+							);
+						})}
+						{/* Inline tooltip next to hovered node */}
+						{hovered &&
+							(() => {
+								const TW = 180;
+								const TH = 110;
+								const gap = NODE_RADIUS + 14;
+								const rawX = hovered.x + gap + TW > WIDTH ? hovered.x - gap - TW : hovered.x + gap;
+								const rawY = Math.min(Math.max(hovered.y - TH / 2, 4), HEIGHT - TH - 4);
+								return (
+									<foreignObject x={rawX} y={rawY} width={TW} height={TH} style={{ pointerEvents: 'none', overflow: 'visible' }}>
+										<div
+											style={{
+												background: theme.palette.background.paper,
+												border: `1px solid ${theme.palette.divider}`,
+												borderRadius: 6,
+												padding: '6px 10px',
+												boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+												fontSize: '0.75rem',
+												color: theme.palette.text.primary,
+												width: TW
+											}}
+										>
+											<div
+												style={{
+													fontWeight: 'bold',
+													marginBottom: 4,
+													borderBottom: `1px solid ${theme.palette.divider}`,
+													paddingBottom: 3
+												}}
+											>
+												Individual {hovered.node.id}
+											</div>
+											<div style={{ opacity: 0.7, marginBottom: 2 }}>Genotypes (first 20):</div>
+											<div style={{ wordBreak: 'break-all', lineHeight: 1.4 }}>
+												{hovered.node.observed
+													.slice(0, 20)
+													.map((v) => (v === null ? '?' : v))
+													.join(', ')}
+												&hellip;
+											</div>
+										</div>
+									</foreignObject>
+								);
+							})()}
 					</svg>
 				</div>
-
-				{/* Genotype Preview Tooltip */}
-				{hovered && (
-					<div
-						style={{
-							position: 'absolute',
-							top: 10,
-							left: 10,
-							zIndex: 50,
-							background: 'white',
-							padding: '10px',
-							border: '1px solid #ccc',
-							borderRadius: '4px',
-							maxWidth: '200px',
-							fontSize: '0.8rem',
-							boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-							pointerEvents: 'none',
-							color: '#111'
-						}}
-					>
-						<strong>Ind ID: {hovered.node.id}</strong>
-						<div style={{ wordBreak: 'break-all', marginTop: '5px' }}>
-							<strong>Genotypes:</strong>
-							<br />
-							{hovered.node.observed
-								.slice(0, 20)
-								.map((v) => (v === null ? '?' : v))
-								.join(', ')}
-							...
-						</div>
-					</div>
-				)}
 			</div>
 
-			<p style={{ fontSize: '0.8rem', color: '#666', marginTop: '10px' }}>
-				* Vertical axis represents <b>Time</b>. Blue node is the focus individual. <span style={{ color: '#16a34a' }}>&#9632;</span> Known genotype &nbsp; <span style={{ color: '#dc2626' }}>&#9632;</span> Unknown genotype. Hover to see genotype vectors.
+			<p style={{ fontSize: '0.8rem', marginTop: '10px', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', opacity: 0.8 }}>
+				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+					<span
+						style={{
+							display: 'inline-block',
+							width: 12,
+							height: 12,
+							borderRadius: '50%',
+							backgroundColor: '#2563eb',
+							border: '2px solid #1d4ed8'
+						}}
+					/>
+					<span style={{ fontWeight: 'bold' }}>Focus individual</span>
+				</span>
+				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+					<span
+						style={{
+							display: 'inline-block',
+							width: 12,
+							height: 12,
+							borderRadius: '50%',
+							backgroundColor: '#bbf7d0',
+							border: '2px solid #16a34a'
+						}}
+					/>
+					<span style={{ color: theme.palette.mode === 'dark' ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Known genotype</span>
+				</span>
+				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+					<span
+						style={{
+							display: 'inline-block',
+							width: 12,
+							height: 12,
+							borderRadius: '50%',
+							backgroundColor: '#fecaca',
+							border: '2px solid #dc2626'
+						}}
+					/>
+					<span style={{ color: theme.palette.mode === 'dark' ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Unknown genotype</span>
+				</span>
+				<span style={{ opacity: 0.7 }}>Vertical axis = Time. Hover nodes to see genotype vectors.</span>
+				<span style={{ opacity: 0.7 }}>
+					Shows direct connections only — parents and children of the selected node. Siblings and mates are not shown.
+				</span>
 			</p>
 		</div>
 	);

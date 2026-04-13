@@ -1,19 +1,24 @@
+import { useTheme } from '@mui/material/styles';
+
 type LoadingProgressProps = {
 	isLoading: boolean;
 	message: string;
 };
 
 export default function LoadingProgress({ isLoading, message }: LoadingProgressProps) {
+	const theme = useTheme();
 	if (!isLoading) return null;
 
 	return (
 		<div
+			role="status"
+			aria-live="polite"
 			style={{
 				marginTop: '1rem',
 				padding: '1rem',
-				backgroundColor: '#2a2a2a',
+				backgroundColor: theme.palette.background.paper,
 				borderRadius: '4px',
-				border: '1px solid #646cff'
+				border: '2px solid #452ee4'
 			}}
 		>
 			<div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -23,7 +28,7 @@ export default function LoadingProgress({ isLoading, message }: LoadingProgressP
 							width: '8px',
 							height: '8px',
 							borderRadius: '50%',
-							backgroundColor: '#646cff',
+							backgroundColor: '#452ee4',
 							animation: 'pulse 1.5s ease-in-out 0s infinite'
 						}}
 					/>
@@ -32,7 +37,7 @@ export default function LoadingProgress({ isLoading, message }: LoadingProgressP
 							width: '8px',
 							height: '8px',
 							borderRadius: '50%',
-							backgroundColor: '#646cff',
+							backgroundColor: '#452ee4',
 							animation: 'pulse 1.5s ease-in-out 0.3s infinite'
 						}}
 					/>
@@ -41,12 +46,12 @@ export default function LoadingProgress({ isLoading, message }: LoadingProgressP
 							width: '8px',
 							height: '8px',
 							borderRadius: '50%',
-							backgroundColor: '#646cff',
+							backgroundColor: '#452ee4',
 							animation: 'pulse 1.5s ease-in-out 0.6s infinite'
 						}}
 					/>
 				</div>
-				<span style={{ fontSize: '0.95rem', color: 'rgba(255, 255, 255, 0.87)' }}>{message}</span>
+				<span style={{ fontSize: '0.95rem', color: theme.palette.text.primary }}>{message}</span>
 			</div>
 
 			{/* Loading bar */}
@@ -55,7 +60,7 @@ export default function LoadingProgress({ isLoading, message }: LoadingProgressP
 					marginTop: '0.75rem',
 					width: '100%',
 					height: '4px',
-					backgroundColor: '#1a1a1a',
+					backgroundColor: theme.palette.background.default,
 					borderRadius: '2px',
 					overflow: 'hidden'
 				}}
@@ -63,7 +68,7 @@ export default function LoadingProgress({ isLoading, message }: LoadingProgressP
 				<div
 					style={{
 						height: '100%',
-						backgroundColor: '#646cff',
+						backgroundColor: '#452ee4',
 						borderRadius: '2px',
 						animation: 'shimmer 2s infinite'
 					}}
