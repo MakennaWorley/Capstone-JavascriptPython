@@ -67,10 +67,8 @@ def check_system_specs():
 
 def install_missing_packages():
 	"""Install packages needed for optimal performance."""
-	packages = ['psutil', 'jax[cuda11_pip]', 'jaxlib']  # Adjust CUDA version as needed
-
 	print('Checking required packages...')
-	for package in ['psutil']:  # Only install psutil automatically
+	for package in ['psutil']:
 		try:
 			__import__(package)
 			print(f'  {package} is installed')

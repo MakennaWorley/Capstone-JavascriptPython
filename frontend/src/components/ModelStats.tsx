@@ -62,7 +62,6 @@ function formatValue(v: any): string {
 
 export default function ModelStats({ paths, testMetrics, images, debugMode = false, predictionErrors }: ModelStatsProps) {
 	const theme = useTheme();
-	const [rowPageIndex, setRowPageIndex] = useState(0);
 	const [nerdsMode, setNerdsMode] = useState(false);
 	const ROWS_PER_PAGE = 10;
 

@@ -38,8 +38,6 @@ export default function App() {
 	const API_BASE = import.meta.env.VITE_API_BASE;
 	const API_KEY = import.meta.env.VITE_X_API_KEY;
 
-	const [msg, setMsg] = useState<string | null>(null);
-	const [status, setStatus] = useState('');
 	const [selectedDataset, setSelectedDataset] = useState<string>('');
 	const [selectedModel, setSelectedModel] = useState<Model | null>(null);
 	const [testResults, setTestResults] = useState<{

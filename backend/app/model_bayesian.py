@@ -122,8 +122,6 @@ class BayesianCategoricalDosageClassifier:
 			logits = b[groups] + pm.math.dot(Xz, W)
 			pm.Categorical('y', logit_p=logits, observed=y_int)
 
-			# Configure sampling strategy
-			sampler_kwargs = {}
 			if self.gpu_available:
 				if self.gpu_strategy == 'safe':
 					# Balanced GPU Mode: Parallel chains + GPU, but fewer chains for stability
@@ -151,7 +149,6 @@ class BayesianCategoricalDosageClassifier:
 				random_seed=self.random_seed,
 				return_inferencedata=True,
 				cores=effective_cores,
-				**sampler_kwargs,
 			)
 
 		self._w_mean = self.idata.posterior['W'].mean(axis=(0, 1)).values
@@ -184,13 +181,6 @@ class BayesianCategoricalDosageClassifier:
 		logits = intercept + Xz @ self._w_mean
 		expz = np.exp(logits - logits.max(axis=1, keepdims=True))
 		return (expz / expz.sum(axis=1, keepdims=True)).astype(np.float32)
-
-	def get_calibration_data(self):
-		if self.idata is None:
-			raise RuntimeError('Model must be fit first.')
-		with pm.Model():
-			ppc = pm.sample_posterior_predictive(self.idata)
-		return ppc
 
 	def predict_class(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
 		p = self.predict_proba(X, groups=groups)

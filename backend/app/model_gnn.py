@@ -392,7 +392,7 @@ class GNNDosageClassifier:
 			try:
 				self.model.load_state_dict(torch.load(latest_checkpoint, map_location=self.device))
 				self._resumed = True
-				print(f'Resumed DNN from checkpoint: {latest_checkpoint.name}')
+				print(f'Resumed GNN from checkpoint: {latest_checkpoint.name}')
 			except Exception as e:
 				print(f'Warning: Could not load checkpoint {latest_checkpoint.name}: {e}. Starting from scratch.')
 				start_epoch = 0

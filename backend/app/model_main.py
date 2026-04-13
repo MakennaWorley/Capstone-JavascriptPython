@@ -203,38 +203,6 @@ def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
 			raise ValueError(f'Unknown model label: {model_label}')
 
 
-def _run_fold_parallel(args):
-	"""
-	Helper function to run a single fold in a separate process.
-	"""
-	fold_idx, X_t, X_v, y_t, y_v, g_t, model_label = args
-
-	model_cls, _ = _select_model(model_label)
-
-	if model_label == 'bayes_softmax3':
-		# Bayesian with optimized settings for CV (faster but still accurate)
-		fold_model = model_cls(chains=2, draws=500, tune=500, cores=2)
-	elif model_label == 'hmm_dosage':
-		# HMM with optimized settings for CV
-		fold_model = model_cls(n_iter=20, verbose=False)
-	elif model_label == 'dnn_dosage':
-		# DNN with optimized settings for CV
-		fold_model = model_cls(epochs=50, verbose=False, early_stopping_patience=5)
-	elif model_label == 'gnn_dosage':
-		# GNN with optimized settings for CV
-		fold_model = model_cls(epochs=50, verbose=False, early_stopping_patience=5)
-	else:
-		fold_model = model_cls()
-
-	# X_t and y_t are already resampled by the caller
-	fold_model.fit(X_t, y_t, groups=g_t)
-
-	y_pred = fold_model.predict(X_v)
-	mse = np.mean((y_v - y_pred) ** 2)
-
-	return fold_idx, mse
-
-
 # -----------------------------
 # Pipeline
 # -----------------------------
@@ -780,11 +748,4 @@ def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECT
 
 
 if __name__ == '__main__':
-	# train_eval_all('tiny.training', 'tiny.validation', 'tiny.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-	# train_eval_all('small.training', 'small.validation', 'small.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-	# train_eval_all('medium.training', 'medium.validation', 'medium.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-
 	print(test_on_new_data('public', 'bayes_softmax3', 'tiny.training'))
-	# print(test_on_new_data('small.testing', 'multi_log_regression', 'small.training'))
-	# print(test_on_new_data('medium.testing', 'bayes_softmax3', 'medium.training'))
-	# print(test_on_new_data('medium.testing', 'multi_log_regression', 'medium.training'))

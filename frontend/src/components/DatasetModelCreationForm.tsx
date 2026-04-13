@@ -318,7 +318,7 @@ export default function DatasetModelCreationForm({
 			<LoadingProgress isLoading={sending} message="Generating your data..." />
 
 			{/* STATUS MESSAGE - ERRORS ONLY */}
-			{status && status !== 'Dataset created successfully!' && (
+			{status && (
 				<Alert
 					severity="error"
 					sx={{

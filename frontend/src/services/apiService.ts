@@ -6,7 +6,7 @@ export type Model = {
 	model_type: string;
 };
 
-export type ApiSuccessDatasets = {
+type ApiSuccessDatasets = {
 	status: 'success';
 	message: string;
 	data: {
@@ -15,7 +15,7 @@ export type ApiSuccessDatasets = {
 	};
 };
 
-export type ApiSuccessModels = {
+type ApiSuccessModels = {
 	status: 'success';
 	message: string;
 	data: {
@@ -24,7 +24,7 @@ export type ApiSuccessModels = {
 	};
 };
 
-export type ApiError = {
+type ApiError = {
 	status: 'error';
 	code?: string;
 	message: string;
