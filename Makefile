@@ -1,4 +1,4 @@
-.PHONY: dev-back dev-front dev-stream dev
+.PHONY: dev-back dev-front dev
 
 dev-back:
 	uvicorn backend.app.main:app --reload --port 8000
@@ -6,11 +6,7 @@ dev-back:
 dev-front:
 	npm run dev --prefix frontend
 
-dev-stream:
-	cd streamlit_app && streamlit run app.py
-
-# Fire all three (logs interleaved). Press Ctrl+C to stop.
+# Fire both (logs interleaved). Press Ctrl+C to stop.
 dev:
 	(uvicorn backend.app.main:app --reload --port 8000 &) \
-	&& (npm run dev --prefix frontend &) \
-	&& (cd streamlit_app && streamlit run app.py)
+	&& (npm run dev --prefix frontend)

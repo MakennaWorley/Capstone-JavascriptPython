@@ -1,0 +1,21 @@
+# Full local development environment (includes testing, linting, coverage, etc.)
+# Install with: pip install -r requirements_local.txt
+
+# ── Production deps (also in requirements.txt) ──────────────────────
+-r requirements.txt
+
+# ── Testing ──────────────────────────────────────────────────────────
+pytest==9.0.2
+pytest-cov==7.1.0
+httpx==0.28.1
+coverage==7.13.5
+
+# ── Linting / Formatting ────────────────────────────────────────────
+ruff==0.15.1
+
+# ── Build tools ──────────────────────────────────────────────────────
+pip-tools==7.4.1
+build==1.2.1
+pyproject_hooks==1.2.0
+setuptools==82.0.0
+wheel==0.46.3

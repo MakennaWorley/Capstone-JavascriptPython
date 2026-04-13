@@ -101,7 +101,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 
 		const familyGroups: { parents: number[]; children: number[] }[] = [];
 
-		// Parents → focus group
+		// Parents -> focus group
 		if (focusParents.length > 0) {
 			familyGroups.push({
 				parents: [...focusParents].sort((a, b) => a - b),
@@ -109,7 +109,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 			});
 		}
 
-		// Focus → children group
+		// Focus -> children group
 		if (focusChildren.length > 0) {
 			familyGroups.push({
 				parents: [focusId],

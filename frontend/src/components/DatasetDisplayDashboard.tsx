@@ -9,7 +9,6 @@ type DatasetDashboardProps = {
 	apiBase: string;
 	xApiKey: string;
 	selectedDataset: string;
-	maxPreviewRows?: number;
 };
 
 type CsvPreview = {
@@ -90,7 +89,7 @@ function clampText(s: string, maxLen = 80): string {
 	return `${s.slice(0, maxLen - 1)}…`;
 }
 
-export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, maxPreviewRows = 10 }: DatasetDashboardProps) {
+export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: DatasetDashboardProps) {
 	const theme = useTheme();
 	const isDark = theme.palette.mode === 'dark';
 	const [loading, setLoading] = useState(false);
@@ -113,9 +112,6 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 			setShowLoadingProgress(false);
 		}
 	}, [loading]);
-
-	const canLoad = selectedDataset.trim().length > 0 && !loading;
-	const hasLoadedDashboard = !!(data.observedCsvRaw || data.truthCsvRaw);
 
 	// Previews
 	const MAX_PARSE_ROWS = 1000;
@@ -585,79 +581,5 @@ function GenotypeTable({
 				</Table>
 			</TableContainer>
 		</>
-	);
-}
-
-function CsvTable({ title, preview, maxRows }: { title: string; preview: CsvPreview; maxRows: number }) {
-	const { headers, rows, estimatedTotalRows } = preview;
-
-	return (
-		<div style={{ marginTop: '1rem', padding: '0.9rem', border: '1px solid #ddd', borderRadius: 10 }}>
-			<h4 style={{ marginTop: 0 }}>{title}</h4>
-
-			<p style={{ marginTop: 0, opacity: 0.8 }}>
-				Showing first <b>{Math.min(rows.length, maxRows)}</b>
-				{typeof estimatedTotalRows === 'number' ? (
-					<>
-						{' '}
-						of about <b>{estimatedTotalRows.toLocaleString()}</b> rows
-					</>
-				) : null}
-				.
-			</p>
-
-			<div style={{ overflowX: 'auto' }}>
-				<table style={{ borderCollapse: 'collapse', width: '100%' }}>
-					<thead>
-						<tr>
-							{headers.map((h, idx) => (
-								<th
-									key={idx}
-									style={{
-										textAlign: 'left',
-										borderBottom: '1px solid #ccc',
-										padding: '0.5rem',
-										whiteSpace: 'nowrap'
-									}}
-									title={h}
-								>
-									{clampText(h, 40)}
-								</th>
-							))}
-						</tr>
-					</thead>
-					<tbody>
-						{rows.map((r, ridx) => (
-							<tr key={ridx}>
-								{headers.map((_, cidx) => (
-									<td
-										key={cidx}
-										style={{
-											borderBottom: '1px solid #eee',
-											padding: '0.5rem',
-											whiteSpace: 'nowrap'
-										}}
-										title={r[cidx] ?? ''}
-									>
-										{clampText(String(r[cidx] ?? ''), 60)}
-									</td>
-								))}
-							</tr>
-						))}
-						{rows.length === 0 && (
-							<tr>
-								<td colSpan={headers.length || 1} style={{ padding: '0.5rem', opacity: 0.75 }}>
-									No rows to display.
-								</td>
-							</tr>
-						)}
-					</tbody>
-				</table>
-			</div>
-
-			<p style={{ marginBottom: 0, marginTop: '0.75rem', opacity: 0.75 }}>
-				Tip: these CSVs are wide (lots of <code>ind_####</code> columns). Horizontal scroll is expected.
-			</p>
-		</div>
 	);
 }

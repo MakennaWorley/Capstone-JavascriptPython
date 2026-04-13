@@ -25,17 +25,17 @@ from .model_functions import coerce_dosage_classes, ensure_dir, load_meta, save_
 # Configure GPU acceleration for PyTorch
 try:
 	if torch.cuda.is_available():
-		print(f'🚀 CUDA GPU available: {torch.cuda.get_device_name(0)}')
+		print(f'CUDA GPU available: {torch.cuda.get_device_name(0)}')
 		print(f'   CUDA version: {torch.version.cuda}')
 		print(f'   Number of GPUs: {torch.cuda.device_count()}')
 		DEVICE = torch.device('cuda')
 		GPU_AVAILABLE = True
 	elif torch.backends.mps.is_available():
-		print('🚀 Apple Metal GPU available')
+		print('Apple Metal GPU available')
 		DEVICE = torch.device('mps')
 		GPU_AVAILABLE = True
 	else:
-		print('💻 No GPU available, using CPU')
+		print('No GPU available, using CPU')
 		DEVICE = torch.device('cpu')
 		GPU_AVAILABLE = False
 except Exception as e:
@@ -217,9 +217,9 @@ class GNNDosageClassifier:
 		self.pycm_metrics_: Optional[Dict[str, Any]] = None
 
 		if self.use_gpu:
-			print(f'🚀 GNN GPU acceleration enabled on {self.device}')
+			print(f'GNN GPU acceleration enabled on {self.device}')
 		else:
-			print('💻 GNN running on CPU')
+			print('GNN running on CPU')
 
 	@property
 	def tag(self) -> str:
@@ -392,9 +392,9 @@ class GNNDosageClassifier:
 			try:
 				self.model.load_state_dict(torch.load(latest_checkpoint, map_location=self.device))
 				self._resumed = True
-				print(f'📦 Resumed DNN from checkpoint: {latest_checkpoint.name}')
+				print(f'Resumed GNN from checkpoint: {latest_checkpoint.name}')
 			except Exception as e:
-				print(f'⚠️ Warning: Could not load checkpoint {latest_checkpoint.name}: {e}. Starting from scratch.')
+				print(f'Warning: Could not load checkpoint {latest_checkpoint.name}: {e}. Starting from scratch.')
 				start_epoch = 0
 
 		for epoch in range(start_epoch, self.epochs):

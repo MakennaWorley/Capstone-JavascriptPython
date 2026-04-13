@@ -1,108 +1,241 @@
-## 🧬 Probabilistic Ancestral Inference Research Project
+# Probabilistic Ancestral Inference Research Project
 
-This repository contains a research framework designed to reconstruct latent states within high-dimensional, hierarchical stochastic datasets. While the project utilizes biological rules for data generation, its primary purpose is benchmarking the robustness of various probabilistic machine-learning architectures under controlled data degradation.
-
----
-
-### 🌟 Project Goal
-
-The core mission is to evaluate the technical trade-offs between computational efficiency and inference precision. Key objectives include:
-
-#### 🛠️ Key Components
-
-* **Hierarchical Modeling:** Designing a system to model latent dependencies within stochastic data.
-* **Multi-Model Benchmarking:** Implementing and comparing Bayesian Inference, Hidden Markov Models (HMM), and Graph Neural Networks (GNN)..
-* **Quantitative Validation:** Using "ground-truth" data generators to measure recovery performance against systematic masking.
-* **Visualization:** A React dashboard to visualize the data and models.
+A full-stack research framework for reconstructing missing ancestral genotypes from incomplete genetic data using probabilistic machine-learning models. The system uses `msprime` to simulate controlled, species-agnostic diploid populations with explicit multi-generational pedigrees, systematically masks genotype data to create realistic missingness, and benchmarks multiple inference architectures against the known ground truth.
 
 ---
 
-### 🛠 Technical Stack & Reproducibility
+## Table of Contents
 
-The project emphasizes engineering rigor and reproducibility through a modular architecture:
-
-* **Data Engine:** Powered by `msprime` for high-fidelity simulation of multi-generational datasets.
-* **Meta-Replay System:** Uses JSON-based metadata and specific random seeds to ensure exact dataset reconstruction for benchmarking.
-* **Inference Frameworks:**
-    * **Bayesian:** Developed via `PyMC` and `PyTensor`
-    * **HMM:** Implemented using `pomegranate` or `hmmlearn`
-    * **GNN:** Built with PyTorch `Geometric` for multi-way dependency modeling
-* **Application Layer:** A `FastAPI` backend serving a custom `React` dashboard for interactive visualization of calibration and uncertainty.
-* **Deployment:** Fully containerized with `Docker` for cross-platform portability.
-
----
-
-### 📊 Evaluation Metrics
-
-Models are benchmarked using both quantitative and qualitative dimensions:
-
-
-* **Reconstruction Accuracy:** Precision, recall, and F1-scores compared against the known "truth".
-* **Model Calibration:** Aligning reported confidence intervals with actual recovery rates.
-* **Computational Robustness:** Measuring the "break point" of each architecture across a spectrum of masking rates.
-* **Statistical Significance:** Validation via chi-square and likelihood-ratio tests.
+- [Project Goal](#project-goal)
+- [Architecture Overview](#architecture-overview)
+- [Technical Stack](#technical-stack)
+- [Models](#models)
+- [Evaluation Metrics](#evaluation-metrics)
+- [Getting Started](#getting-started)
+  - [Docker (Recommended)](#docker-recommended)
+  - [NVIDIA GPU Support](#nvidia-gpu-support)
+  - [Local Development (Without Docker)](#local-development-without-docker)
+- [Project Structure](#project-structure)
+- [API Reference](#api-reference)
 
 ---
 
-### 🚀 Getting Started
+## Project Goal
 
-The entire system will be containerized with Docker to ensure reproducibility and ease of deployment.
+The core problem is **incomplete ancestry data**. Sequencing every ancestor is often impossible due to cost, sample degradation, or ethical constraints. This leaves gaps in family trees that limit the ability to reconstruct inheritance patterns, predict hereditary traits, or model population history.
 
-#### How to Run Locally (CPU default - Mac Friendly)
+This project evaluates whether probabilistic models can reconstruct missing ancestral genotypes, even when large portions of data are absent. It benchmarks the trade-offs between computational efficiency and inference precision across five model architectures.
+
+**Key objectives:**
+
+- Determine whether probabilistic models can reconstruct ancestral genotypes under controlled data degradation
+- Compare model behavior under increasing uncertainty (Bayesian, HMM, DNN, GNN, and frequentist baselines)
+- Identify the limits of inference when data becomes sparse, and characterize why reconstruction breaks down
+- Provide a reproducible, containerized system for running these experiments
+
+---
+
+## Architecture Overview
+
+The system follows a simulation-to-inference pipeline:
+
+```
+Simulate Population (msprime)
+    |
+    v
+Generate Ground Truth Genotypes
+    |
+    v
+Mask Individuals (controlled missingness)
+    |
+    v
+Feature Engineering (k-hop relative aggregation)
+    |
+    v
+Train / Evaluate Models (5 architectures)
+    |
+    v
+Visualize Results (React Dashboard)
+```
+
+**Data flow details:**
+
+1. **Simulation**: `msprime` generates multi-generational populations using a Discrete Time Wright-Fisher (DTWF) model with explicit pedigree tracking.
+2. **Masking**: Entire individuals (columns) are masked at a configurable rate to simulate unobserved ancestors.
+3. **Feature engineering**: For each masked individual, features are constructed from k-hop relatives (parents, grandparents, siblings, etc.) in the pedigree graph. Per-site features: `[mean_dosage_of_relatives, fraction_observed, count_relatives]`.
+4. **Training**: A 3-phase pipeline (train, cross-validate + retrain on train+val, final test on held-out data).
+5. **Visualization**: The React dashboard displays datasets, family trees, model metrics, and evaluation graphs.
+
+---
+
+## Technical Stack
+
+| Layer | Technology |
+|-------|-----------|
+| **Data simulation** | `msprime`, `tskit` |
+| **Backend API** | FastAPI, Uvicorn |
+| **Bayesian inference** | PyMC, ArviZ |
+| **HMM** | hmmlearn |
+| **Deep learning** | PyTorch, PyTorch Geometric |
+| **Scientific computing** | NumPy, pandas, SciPy, scikit-learn |
+| **Visualization** | matplotlib, seaborn, Graphviz |
+| **Frontend** | React 19, TypeScript, Material UI, RxJS |
+| **Build / Lint** | Vite, Vitest, Biome (frontend); Ruff, pytest (backend) |
+| **Deployment** | Docker Compose |
+
+---
+
+## Models
+
+All five models implement a shared interface: `fit()`, `predict()`, `predict_proba()`, `predict_class()`, `save()`, `load()`.
+
+| Model | Architecture | Key Properties |
+|-------|-------------|----------------|
+| **Bayesian Categorical** | Multinomial logistic regression with hierarchical priors (PyMC MCMC) | Interpretable uncertainty estimates; group-level intercepts per generation; optional JAX/GPU acceleration |
+| **HMM Dosage** | Gaussian HMM (hmmlearn) | Treats each individual as a sequence of genetic sites; semi-supervised initialization from label statistics; 3 hidden states mapped to dosage classes |
+| **DNN Dosage** | Fully connected neural network (PyTorch) | BatchNorm, dropout, optional residual connections; class-weighted loss; early stopping; CUDA/MPS support |
+| **GNN Dosage** | Graph convolutional network (PyTorch Geometric) | Builds feature correlation graph; edges where correlation exceeds threshold; GraphConv layers with global mean pooling |
+| **Multinomial Logistic Regression** | sklearn LogisticRegression | Frequentist baseline; balanced class weights; fastest to train |
+
+---
+
+## Evaluation Metrics
+
+- **Reconstruction accuracy**: Precision, recall, and F1-scores (macro and weighted) against ground truth
+- **ROC / PR curves**: Per-class (dosage 0, 1, 2) with AUC scores
+- **Confusion matrices**: Heatmap visualization of predicted vs. true dosage classes
+- **Model calibration**: Alignment of confidence intervals with actual recovery rates
+- **Computational robustness**: Performance degradation across a spectrum of masking rates
+- **Statistical significance**: Chi-square and likelihood-ratio tests
+
+---
+
+## Getting Started
+
+### Docker (Recommended)
 
 ```bash
 docker compose up --build
 ```
 
-Once that finishes, you should see three containers running:
-- FastAPI: `http://localhost:8000`
-- React: `http://localhost:5173`
-- Streamlit: `http://localhost:8501`
+This starts two containers:
 
-#### How to Run Locally (NVIDIA GPU)
+| Service | URL |
+|---------|-----|
+| FastAPI backend | `http://localhost:8000` |
+| React frontend | `http://localhost:5173` |
 
-The repository defaults to the CPU backend. If you have an NVIDIA GPU and the NVIDIA Container Toolkit installed, start the optional GPU backend using the `gpu` profile:
+The frontend proxies API requests to the backend automatically.
+
+### NVIDIA GPU Support
+
+If you have an NVIDIA GPU and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed:
 
 ```bash
 docker compose --profile gpu up --build
 ```
 
-This enables the GPU-backed `backend_gpu` service (the CPU backend remains the default). After startup you should see the same three apps:
-- FastAPI: `http://localhost:8000`
-- React: `http://localhost:5173`
-- Streamlit: `http://localhost:8501`
+This starts the GPU-accelerated backend (`backend_gpu`) instead of the CPU version. The same two URLs apply.
 
-If you prefer to build/run only the GPU backend service directly:
+To build or run only the GPU backend:
 
 ```bash
 docker compose build backend_gpu
 docker compose up backend_gpu
 ```
 
-Notes:
-- The GPU service requires a host with NVIDIA drivers and the NVIDIA Container Toolkit.
-- Use the `--profile gpu` option only on machines with a supported GPU.
+### Rebuilding Containers
 
-#### How to Rebuild Containers (If you mess them up)
-To ensure a clean environment, you can stop, remove, and rebuild your Docker containers:
-
-1. Stop and Remove Running Containers:
 ```bash
+# Stop and remove containers
 docker compose down
-```
 
-2. Force Rebuild Images (Pulls fresh dependencies):
-
-```bash
+# Force rebuild (fresh dependencies)
 docker compose build --no-cache
-```
 
-3. Restart the Service:
-```bash
+# Restart
 docker compose up
 ```
 
-#### How to run the .venv python environment
+### Local Development (Without Docker)
 
-Bash: run `source .venv/bin/activate` to activate the python environment
-Windows: run `.\.venv\Scripts\Activate.ps1`
+You can run the backend and frontend directly using the Makefile:
+
+```bash
+# Run backend only
+make dev-back
+
+# Run frontend only
+make dev-front
+
+# Run both concurrently
+make dev
+```
+
+**Backend requirements**: Python 3.12, system-level Graphviz. See the [backend README](backend/README.md) for full conda environment setup.
+
+**Frontend requirements**: Node.js 22+. Run `npm install` in the `frontend/` directory.
+
+---
+
+## Project Structure
+
+```
+.
+├── docker-compose.yml          # Container orchestration (backend, frontend, GPU variant)
+├── Makefile                    # Local dev shortcuts (dev-back, dev-front, dev)
+├── pyproject.toml              # Ruff linter/formatter configuration
+│
+├── backend/
+│   ├── Dockerfile.cpu          # Production CPU image (python:3.12-slim)
+│   ├── Dockerfile.gpu          # NVIDIA GPU image (cuda:12.8.1 + conda)
+│   ├── requirements.txt        # Production Python dependencies
+│   ├── requirements_local.txt  # Development dependencies (testing, linting)
+│   ├── gpu_setup.py            # GPU diagnostics and JAX/CUDA verification
+│   └── app/
+│       ├── main.py             # FastAPI application and API endpoints
+│       ├── functions.py        # Shared utilities, response wrappers, file I/O
+│       ├── data_generation.py  # Population simulation engine (msprime)
+│       ├── data_preparation.py # Feature engineering from pedigree graphs
+│       ├── model_main.py       # Model orchestration and training pipeline
+│       ├── model_bayesian.py   # Bayesian categorical classifier (PyMC)
+│       ├── model_hmm.py        # HMM dosage classifier (hmmlearn)
+│       ├── model_dnn.py        # Deep neural network classifier (PyTorch)
+│       ├── model_gnn.py        # Graph neural network classifier (PyG)
+│       ├── model_multi_log_regression.py  # Multinomial logistic regression (sklearn)
+│       ├── model_functions.py  # Shared model utilities (normalization, paths)
+│       ├── model_graph_functions.py  # Evaluation graphing (ROC, PR, confusion)
+│       ├── optimize_system.py  # System tuning for high-performance training
+│       ├── datasets/           # Generated simulation data
+│       ├── models/             # Trained model artifacts
+│       ├── images/             # Evaluation plots
+│       └── logs/               # Training logs
+│
+├── frontend/
+│   ├── Dockerfile              # Node.js dev image (node:22-alpine)
+│   ├── src/
+│   │   ├── App.tsx             # Main app layout, state management
+│   │   ├── components/         # UI components (dashboard, selectors, tree viz)
+│   │   ├── hooks/              # RxJS polling hooks for datasets and models
+│   │   └── services/           # API service layer (observable-based)
+│   └── ...
+│
+└── streamlit_app/              # (Removed) Previously a Streamlit PoC dashboard
+```
+
+---
+
+## API Reference
+
+All endpoints return standardized JSON: `{"status": "success"|"error", "message": "...", "data": {...}}`.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/hello` | Health check |
+| `POST` | `/api/create/data` | Create a new simulated dataset from parameters |
+| `GET` | `/api/datasets/list` | List all available dataset names |
+| `GET` | `/api/dataset/{name}/dashboard` | Fetch observed and truth genotype CSVs for display |
+| `GET` | `/api/dataset/{name}/tree/{id}` | Get family tree subgraph (nodes, edges, genotypes) for an individual |
+| `GET` | `/api/dataset/{name}/download` | Download all dataset files as a ZIP archive |
+| `GET` | `/api/models/list` | List all trained models (name + type) |
+| `POST` | `/api/models/test` | Test a trained model on a dataset; returns metrics, graphs, and per-prediction errors |

@@ -82,33 +82,33 @@ class TestSelectModel:
 
 	def test_select_model_bayes(self):
 		"""Test model selection - Bayes"""
-		ModelCls, tag = _select_model('bayes_softmax3')
+		model_cls, tag = _select_model('bayes_softmax3')
 		assert tag == 'bayes_softmax3'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_sklearn(self):
 		"""Test model selection - Sklearn"""
-		ModelCls, tag = _select_model('multi_log_regression')
+		model_cls, tag = _select_model('multi_log_regression')
 		assert tag == 'multi_log_regression'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_hmm(self):
 		"""Test model selection - HMM"""
-		ModelCls, tag = _select_model('hmm_dosage')
+		model_cls, tag = _select_model('hmm_dosage')
 		assert tag == 'hmm_dosage'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_dnn(self):
 		"""Test model selection - DNN"""
-		ModelCls, tag = _select_model('dnn_dosage')
+		model_cls, tag = _select_model('dnn_dosage')
 		assert tag == 'dnn_dosage'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_gnn(self):
 		"""Test model selection - GNN"""
-		ModelCls, tag = _select_model('gnn_dosage')
+		model_cls, tag = _select_model('gnn_dosage')
 		assert tag == 'gnn_dosage'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_invalid(self):
 		"""Test model selection with invalid model"""
@@ -220,7 +220,7 @@ class TestTrainEvalAll:
 	def test_train_eval_all_skipped_result_structure(self):
 		"""Early-exit result has the expected keys when all models already appear to exist."""
 		# model_paths is fully mocked so paths['meta'].exists() returns a truthy MagicMock
-		# → all_exist is True → function returns the skipped dict immediately
+		# all_exist is True, so the function returns the skipped dict immediately
 		results = train_eval_all('train', 'val', 'test')
 		assert results.get('status') == 'skipped'
 		assert 'reason' in results

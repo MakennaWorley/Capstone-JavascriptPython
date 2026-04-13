@@ -9,7 +9,7 @@ This script helps you:
 
 import subprocess
 import sys
-from typing import List, Tuple
+from typing import Tuple
 
 
 def check_gpu_drivers() -> Tuple[bool, str]:
@@ -83,9 +83,9 @@ def test_jax_gpu() -> Tuple[bool, str]:
 def test_pymc_gpu() -> Tuple[bool, str]:
 	"""Test if PyMC can use GPU acceleration."""
 	try:
-		import pymc as pm
 		import jax
 		import numpy as np
+		import pymc as pm
 
 		# Simple test model
 		np.random.seed(42)
@@ -115,10 +115,10 @@ def main():
 	print('1. Checking GPU drivers...')
 	gpu_ok, gpu_info = check_gpu_drivers()
 	if gpu_ok:
-		print('✓ NVIDIA drivers found:')
+		print('[OK] NVIDIA drivers found:')
 		print(gpu_info[:200] + '...' if len(gpu_info) > 200 else gpu_info)
 	else:
-		print('✗ NVIDIA drivers issue:')
+		print('[FAIL] NVIDIA drivers issue:')
 		print(gpu_info)
 		print('\nTo install NVIDIA drivers in WSL:')
 		print('1. Install NVIDIA drivers on Windows')
@@ -130,53 +130,53 @@ def main():
 	print('\n2. Checking CUDA...')
 	cuda_ok, cuda_info = check_cuda()
 	if cuda_ok:
-		print('✓ CUDA found:')
+		print('[OK] CUDA found:')
 		print(cuda_info.split('\n')[0])  # Just the version line
 	else:
-		print('ℹ CUDA toolkit not found (not required for JAX):')
+		print('[INFO] CUDA toolkit not found (not required for JAX):')
 		print(cuda_info[:100] + '...' if len(cuda_info) > 100 else cuda_info)
 
 	# 3. Test JAX GPU
 	print('\n3. Testing JAX GPU support...')
 	jax_ok, jax_info = test_jax_gpu()
 	if not jax_ok:
-		print('✗ JAX GPU not working:')
+		print('[FAIL] JAX GPU not working:')
 		print(jax_info)
 		print('\nInstalling JAX with GPU support...')
 		if install_jax_gpu():
 			jax_ok, jax_info = test_jax_gpu()
 
 	if jax_ok:
-		print('✓ JAX GPU working:')
+		print('[OK] JAX GPU working:')
 		print(jax_info)
 	else:
-		print('✗ JAX GPU still not working after installation attempt')
+		print('[FAIL] JAX GPU still not working after installation attempt')
 		return
 
 	# 4. Test PyMC GPU
 	print('\n4. Testing PyMC with GPU...')
 	pymc_ok, pymc_info = test_pymc_gpu()
 	if pymc_ok:
-		print('✓ PyMC GPU test passed:')
+		print('[OK] PyMC GPU test passed:')
 		print(pymc_info)
 	else:
-		print('✗ PyMC GPU test failed:')
+		print('[FAIL] PyMC GPU test failed:')
 		print(pymc_info)
 
 	# 5. Summary
 	print('\n=== Summary ===')
-	print(f'GPU Drivers: {"✓" if gpu_ok else "✗"}')
-	print(f'CUDA: {"✓" if cuda_ok else "ℹ"} (optional)')
-	print(f'JAX GPU: {"✓" if jax_ok else "✗"}')
-	print(f'PyMC GPU: {"✓" if pymc_ok else "✗"}')
+	print(f'GPU Drivers: {"OK" if gpu_ok else "FAIL"}')
+	print(f'CUDA: {"OK" if cuda_ok else "INFO"} (optional)')
+	print(f'JAX GPU: {"OK" if jax_ok else "FAIL"}')
+	print(f'PyMC GPU: {"OK" if pymc_ok else "FAIL"}')
 
 	if gpu_ok and jax_ok and pymc_ok:
-		print('\n🎉 GPU acceleration is ready to use!')
+		print('\nGPU acceleration is ready to use!')
 		print('\nYour models will automatically use GPU when you:')
 		print('1. Create models with use_gpu=True (default)')
 		print('2. Run training - PyMC will automatically detect and use GPU')
 	else:
-		print('\n⚠️  GPU acceleration is not fully working')
+		print('\nGPU acceleration is not fully working')
 		print('Your models will run on CPU (which still works fine)')
 
 
