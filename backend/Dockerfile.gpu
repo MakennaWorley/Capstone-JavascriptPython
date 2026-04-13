@@ -40,6 +40,6 @@ RUN python -m pip install "jax[cuda12]"
 
 COPY backend /app
 
-ENV CORS_ORIGINS="http://localhost:5173,http://localhost:8501"
+ENV CORS_ORIGINS="http://localhost:5173"
 
 CMD ["conda", "run", "--no-capture-output", "-n", "app", "python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

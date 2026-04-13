@@ -28,7 +28,6 @@ The project emphasizes engineering rigor and reproducibility through a modular a
     * **HMM:** Implemented using `pomegranate` or `hmmlearn`
     * **GNN:** Built with PyTorch `Geometric` for multi-way dependency modeling
 * **Application Layer:** A `FastAPI` backend serving a custom `React` dashboard for interactive visualization of calibration and uncertainty.
-* **Deployment:** Fully containerized with `Docker` for cross-platform portability.
 
 ---
 
@@ -54,10 +53,9 @@ The entire system will be containerized with Docker to ensure reproducibility an
 docker compose up --build
 ```
 
-Once that finishes, you should see three containers running:
+Once that finishes, you should see two containers running:
 - FastAPI: `http://localhost:8000`
 - React: `http://localhost:5173`
-- Streamlit: `http://localhost:8501`
 
 #### How to Run Locally (NVIDIA GPU)
 
@@ -67,10 +65,9 @@ The repository defaults to the CPU backend. If you have an NVIDIA GPU and the NV
 docker compose --profile gpu up --build
 ```
 
-This enables the GPU-backed `backend_gpu` service (the CPU backend remains the default). After startup you should see the same three apps:
+This enables the GPU-backed `backend_gpu` service (the CPU backend remains the default). After startup you should see the same two apps:
 - FastAPI: `http://localhost:8000`
 - React: `http://localhost:5173`
-- Streamlit: `http://localhost:8501`
 
 If you prefer to build/run only the GPU backend service directly:
 

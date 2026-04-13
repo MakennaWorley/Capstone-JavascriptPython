@@ -6,7 +6,7 @@ services:
             dockerfile: backend/Dockerfile.cpu
         ports: [ '8000:8000' ]
         environment:
-            - CORS_ORIGINS=http://localhost:5173,http://localhost:8501
+            - CORS_ORIGINS=http://localhost:5173
         volumes:
             - ./backend:/app
 
@@ -24,18 +24,6 @@ services:
             - ./frontend:/app
             - /app/node_modules
 
-    streamlit:
-        container_name: streamlit
-        build:
-            context: .
-            dockerfile: streamlit_app/Dockerfile
-        ports: [ '8501:8501' ]
-        environment:
-            - API_BASE=http://fastapi:8000
-        depends_on: [ backend ]
-        volumes:
-            - ./streamlit_app:/app
-
     # Optional GPU backend service — not started by default. To run,
     # use `docker compose --profile gpu up` (requires NVIDIA Container Toolkit).
     backend_gpu:
@@ -46,6 +34,6 @@ services:
             dockerfile: backend/Dockerfile.gpu
         ports: [ '8000:8000' ]
         environment:
-            - CORS_ORIGINS=http://localhost:5173,http://localhost:8501
+            - CORS_ORIGINS=http://localhost:5173
         volumes:
             - ./backend:/app
