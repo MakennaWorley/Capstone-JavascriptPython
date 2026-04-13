@@ -45,7 +45,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 
 		// Determine parent/child direction using time (higher time = older = parent)
 		const parentMap = new Map<number, number[]>(); // childId -> [parentIds]
-		const childMap = new Map<number, number[]>();  // parentId -> [childIds]
+		const childMap = new Map<number, number[]>(); // parentId -> [childIds]
 
 		data.edges.forEach((edge) => {
 			const sNode = allNodesById.get(edge.source);
@@ -94,10 +94,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 			const t = (time - minTime) / timeRange;
 			const y = PADDING + (1 - t) * (HEIGHT - 2 * PADDING);
 			nodesInLayer.forEach((node, idx) => {
-				const x =
-					nodesInLayer.length === 1
-						? WIDTH / 2
-						: PADDING + (idx / (nodesInLayer.length - 1)) * (WIDTH - 2 * PADDING);
+				const x = nodesInLayer.length === 1 ? WIDTH / 2 : PADDING + (idx / (nodesInLayer.length - 1)) * (WIDTH - 2 * PADDING);
 				nodesById.set(node.id, { x, y, node });
 			});
 		});
@@ -108,7 +105,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 		if (focusParents.length > 0) {
 			familyGroups.push({
 				parents: [...focusParents].sort((a, b) => a - b),
-				children: [focusId],
+				children: [focusId]
 			});
 		}
 
@@ -116,7 +113,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 		if (focusChildren.length > 0) {
 			familyGroups.push({
 				parents: [focusId],
-				children: [...focusChildren].sort((a, b) => a - b),
+				children: [...focusChildren].sort((a, b) => a - b)
 			});
 		}
 
@@ -133,77 +130,214 @@ export default function FamilyTreeVisualization({ data }: Props) {
 
 			<div style={{ position: 'relative' }}>
 				<div style={{ overflowX: 'auto' }}>
-					<svg width={WIDTH} height={HEIGHT} style={{ border: `1px solid ${theme.palette.divider}`, background: theme.palette.background.default }} aria-label="Family tree image">
-{/* Family tree connectors */}
-					{layout.familyGroups.map((group, gi) => {
-						const stroke = theme.palette.text.secondary;
-						const sw = 2;
+					<svg
+						width={WIDTH}
+						height={HEIGHT}
+						style={{ border: `1px solid ${theme.palette.divider}`, background: theme.palette.background.default }}
+						aria-label="Family tree image"
+					>
+						{/* Family tree connectors */}
+						{layout.familyGroups.map((group, gi) => {
+							const stroke = theme.palette.text.secondary;
+							const sw = 2;
 
-						const parentPos = group.parents
-							.map((id) => layout.nodesById.get(id))
-							.filter((p): p is NonNullable<typeof p> => p != null);
-						const childPos = group.children
-							.map((id) => layout.nodesById.get(id))
-							.filter((c): c is NonNullable<typeof c> => c != null);
+							const parentPos = group.parents
+								.map((id) => layout.nodesById.get(id))
+								.filter((p): p is NonNullable<typeof p> => p != null);
+							const childPos = group.children
+								.map((id) => layout.nodesById.get(id))
+								.filter((c): c is NonNullable<typeof c> => c != null);
 
-						if (parentPos.length === 0 || childPos.length === 0) return null;
+							if (parentPos.length === 0 || childPos.length === 0) return null;
 
-						const childrenY = childPos[0].y;
-						const lines: React.ReactElement[] = [];
+							const childrenY = childPos[0].y;
+							const lines: React.ReactElement[] = [];
 
-						if (parentPos.length >= 2) {
-							const sorted = [...parentPos].sort((a, b) => a.x - b.x);
-							const p1 = sorted[0];
-							const p2 = sorted[sorted.length - 1];
-							const midX = (p1.x + p2.x) / 2;
-							const parentY = p1.y;
-							const junctionY = (parentY + childrenY) / 2;
+							if (parentPos.length >= 2) {
+								const sorted = [...parentPos].sort((a, b) => a.x - b.x);
+								const p1 = sorted[0];
+								const p2 = sorted[sorted.length - 1];
+								const midX = (p1.x + p2.x) / 2;
+								const parentY = p1.y;
+								const junctionY = (parentY + childrenY) / 2;
 
-							// Couple horizontal line
-							lines.push(<line key={`${gi}-c`} x1={p1.x} y1={parentY} x2={p2.x} y2={parentY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-							// Drop from midpoint to junction
-							lines.push(<line key={`${gi}-d`} x1={midX} y1={parentY} x2={midX} y2={junctionY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
+								// Couple horizontal line
+								lines.push(
+									<line
+										key={`${gi}-c`}
+										x1={p1.x}
+										y1={parentY}
+										x2={p2.x}
+										y2={parentY}
+										stroke={stroke}
+										strokeWidth={sw}
+										pointerEvents="none"
+									/>
+								);
+								// Drop from midpoint to junction
+								lines.push(
+									<line
+										key={`${gi}-d`}
+										x1={midX}
+										y1={parentY}
+										x2={midX}
+										y2={junctionY}
+										stroke={stroke}
+										strokeWidth={sw}
+										pointerEvents="none"
+									/>
+								);
 
-							if (childPos.length === 1) {
-							const cx = childPos[0].x;
-							// Horizontal from midpoint to child x, then vertical down
-							lines.push(<line key={`${gi}-sh`} x1={midX} y1={junctionY} x2={cx} y2={junctionY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-							lines.push(<line key={`${gi}-sv`} x1={cx} y1={junctionY} x2={cx} y2={childrenY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
+								if (childPos.length === 1) {
+									const cx = childPos[0].x;
+									// Horizontal from midpoint to child x, then vertical down
+									lines.push(
+										<line
+											key={`${gi}-sh`}
+											x1={midX}
+											y1={junctionY}
+											x2={cx}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									lines.push(
+										<line
+											key={`${gi}-sv`}
+											x1={cx}
+											y1={junctionY}
+											x2={cx}
+											y2={childrenY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+								} else {
+									const sortedC = [...childPos].sort((a, b) => a.x - b.x);
+									const barLeft = Math.min(sortedC[0].x, midX);
+									const barRight = Math.max(sortedC[sortedC.length - 1].x, midX);
+									// Sibling bar
+									lines.push(
+										<line
+											key={`${gi}-b`}
+											x1={barLeft}
+											y1={junctionY}
+											x2={barRight}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									// Vertical to each child
+									sortedC.forEach((c, ci) => {
+										lines.push(
+											<line
+												key={`${gi}-v${ci}`}
+												x1={c.x}
+												y1={junctionY}
+												x2={c.x}
+												y2={childrenY}
+												stroke={stroke}
+												strokeWidth={sw}
+												pointerEvents="none"
+											/>
+										);
+									});
+								}
 							} else {
-								const sortedC = [...childPos].sort((a, b) => a.x - b.x);
-								const barLeft = Math.min(sortedC[0].x, midX);
-								const barRight = Math.max(sortedC[sortedC.length - 1].x, midX);
-								// Sibling bar
-								lines.push(<line key={`${gi}-b`} x1={barLeft} y1={junctionY} x2={barRight} y2={junctionY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-								// Vertical to each child
-								sortedC.forEach((c, ci) => {
-									lines.push(<line key={`${gi}-v${ci}`} x1={c.x} y1={junctionY} x2={c.x} y2={childrenY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-								});
-							}
-						} else {
-							// Single parent
-							const p = parentPos[0];
-							const junctionY = (p.y + childrenY) / 2;
+								// Single parent
+								const p = parentPos[0];
+								const junctionY = (p.y + childrenY) / 2;
 
-							if (childPos.length === 1) {
-							const cx = childPos[0].x;
-							// Vertical from parent down to junction, horizontal to child x, vertical to child
-							lines.push(<line key={`${gi}-pd`} x1={p.x} y1={p.y} x2={p.x} y2={junctionY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-							lines.push(<line key={`${gi}-sh`} x1={p.x} y1={junctionY} x2={cx} y2={junctionY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-							lines.push(<line key={`${gi}-sv`} x1={cx} y1={junctionY} x2={cx} y2={childrenY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-							} else {
-								const sortedC = [...childPos].sort((a, b) => a.x - b.x);
-								const barLeft = Math.min(sortedC[0].x, p.x);
-								const barRight = Math.max(sortedC[sortedC.length - 1].x, p.x);
-								lines.push(<line key={`${gi}-d`} x1={p.x} y1={p.y} x2={p.x} y2={junctionY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-								lines.push(<line key={`${gi}-b`} x1={barLeft} y1={junctionY} x2={barRight} y2={junctionY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-								sortedC.forEach((c, ci) => {
-									lines.push(<line key={`${gi}-v${ci}`} x1={c.x} y1={junctionY} x2={c.x} y2={childrenY} stroke={stroke} strokeWidth={sw} pointerEvents="none" />);
-								});
+								if (childPos.length === 1) {
+									const cx = childPos[0].x;
+									// Vertical from parent down to junction, horizontal to child x, vertical to child
+									lines.push(
+										<line
+											key={`${gi}-pd`}
+											x1={p.x}
+											y1={p.y}
+											x2={p.x}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									lines.push(
+										<line
+											key={`${gi}-sh`}
+											x1={p.x}
+											y1={junctionY}
+											x2={cx}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									lines.push(
+										<line
+											key={`${gi}-sv`}
+											x1={cx}
+											y1={junctionY}
+											x2={cx}
+											y2={childrenY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+								} else {
+									const sortedC = [...childPos].sort((a, b) => a.x - b.x);
+									const barLeft = Math.min(sortedC[0].x, p.x);
+									const barRight = Math.max(sortedC[sortedC.length - 1].x, p.x);
+									lines.push(
+										<line
+											key={`${gi}-d`}
+											x1={p.x}
+											y1={p.y}
+											x2={p.x}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									lines.push(
+										<line
+											key={`${gi}-b`}
+											x1={barLeft}
+											y1={junctionY}
+											x2={barRight}
+											y2={junctionY}
+											stroke={stroke}
+											strokeWidth={sw}
+											pointerEvents="none"
+										/>
+									);
+									sortedC.forEach((c, ci) => {
+										lines.push(
+											<line
+												key={`${gi}-v${ci}`}
+												x1={c.x}
+												y1={junctionY}
+												x2={c.x}
+												y2={childrenY}
+												stroke={stroke}
+												strokeWidth={sw}
+												pointerEvents="none"
+											/>
+										);
+									});
+								}
 							}
-						}
 
-						return <g key={gi}>{lines}</g>;
+							return <g key={gi}>{lines}</g>;
 						})}
 
 						{/* Draw Nodes */}
@@ -253,56 +387,97 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							);
 						})}
 						{/* Inline tooltip next to hovered node */}
-						{hovered && (() => {
-							const TW = 180;
-							const TH = 110;
-							const gap = NODE_RADIUS + 14;
-							const rawX = hovered.x + gap + TW > WIDTH ? hovered.x - gap - TW : hovered.x + gap;
-							const rawY = Math.min(Math.max(hovered.y - TH / 2, 4), HEIGHT - TH - 4);
-							return (
-								<foreignObject x={rawX} y={rawY} width={TW} height={TH} style={{ pointerEvents: 'none', overflow: 'visible' }}>
-									<div
-										style={{
-											background: theme.palette.background.paper,
-											border: `1px solid ${theme.palette.divider}`,
-											borderRadius: 6,
-											padding: '6px 10px',
-											boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-											fontSize: '0.75rem',
-											color: theme.palette.text.primary,
-											width: TW
-										}}
-									>
-										<div style={{ fontWeight: 'bold', marginBottom: 4, borderBottom: `1px solid ${theme.palette.divider}`, paddingBottom: 3 }}>
-											Individual {hovered.node.id}
+						{hovered &&
+							(() => {
+								const TW = 180;
+								const TH = 110;
+								const gap = NODE_RADIUS + 14;
+								const rawX = hovered.x + gap + TW > WIDTH ? hovered.x - gap - TW : hovered.x + gap;
+								const rawY = Math.min(Math.max(hovered.y - TH / 2, 4), HEIGHT - TH - 4);
+								return (
+									<foreignObject x={rawX} y={rawY} width={TW} height={TH} style={{ pointerEvents: 'none', overflow: 'visible' }}>
+										<div
+											style={{
+												background: theme.palette.background.paper,
+												border: `1px solid ${theme.palette.divider}`,
+												borderRadius: 6,
+												padding: '6px 10px',
+												boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+												fontSize: '0.75rem',
+												color: theme.palette.text.primary,
+												width: TW
+											}}
+										>
+											<div
+												style={{
+													fontWeight: 'bold',
+													marginBottom: 4,
+													borderBottom: `1px solid ${theme.palette.divider}`,
+													paddingBottom: 3
+												}}
+											>
+												Individual {hovered.node.id}
+											</div>
+											<div style={{ opacity: 0.7, marginBottom: 2 }}>Genotypes (first 20):</div>
+											<div style={{ wordBreak: 'break-all', lineHeight: 1.4 }}>
+												{hovered.node.observed
+													.slice(0, 20)
+													.map((v) => (v === null ? '?' : v))
+													.join(', ')}
+												&hellip;
+											</div>
 										</div>
-										<div style={{ opacity: 0.7, marginBottom: 2 }}>Genotypes (first 20):</div>
-										<div style={{ wordBreak: 'break-all', lineHeight: 1.4 }}>
-											{hovered.node.observed.slice(0, 20).map((v) => (v === null ? '?' : v)).join(', ')}&hellip;
-										</div>
-									</div>
-								</foreignObject>
-							);
-						})()}
+									</foreignObject>
+								);
+							})()}
 					</svg>
 				</div>
 			</div>
 
 			<p style={{ fontSize: '0.8rem', marginTop: '10px', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', opacity: 0.8 }}>
 				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-					<span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', backgroundColor: '#3b82f6', border: '2px solid #1d4ed8' }} />
+					<span
+						style={{
+							display: 'inline-block',
+							width: 12,
+							height: 12,
+							borderRadius: '50%',
+							backgroundColor: '#3b82f6',
+							border: '2px solid #1d4ed8'
+						}}
+					/>
 					<span style={{ fontWeight: 'bold' }}>Focus individual</span>
 				</span>
 				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-					<span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', backgroundColor: '#bbf7d0', border: '2px solid #16a34a' }} />
+					<span
+						style={{
+							display: 'inline-block',
+							width: 12,
+							height: 12,
+							borderRadius: '50%',
+							backgroundColor: '#bbf7d0',
+							border: '2px solid #16a34a'
+						}}
+					/>
 					<span style={{ color: '#16a34a', fontWeight: 'bold' }}>Known genotype</span>
 				</span>
 				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-					<span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', backgroundColor: '#fecaca', border: '2px solid #dc2626' }} />
+					<span
+						style={{
+							display: 'inline-block',
+							width: 12,
+							height: 12,
+							borderRadius: '50%',
+							backgroundColor: '#fecaca',
+							border: '2px solid #dc2626'
+						}}
+					/>
 					<span style={{ color: '#dc2626', fontWeight: 'bold' }}>Unknown genotype</span>
 				</span>
 				<span style={{ opacity: 0.7 }}>Vertical axis = Time. Hover nodes to see genotype vectors.</span>
-				<span style={{ opacity: 0.7 }}>Shows direct connections only — parents and children of the selected node. Siblings and mates are not shown.</span>
+				<span style={{ opacity: 0.7 }}>
+					Shows direct connections only — parents and children of the selected node. Siblings and mates are not shown.
+				</span>
 			</p>
 		</div>
 	);

@@ -39,11 +39,13 @@ export default function DatasetSelector({ datasets, selected, onSelect, disabled
 			<MenuItem value="" disabled>
 				Select…
 			</MenuItem>
-			{[...datasets].sort((a, b) => a.localeCompare(b)).map((d) => (
-				<MenuItem key={d} value={d}>
-					{d}
-				</MenuItem>
-			))}
+			{[...datasets]
+				.sort((a, b) => a.localeCompare(b))
+				.map((d) => (
+					<MenuItem key={d} value={d}>
+						{d}
+					</MenuItem>
+				))}
 		</TextField>
 	);
 }

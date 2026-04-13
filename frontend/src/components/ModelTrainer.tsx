@@ -117,7 +117,15 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 			{/* Identity cards */}
 			<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
 				<div style={{ padding: '1rem', borderRadius: '6px', border: `1px solid ${theme.palette.divider}` }}>
-					<p style={{ margin: 0, fontSize: '0.75rem', color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+					<p
+						style={{
+							margin: 0,
+							fontSize: '0.75rem',
+							color: theme.palette.text.secondary,
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em'
+						}}
+					>
 						Selected Dataset
 					</p>
 					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
@@ -125,13 +133,23 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 					</p>
 				</div>
 				<div style={{ padding: '1rem', borderRadius: '6px', border: `1px solid ${theme.palette.divider}` }}>
-					<p style={{ margin: 0, fontSize: '0.75rem', color: theme.palette.text.secondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+					<p
+						style={{
+							margin: 0,
+							fontSize: '0.75rem',
+							color: theme.palette.text.secondary,
+							textTransform: 'uppercase',
+							letterSpacing: '0.05em'
+						}}
+					>
 						Selected Model
 					</p>
 					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
-						{selectedModel
-							? `${capitalize(selectedModel.model_name)} ${MODEL_TYPE_SHORT_NAMES[selectedModel.model_type] ?? selectedModel.model_type}`
-							: <em style={{ opacity: 0.6, fontStyle: 'italic' }}>None</em>}
+						{selectedModel ? (
+							`${capitalize(selectedModel.model_name)} ${MODEL_TYPE_SHORT_NAMES[selectedModel.model_type] ?? selectedModel.model_type}`
+						) : (
+							<em style={{ opacity: 0.6, fontStyle: 'italic' }}>None</em>
+						)}
 					</p>
 				</div>
 			</div>

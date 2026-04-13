@@ -1,6 +1,21 @@
 import CloseIcon from '@mui/icons-material/Close';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, CssBaseline, Dialog, DialogContent, DialogTitle, IconButton, Snackbar, Typography, useMediaQuery } from '@mui/material';
+import {
+	Accordion,
+	AccordionDetails,
+	AccordionSummary,
+	Alert,
+	Box,
+	Button,
+	CssBaseline,
+	Dialog,
+	DialogContent,
+	DialogTitle,
+	IconButton,
+	Snackbar,
+	Typography,
+	useMediaQuery
+} from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { createAppTheme } from './assets/theme/index.js';
@@ -169,7 +184,14 @@ export default function App() {
 							expanded={panelOpen.dataset}
 							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, dataset: expanded }))}
 							slotProps={{ transition: { unmountOnExit: false } }}
-							sx={{ mt: 2, '&:before': { display: 'none' }, border: `1px solid`, borderColor: 'divider', borderRadius: '8px !important', boxShadow: 'none' }}
+							sx={{
+								mt: 2,
+								'&:before': { display: 'none' },
+								border: `1px solid`,
+								borderColor: 'divider',
+								borderRadius: '8px !important',
+								boxShadow: 'none'
+							}}
 						>
 							<AccordionSummary
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
@@ -188,7 +210,14 @@ export default function App() {
 							expanded={panelOpen.model}
 							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, model: expanded }))}
 							slotProps={{ transition: { unmountOnExit: false } }}
-							sx={{ mt: 2, '&:before': { display: 'none' }, border: `1px solid`, borderColor: 'divider', borderRadius: '8px !important', boxShadow: 'none' }}
+							sx={{
+								mt: 2,
+								'&:before': { display: 'none' },
+								border: `1px solid`,
+								borderColor: 'divider',
+								borderRadius: '8px !important',
+								boxShadow: 'none'
+							}}
 						>
 							<AccordionSummary
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
@@ -207,7 +236,14 @@ export default function App() {
 							expanded={panelOpen.test}
 							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, test: expanded }))}
 							slotProps={{ transition: { unmountOnExit: false } }}
-							sx={{ mt: 2, '&:before': { display: 'none' }, border: `1px solid`, borderColor: 'divider', borderRadius: '8px !important', boxShadow: 'none' }}
+							sx={{
+								mt: 2,
+								'&:before': { display: 'none' },
+								border: `1px solid`,
+								borderColor: 'divider',
+								borderRadius: '8px !important',
+								boxShadow: 'none'
+							}}
 						>
 							<AccordionSummary
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}

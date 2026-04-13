@@ -484,7 +484,14 @@ function GenotypeTable({
 				/>
 			)}
 			<TableContainer component={Paper} sx={{ width: '100%', maxHeight: 400, overflow: 'auto' }}>
-				<Table ref={tableRef} size="small" stickyHeader sx={{ tableLayout: 'auto' }} onMouseOver={handleMouseOver} onMouseLeave={handleMouseLeave}>
+				<Table
+					ref={tableRef}
+					size="small"
+					stickyHeader
+					sx={{ tableLayout: 'auto' }}
+					onMouseOver={handleMouseOver}
+					onMouseLeave={handleMouseLeave}
+				>
 					<TableHead>
 						<TableRow>
 							<TableCell
@@ -502,11 +509,7 @@ function GenotypeTable({
 								{clampText(headers[0], 40)}
 							</TableCell>
 							{visibleHeaders.map((h, localIdx) => (
-								<TableCell
-									key={localIdx}
-									sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
-									title={h}
-								>
+								<TableCell key={localIdx} sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }} title={h}>
 									{clampText(h, 40)}
 								</TableCell>
 							))}
@@ -521,7 +524,8 @@ function GenotypeTable({
 										whiteSpace: 'nowrap',
 										position: 'sticky',
 										left: 0,
-									backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
+										backgroundColor:
+											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
 										zIndex: 9
 									}}
 									title={item.displayed[0] ?? ''}
