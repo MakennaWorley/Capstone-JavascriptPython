@@ -133,7 +133,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 
 			<div style={{ position: 'relative' }}>
 				<div style={{ overflowX: 'auto' }}>
-					<svg width={WIDTH} height={HEIGHT} style={{ border: `1px solid ${theme.palette.divider}`, background: theme.palette.background.paper }} aria-label="Family tree image">
+					<svg width={WIDTH} height={HEIGHT} style={{ border: `1px solid ${theme.palette.divider}`, background: theme.palette.background.default }} aria-label="Family tree image">
 {/* Family tree connectors */}
 					{layout.familyGroups.map((group, gi) => {
 						const stroke = theme.palette.text.secondary;

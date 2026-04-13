@@ -1,5 +1,6 @@
 import CloseIcon from '@mui/icons-material/Close';
-import { Alert, Box, Button, CssBaseline, Dialog, DialogContent, DialogTitle, IconButton, Snackbar, useMediaQuery } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, CssBaseline, Dialog, DialogContent, DialogTitle, IconButton, Snackbar, Typography, useMediaQuery } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { createAppTheme } from './assets/theme/index.js';
@@ -36,13 +37,14 @@ export default function App() {
 	const [showCreateDatasetModal, setShowCreateDatasetModal] = useState(false);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState('');
+	const [panelOpen, setPanelOpen] = useState({ dataset: true, model: true, test: true });
 	const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 	const [darkModeOverride, setDarkModeOverride] = useState<boolean | null>(null);
 	const darkMode = darkModeOverride !== null ? darkModeOverride : systemPrefersDark;
 	const theme = useMemo(() => createAppTheme(darkMode ? 'dark' : 'light'), [darkMode]);
 
 	// Use RxJS observables for automatic polling (updates every 5 seconds)
-	const { datasets, error: datasetsError, isLoading: datasetsLoading } = useDatasetsPoll(API_BASE, API_KEY, 5000);
+	const { datasets, error: datasetsError, isLoading: datasetsLoading, refresh: refreshDatasets } = useDatasetsPoll(API_BASE, API_KEY, 5000);
 	const { models, error: modelsError, isLoading: modelsLoading } = useModelsPoll(API_BASE, API_KEY, 5000);
 
 	async function pingBackend() {
@@ -54,17 +56,6 @@ export default function App() {
 		} catch {
 			setSnackbarMessage('Error contacting backend');
 			setSnackbarOpen(true);
-		}
-	}
-
-	async function refreshDatasets() {
-		try {
-			await fetch(`${API_BASE}/api/datasets/list`, {
-				method: 'GET',
-				headers: { 'x-api-key': API_KEY }
-			});
-		} catch (err) {
-			console.error('Failed to refresh datasets:', err);
 		}
 	}
 
@@ -152,38 +143,95 @@ export default function App() {
 						</div>
 					</div>
 
-					{selectedDataset && (
-						<>
-							<div style={{ marginTop: '1.25rem' }}>
-								<h3>Dataset Dashboard</h3>
-							</div>
-
-							<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} />
-						</>
+					{(selectedDataset || selectedModel) && (
+						<Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', mt: 2 }}>
+							<Button
+								size="small"
+								variant="contained"
+								onClick={() => setPanelOpen({ dataset: true, model: true, test: true })}
+								sx={{ backgroundColor: '#452ee4', '&:hover': { backgroundColor: '#241291' } }}
+							>
+								Expand All
+							</Button>
+							<Button
+								size="small"
+								variant="contained"
+								onClick={() => setPanelOpen({ dataset: false, model: false, test: false })}
+								sx={{ backgroundColor: '#452ee4', '&:hover': { backgroundColor: '#241291' } }}
+							>
+								Collapse All
+							</Button>
+						</Box>
 					)}
 
-					{selectedModel && <ModelDashboard model={selectedModel} />}
+					{selectedDataset && (
+						<Accordion
+							expanded={panelOpen.dataset}
+							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, dataset: expanded }))}
+							slotProps={{ transition: { unmountOnExit: false } }}
+							sx={{ mt: 2, '&:before': { display: 'none' }, border: `1px solid`, borderColor: 'divider', borderRadius: '8px !important', boxShadow: 'none' }}
+						>
+							<AccordionSummary
+								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
+								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
+							>
+								<Typography fontWeight="bold">Dataset Dashboard</Typography>
+							</AccordionSummary>
+							<AccordionDetails sx={{ pt: 0 }}>
+								<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} />
+							</AccordionDetails>
+						</Accordion>
+					)}
+
+					{selectedModel && (
+						<Accordion
+							expanded={panelOpen.model}
+							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, model: expanded }))}
+							slotProps={{ transition: { unmountOnExit: false } }}
+							sx={{ mt: 2, '&:before': { display: 'none' }, border: `1px solid`, borderColor: 'divider', borderRadius: '8px !important', boxShadow: 'none' }}
+						>
+							<AccordionSummary
+								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
+								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
+							>
+								<Typography fontWeight="bold">Model Dashboard</Typography>
+							</AccordionSummary>
+							<AccordionDetails sx={{ pt: 0 }}>
+								<ModelDashboard model={selectedModel} />
+							</AccordionDetails>
+						</Accordion>
+					)}
 
 					{selectedDataset && selectedModel && (
-						<div style={{ marginTop: '1.25rem' }}>
-							<h3>Test Model</h3>
-
-							<ModelTrainer
-								apiBase={API_BASE}
-								xApiKey={API_KEY}
-								selectedDataset={selectedDataset}
-								selectedModel={selectedModel}
-								onTestComplete={setTestResults}
-							/>
-
-							<ModelStats
-								paths={(testResults?.paths as any) || null}
-								testMetrics={testResults?.testMetrics || null}
-								images={testResults?.images || null}
-								predictionErrors={testResults?.predictionErrors ?? null}
-								debugMode={debugMode}
-							/>
-						</div>
+						<Accordion
+							expanded={panelOpen.test}
+							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, test: expanded }))}
+							slotProps={{ transition: { unmountOnExit: false } }}
+							sx={{ mt: 2, '&:before': { display: 'none' }, border: `1px solid`, borderColor: 'divider', borderRadius: '8px !important', boxShadow: 'none' }}
+						>
+							<AccordionSummary
+								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
+								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
+							>
+								<Typography fontWeight="bold">Test Model</Typography>
+							</AccordionSummary>
+							<AccordionDetails sx={{ pt: 0 }}>
+								<ModelTrainer
+									apiBase={API_BASE}
+									xApiKey={API_KEY}
+									selectedDataset={selectedDataset}
+									selectedModel={selectedModel}
+									onTestComplete={setTestResults}
+								/>
+								<ModelStats
+									paths={(testResults?.paths as any) || null}
+									testMetrics={testResults?.testMetrics || null}
+									images={testResults?.images || null}
+									predictionErrors={testResults?.predictionErrors ?? null}
+									debugMode={debugMode}
+								/>
+							</AccordionDetails>
+						</Accordion>
 					)}
 				</Box>
 

@@ -71,16 +71,22 @@ export default function ModelSelector({ models, selected, onSelect, disabled = f
 			<MenuItem value="" disabled>
 				Select…
 			</MenuItem>
-			{models.map((model) => {
-				const key = getModelKey(model);
-				const shortName = MODEL_TYPE_SHORT_NAMES[model.model_type] ?? model.model_type;
-				const sizeName = capitalize(model.model_name);
-				return (
-					<MenuItem key={key} value={key}>
-						{sizeName} {shortName}
-					</MenuItem>
-				);
-			})}
+			{[...models]
+				.sort((a, b) => {
+					const labelA = `${capitalize(a.model_name)} ${MODEL_TYPE_SHORT_NAMES[a.model_type] ?? a.model_type}`;
+					const labelB = `${capitalize(b.model_name)} ${MODEL_TYPE_SHORT_NAMES[b.model_type] ?? b.model_type}`;
+					return labelA.localeCompare(labelB);
+				})
+				.map((model) => {
+					const key = getModelKey(model);
+					const shortName = MODEL_TYPE_SHORT_NAMES[model.model_type] ?? model.model_type;
+					const sizeName = capitalize(model.model_name);
+					return (
+						<MenuItem key={key} value={key}>
+							{sizeName} {shortName}
+						</MenuItem>
+					);
+				})}
 		</TextField>
 	);
 }

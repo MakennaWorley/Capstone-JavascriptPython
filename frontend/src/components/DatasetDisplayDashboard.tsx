@@ -431,11 +431,16 @@ function GenotypeTable({
 }) {
 	const theme = useTheme();
 	const tableRef = useRef<HTMLTableElement>(null);
+	const ROWS_PER_PAGE = 100;
+	const [rowPage, setRowPage] = useState(0);
+
 	// Calculate which columns to show on this page (excluding index column 0)
 	const startColIdx = columnPageIndex * columnsPerPage + 1; // Start from 1 to skip index
 	const endColIdx = Math.min(startColIdx + columnsPerPage, headers.length);
 	const visibleHeaders = headers.slice(startColIdx, endColIdx);
 	const visibleIndices = Array.from({ length: endColIdx - startColIdx }, (_, i) => startColIdx + i);
+
+	const pagedRows = mergedRows.slice(rowPage * ROWS_PER_PAGE, (rowPage + 1) * ROWS_PER_PAGE);
 
 	const hoverColor = theme.palette.action.hover;
 
@@ -465,79 +470,93 @@ function GenotypeTable({
 	};
 
 	return (
-		<TableContainer component={Paper} sx={{ width: '100%', maxHeight: 400, overflow: 'auto' }}>
-			<Table ref={tableRef} size="small" sx={{ tableLayout: 'auto' }} onMouseOver={handleMouseOver} onMouseLeave={handleMouseLeave}>
-				<TableHead>
-					<TableRow>
-						<TableCell
-							sx={{
-								fontWeight: 'bold',
-								whiteSpace: 'nowrap',
-								position: 'sticky',
-								left: 0,
-								backgroundColor: 'inherit',
-								zIndex: 10,
-								minWidth: '100px'
-							}}
-							title={headers[0]}
-						>
-							{clampText(headers[0], 40)}
-						</TableCell>
-{visibleHeaders.map((h, localIdx) => (
-						<TableCell
-							key={localIdx}
-							sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
-							title={h}
-						>
-							{clampText(h, 40)}
-						</TableCell>
-					))}
-				</TableRow>
-			</TableHead>
-			<TableBody>
-				{mergedRows.map((item, ridx) => (
-					<TableRow key={ridx} hover>
-						<TableCell
-							sx={{
-								fontWeight: 'bold',
-								whiteSpace: 'nowrap',
-								position: 'sticky',
-								left: 0,
-								backgroundColor: 'inherit',
-								zIndex: 9
-							}}
-							title={item.displayed[0] ?? ''}
-						>
-							{clampText(String(item.displayed[0] ?? ''), 60)}
-						</TableCell>
-						{visibleIndices.map((colIdx) => {
-							const isKnown = item.knownMask[colIdx];
-							return (
+		<>
+			{mergedRows.length > ROWS_PER_PAGE && (
+				<TablePagination
+					component="div"
+					count={mergedRows.length}
+					page={rowPage}
+					onPageChange={(_, newPage) => setRowPage(newPage)}
+					rowsPerPage={ROWS_PER_PAGE}
+					onRowsPerPageChange={() => {}}
+					rowsPerPageOptions={[]}
+					labelDisplayedRows={({ from, to, count }) => `Rows ${from}–${to} of ${count}`}
+				/>
+			)}
+			<TableContainer component={Paper} sx={{ width: '100%', maxHeight: 400, overflow: 'auto' }}>
+				<Table ref={tableRef} size="small" stickyHeader sx={{ tableLayout: 'auto' }} onMouseOver={handleMouseOver} onMouseLeave={handleMouseLeave}>
+					<TableHead>
+						<TableRow>
+							<TableCell
+								sx={{
+									fontWeight: 'bold',
+									whiteSpace: 'nowrap',
+									position: 'sticky',
+									left: 0,
+									backgroundColor: theme.palette.background.paper,
+									zIndex: 11,
+									minWidth: '100px'
+								}}
+								title={headers[0]}
+							>
+								{clampText(headers[0], 40)}
+							</TableCell>
+							{visibleHeaders.map((h, localIdx) => (
 								<TableCell
-									key={colIdx}
-									sx={{
-										whiteSpace: 'nowrap',
-										fontWeight: isKnown ? 'bold' : 'normal',
-										color: isKnown ? '#00aa00' : '#ff6b6b'
-									}}
-									title={item.displayed[colIdx] ?? ''}
+									key={localIdx}
+									sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}
+									title={h}
 								>
-									{clampText(String(item.displayed[colIdx] ?? ''), 60)}
+									{clampText(h, 40)}
 								</TableCell>
-							);
-						})}
-					</TableRow>
-				))}
-				{mergedRows.length === 0 && (
-					<TableRow>
-						<TableCell colSpan={(visibleHeaders.length || 0) + 1} sx={{ opacity: 0.75 }}>
-							No rows to display.
-						</TableCell>
-					</TableRow>
-				)}
-			</TableBody>
-		</Table>
-		</TableContainer>
+							))}
+						</TableRow>
+					</TableHead>
+					<TableBody>
+						{pagedRows.map((item, ridx) => (
+							<TableRow key={ridx} hover>
+								<TableCell
+									sx={{
+										fontWeight: 'bold',
+										whiteSpace: 'nowrap',
+										position: 'sticky',
+										left: 0,
+									backgroundColor: theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
+										zIndex: 9
+									}}
+									title={item.displayed[0] ?? ''}
+								>
+									{clampText(String(item.displayed[0] ?? ''), 60)}
+								</TableCell>
+								{visibleIndices.map((colIdx) => {
+									const isKnown = item.knownMask[colIdx];
+									return (
+										<TableCell
+											key={colIdx}
+											sx={{
+												whiteSpace: 'nowrap',
+												fontWeight: isKnown ? 'bold' : 'normal',
+												color: isKnown ? '#00aa00' : '#ff6b6b'
+											}}
+											title={item.displayed[colIdx] ?? ''}
+										>
+											{clampText(String(item.displayed[colIdx] ?? ''), 60)}
+										</TableCell>
+									);
+								})}
+							</TableRow>
+						))}
+						{mergedRows.length === 0 && (
+							<TableRow>
+								<TableCell colSpan={(visibleHeaders.length || 0) + 1} sx={{ opacity: 0.75 }}>
+									No rows to display.
+								</TableCell>
+							</TableRow>
+						)}
+					</TableBody>
+				</Table>
+			</TableContainer>
+		</>
 	);
 }
 

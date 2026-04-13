@@ -19,7 +19,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugToggle, onCreateDataset }: SidebarProps) {
-	const [open, setOpen] = useState(true);
+	const [open, setOpen] = useState(false);
 
 	const drawerWidth = open ? DRAWER_WIDTH_OPEN : DRAWER_WIDTH_CLOSED;
 

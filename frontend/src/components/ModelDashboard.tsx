@@ -106,7 +106,7 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 	const sizeBlurb = MODEL_SIZE_INFO[sizeKey];
 
 	return (
-		<div style={{ marginTop: '1.25rem', padding: '1.5rem', backgroundColor: theme.palette.background.default, borderRadius: '8px' }}>
+		<div style={{ marginTop: '1.25rem' }}>
 			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
 				<h3 style={{ margin: 0 }}>Model Dashboard</h3>
 				<FormControlLabel
@@ -139,7 +139,6 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 				<div
 					style={{
 						padding: '1rem',
-						backgroundColor: theme.palette.background.default,
 						borderRadius: '6px',
 						border: `1px solid ${theme.palette.divider}`
 					}}
@@ -162,7 +161,6 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 				<div
 					style={{
 						padding: '1rem',
-						backgroundColor: theme.palette.background.default,
 						borderRadius: '6px',
 						border: `1px solid ${theme.palette.divider}`
 					}}
