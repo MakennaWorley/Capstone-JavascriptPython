@@ -1,6 +1,8 @@
 import base64
+import csv
 import sys
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +17,8 @@ from functions import (
 	api_error,
 	api_success,
 	col_name,
+	delete_old_datasets,
+	delete_old_logs,
 	get_all_dataset_files,
 	get_dataset_dashboard_files,
 	get_dataset_names,
@@ -86,52 +90,321 @@ class TestColName:
 			col_name(-1)
 
 
+def _write_datasets_csv(path: Path, rows: list) -> None:
+	with open(path, 'w', newline='', encoding='utf-8') as f:
+		writer = csv.DictWriter(f, fieldnames=['dataset_name', 'creator', 'date_created'])
+		writer.writeheader()
+		writer.writerows(rows)
+
+
+def _write_logs_csv(path: Path, rows: list) -> None:
+	with open(path, 'w', newline='', encoding='utf-8') as f:
+		writer = csv.DictWriter(f, fieldnames=['model_name', 'model_type', 'test_data', 'log_file', 'graph_test', 'graph_cm', 'applied_date'])
+		writer.writeheader()
+		writer.writerows(rows)
+
+
 class TestGetDatasetNames:
 	"""Test dataset name retrieval"""
 
 	def test_returns_names_in_order(self):
-		"""Names are returned in file order"""
+		"""Names are returned in CSV row order"""
 		with tempfile.TemporaryDirectory() as tmpdir:
 			datasets_dir = Path(tmpdir)
-			(datasets_dir / 'datasets.txt').write_text('alpha\nbeta\ngamma\n')
+			_write_datasets_csv(
+				datasets_dir / 'datasets.csv',
+				[
+					{'dataset_name': 'alpha', 'creator': 'frontend', 'date_created': '2026-01-01T00:00:00Z'},
+					{'dataset_name': 'beta', 'creator': 'backend', 'date_created': '2026-01-02T00:00:00Z'},
+					{'dataset_name': 'gamma', 'creator': 'frontend', 'date_created': '2026-01-03T00:00:00Z'},
+				],
+			)
 			with patch('functions.DATASETS_DIR', datasets_dir):
 				result = get_dataset_names()
 			assert result == ['alpha', 'beta', 'gamma']
 
 	def test_deduplicates_while_preserving_order(self):
-		"""Duplicate entries are removed while keeping first occurrence"""
+		"""Duplicate dataset_name entries are removed, first occurrence kept"""
 		with tempfile.TemporaryDirectory() as tmpdir:
 			datasets_dir = Path(tmpdir)
-			(datasets_dir / 'datasets.txt').write_text('ds1\nds2\nds1\nds3\nds2\n')
+			_write_datasets_csv(
+				datasets_dir / 'datasets.csv',
+				[
+					{'dataset_name': 'ds1', 'creator': 'frontend', 'date_created': '2026-01-01T00:00:00Z'},
+					{'dataset_name': 'ds2', 'creator': 'frontend', 'date_created': '2026-01-02T00:00:00Z'},
+					{'dataset_name': 'ds1', 'creator': 'frontend', 'date_created': '2026-01-03T00:00:00Z'},
+					{'dataset_name': 'ds3', 'creator': 'frontend', 'date_created': '2026-01-04T00:00:00Z'},
+					{'dataset_name': 'ds2', 'creator': 'frontend', 'date_created': '2026-01-05T00:00:00Z'},
+				],
+			)
 			with patch('functions.DATASETS_DIR', datasets_dir):
 				result = get_dataset_names()
 			assert result == ['ds1', 'ds2', 'ds3']
 
-	def test_skips_blank_lines_and_comments(self):
-		"""Blank lines and lines starting with '#' are ignored"""
-		with tempfile.TemporaryDirectory() as tmpdir:
-			datasets_dir = Path(tmpdir)
-			(datasets_dir / 'datasets.txt').write_text('# header\n\nds1\n\n# note\nds2\n')
-			with patch('functions.DATASETS_DIR', datasets_dir):
-				result = get_dataset_names()
-			assert result == ['ds1', 'ds2']
-
-	def test_strips_whitespace(self):
-		"""Leading/trailing whitespace on each line is stripped"""
-		with tempfile.TemporaryDirectory() as tmpdir:
-			datasets_dir = Path(tmpdir)
-			(datasets_dir / 'datasets.txt').write_text('  ds1  \n\tds2\t\n')
-			with patch('functions.DATASETS_DIR', datasets_dir):
-				result = get_dataset_names()
-			assert result == ['ds1', 'ds2']
-
 	def test_returns_empty_list_when_file_missing(self):
-		"""Returns [] when datasets.txt does not exist"""
+		"""Returns [] when datasets.csv does not exist"""
 		with tempfile.TemporaryDirectory() as tmpdir:
-			datasets_dir = Path(tmpdir)  # no datasets.txt created
+			datasets_dir = Path(tmpdir)
 			with patch('functions.DATASETS_DIR', datasets_dir):
 				result = get_dataset_names()
 			assert result == []
+
+	def test_returns_empty_list_when_csv_is_header_only(self):
+		"""Returns [] when datasets.csv exists but has no data rows"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)
+			_write_datasets_csv(datasets_dir / 'datasets.csv', [])
+			with patch('functions.DATASETS_DIR', datasets_dir):
+				result = get_dataset_names()
+			assert result == []
+
+	def test_includes_both_frontend_and_backend_datasets(self):
+		"""Both frontend and backend created datasets are returned"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			datasets_dir = Path(tmpdir)
+			_write_datasets_csv(
+				datasets_dir / 'datasets.csv',
+				[
+					{'dataset_name': 'fe_ds', 'creator': 'frontend', 'date_created': '2026-01-01T00:00:00Z'},
+					{'dataset_name': 'be_ds', 'creator': 'backend', 'date_created': '2026-01-02T00:00:00Z'},
+				],
+			)
+			with patch('functions.DATASETS_DIR', datasets_dir):
+				result = get_dataset_names()
+			assert result == ['fe_ds', 'be_ds']
+
+
+class TestDeleteOldDatasets:
+	"""Test garbage collection for datasets"""
+
+	def test_returns_zero_when_csv_missing(self):
+		"""Returns 0 when datasets.csv does not exist"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			result = delete_old_datasets(Path(tmpdir), max_age_days=1)
+			assert result == 0
+
+	def test_returns_zero_when_nothing_old(self):
+		"""Returns 0 when all datasets are newer than max_age_days"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			new_date = datetime.now(timezone.utc).isoformat()
+			_write_datasets_csv(d / 'datasets.csv', [{'dataset_name': 'new_ds', 'creator': 'frontend', 'date_created': new_date}])
+			result = delete_old_datasets(d, max_age_days=1)
+			assert result == 0
+
+	def test_deletes_old_frontend_dataset_files_and_csv_entry(self):
+		"""Old frontend datasets have their files and CSV entry removed"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			old_date = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+			_write_datasets_csv(d / 'datasets.csv', [{'dataset_name': 'old_ds', 'creator': 'frontend', 'date_created': old_date}])
+			(d / 'old_ds.truth_genotypes.csv').write_text('data')
+			(d / 'old_ds.observed_genotypes.csv').write_text('data')
+			(d / 'old_ds.pedigree.csv').write_text('data')
+			(d / 'old_ds.run_metadata.json').write_text('{}')
+
+			result = delete_old_datasets(d, max_age_days=1)
+
+			assert result == 1
+			assert not (d / 'old_ds.truth_genotypes.csv').exists()
+			assert not (d / 'old_ds.observed_genotypes.csv').exists()
+			assert not (d / 'old_ds.pedigree.csv').exists()
+			assert not (d / 'old_ds.run_metadata.json').exists()
+			with open(d / 'datasets.csv', newline='', encoding='utf-8') as f:
+				rows = list(csv.DictReader(f))
+			assert not any(r['dataset_name'] == 'old_ds' for r in rows)
+
+	def test_does_not_delete_old_backend_datasets(self):
+		"""Old backend datasets are preserved regardless of age"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			old_date = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+			_write_datasets_csv(d / 'datasets.csv', [{'dataset_name': 'be_ds', 'creator': 'backend', 'date_created': old_date}])
+			(d / 'be_ds.truth_genotypes.csv').write_text('data')
+
+			result = delete_old_datasets(d, max_age_days=1)
+
+			assert result == 0
+			assert (d / 'be_ds.truth_genotypes.csv').exists()
+			with open(d / 'datasets.csv', newline='', encoding='utf-8') as f:
+				rows = list(csv.DictReader(f))
+			assert any(r['dataset_name'] == 'be_ds' for r in rows)
+
+	def test_does_not_delete_new_frontend_datasets(self):
+		"""New frontend datasets are not deleted"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			new_date = datetime.now(timezone.utc).isoformat()
+			_write_datasets_csv(d / 'datasets.csv', [{'dataset_name': 'new_fe', 'creator': 'frontend', 'date_created': new_date}])
+			(d / 'new_fe.truth_genotypes.csv').write_text('data')
+
+			result = delete_old_datasets(d, max_age_days=1)
+
+			assert result == 0
+			assert (d / 'new_fe.truth_genotypes.csv').exists()
+
+	def test_handles_missing_dataset_files_gracefully(self):
+		"""Does not raise if dataset files were already deleted"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			old_date = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+			_write_datasets_csv(d / 'datasets.csv', [{'dataset_name': 'gone_ds', 'creator': 'frontend', 'date_created': old_date}])
+			# No files created — they're already gone
+			result = delete_old_datasets(d, max_age_days=1)
+			assert result == 1
+
+	def test_mixed_only_old_frontend_deleted(self):
+		"""Only old frontend entries are deleted; others are preserved"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			old_date = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+			new_date = datetime.now(timezone.utc).isoformat()
+			_write_datasets_csv(
+				d / 'datasets.csv',
+				[
+					{'dataset_name': 'old_fe', 'creator': 'frontend', 'date_created': old_date},
+					{'dataset_name': 'old_be', 'creator': 'backend', 'date_created': old_date},
+					{'dataset_name': 'new_fe', 'creator': 'frontend', 'date_created': new_date},
+				],
+			)
+
+			result = delete_old_datasets(d, max_age_days=1)
+
+			assert result == 1
+			with open(d / 'datasets.csv', newline='', encoding='utf-8') as f:
+				remaining = {r['dataset_name'] for r in csv.DictReader(f)}
+			assert 'old_fe' not in remaining
+			assert 'old_be' in remaining
+			assert 'new_fe' in remaining
+
+
+_LOG_ROW_DEFAULTS = {'model_name': 'tiny', 'model_type': 'multi_log_regression', 'test_data': 'public', 'graph_test': '', 'graph_cm': ''}
+
+
+class TestDeleteOldLogs:
+	"""Test garbage collection for applied_models logs"""
+
+	def test_returns_zero_when_csv_missing(self):
+		"""Returns 0 when applied_models.csv does not exist"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			result = delete_old_logs(Path(tmpdir), max_age_days=1)
+			assert result == 0
+
+	def test_returns_zero_when_nothing_old(self):
+		"""Returns 0 when all log entries are newer than max_age_days"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			new_date = datetime.now(timezone.utc).isoformat()
+			_write_logs_csv(d / 'applied_models.csv', [{**_LOG_ROW_DEFAULTS, 'log_file': '', 'applied_date': new_date}])
+			result = delete_old_logs(d, max_age_days=1)
+			assert result == 0
+
+	def test_deletes_old_log_files_and_csv_entry(self):
+		"""Old log entries have referenced files and CSV row removed"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			old_date = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+			log_file = d / 'old.txt'
+			graph_file = d / 'old_graph.png'
+			cm_file = d / 'old_cm.png'
+			log_file.write_text('log content')
+			graph_file.write_bytes(b'img')
+			cm_file.write_bytes(b'img')
+			_write_logs_csv(
+				d / 'applied_models.csv',
+				[{**_LOG_ROW_DEFAULTS, 'log_file': str(log_file), 'graph_test': str(graph_file), 'graph_cm': str(cm_file), 'applied_date': old_date}],
+			)
+
+			result = delete_old_logs(d, max_age_days=1)
+
+			assert result == 1
+			assert not log_file.exists()
+			assert not graph_file.exists()
+			assert not cm_file.exists()
+			with open(d / 'applied_models.csv', newline='', encoding='utf-8') as f:
+				rows = list(csv.DictReader(f))
+			assert len(rows) == 0
+
+	def test_does_not_delete_new_log_entries(self):
+		"""New log entries and their files are preserved"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			new_date = datetime.now(timezone.utc).isoformat()
+			log_file = d / 'new.txt'
+			log_file.write_text('log content')
+			_write_logs_csv(
+				d / 'applied_models.csv',
+				[{**_LOG_ROW_DEFAULTS, 'log_file': str(log_file), 'graph_test': '', 'graph_cm': '', 'applied_date': new_date}],
+			)
+
+			result = delete_old_logs(d, max_age_days=1)
+
+			assert result == 0
+			assert log_file.exists()
+
+	def test_handles_missing_log_files_gracefully(self):
+		"""Does not raise if referenced log files are already gone"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			old_date = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+			_write_logs_csv(
+				d / 'applied_models.csv',
+				[
+					{
+						**_LOG_ROW_DEFAULTS,
+						'log_file': str(d / 'gone.txt'),
+						'graph_test': str(d / 'gone_graph.png'),
+						'graph_cm': str(d / 'gone_cm.png'),
+						'applied_date': old_date,
+					}
+				],
+			)
+
+			result = delete_old_logs(d, max_age_days=1)
+			assert result == 1
+
+	def test_mixed_only_old_entries_deleted(self):
+		"""Only old log rows are removed; new rows remain in the CSV"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			old_date = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+			new_date = datetime.now(timezone.utc).isoformat()
+			_write_logs_csv(
+				d / 'applied_models.csv',
+				[
+					{**_LOG_ROW_DEFAULTS, 'model_name': 'old_model', 'log_file': '', 'graph_test': '', 'graph_cm': '', 'applied_date': old_date},
+					{**_LOG_ROW_DEFAULTS, 'model_name': 'new_model', 'log_file': '', 'graph_test': '', 'graph_cm': '', 'applied_date': new_date},
+				],
+			)
+
+			result = delete_old_logs(d, max_age_days=1)
+
+			assert result == 1
+			with open(d / 'applied_models.csv', newline='', encoding='utf-8') as f:
+				remaining = [r['model_name'] for r in csv.DictReader(f)]
+			assert 'old_model' not in remaining
+			assert 'new_model' in remaining
+
+	def test_csv_fieldnames_preserved_after_rewrite(self):
+		"""The rewritten CSV retains all original column headers"""
+		with tempfile.TemporaryDirectory() as tmpdir:
+			d = Path(tmpdir)
+			old_date = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+			new_date = datetime.now(timezone.utc).isoformat()
+			_write_logs_csv(
+				d / 'applied_models.csv',
+				[
+					{**_LOG_ROW_DEFAULTS, 'log_file': '', 'graph_test': '', 'graph_cm': '', 'applied_date': old_date},
+					{**_LOG_ROW_DEFAULTS, 'log_file': '', 'graph_test': '', 'graph_cm': '', 'applied_date': new_date},
+				],
+			)
+
+			delete_old_logs(d, max_age_days=1)
+
+			with open(d / 'applied_models.csv', newline='', encoding='utf-8') as f:
+				reader = csv.DictReader(f)
+				expected_fields = {'model_name', 'model_type', 'test_data', 'log_file', 'graph_test', 'graph_cm', 'applied_date'}
+				assert expected_fields.issubset(set(reader.fieldnames))
 
 
 class TestGetModelList:

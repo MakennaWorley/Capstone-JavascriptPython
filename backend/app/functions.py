@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import csv
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
@@ -18,6 +19,7 @@ DATASETS_DIR = (BASE_DIR / os.getenv('DATASETS_DIR')).resolve()
 PROTECTED_DATASETS_DIR = (BASE_DIR / os.getenv('PROTECTED_DATASETS_DIR')).resolve()
 MODELS_DIR = (BASE_DIR / os.getenv('MODELS_DIR')).resolve()
 IMAGES_DIR = (BASE_DIR / os.getenv('IMAGES_DIR')).resolve()
+LOGS_DIR = (BASE_DIR / os.getenv('LOGS_DIR')).resolve()
 
 # -----------------------------
 # API
@@ -78,30 +80,116 @@ def col_name(individual_id: int) -> str:
 
 def get_dataset_names() -> List[str]:
 	"""
-	Reads dataset names from a file (one per line).
-	- Strips whitespace
-	- Skips blank lines
-	- Skips comment lines starting with '#'
-	- De-duplicates while preserving order
+	Reads dataset names from datasets.csv.
+	De-duplicates while preserving order.
 	"""
-	seen = set()
+	seen: Set[str] = set()
 	names: List[str] = []
 
-	base_dir = Path(__file__).resolve().parent
-	file_path = base_dir / DATASETS_DIR / 'datasets.txt'
+	file_path = DATASETS_DIR / 'datasets.csv'
 
 	if not file_path.exists():
 		return []
 
-	for raw_line in file_path.read_text(encoding='utf-8').splitlines():
-		line = raw_line.strip()
-		if not line or line.startswith('#'):
-			continue
-		if line not in seen:
-			seen.add(line)
-			names.append(line)
+	with open(file_path, newline='', encoding='utf-8') as f:
+		reader = csv.DictReader(f)
+		for row in reader:
+			name = row.get('dataset_name', '').strip()
+			if name and name not in seen:
+				seen.add(name)
+				names.append(name)
 
 	return names
+
+
+def delete_old_datasets(datasets_dir: Path = DATASETS_DIR, max_age_days: int = 1) -> int:
+	"""
+	Delete all dataset files older than max_age_days and remove their entries
+	from datasets.csv. Returns the number of datasets deleted.
+	"""
+	csv_path = datasets_dir / 'datasets.csv'
+	if not csv_path.exists():
+		return 0
+
+	cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+
+	to_delete: List[str] = []
+	to_keep: List[Dict[str, str]] = []
+
+	with open(csv_path, newline='', encoding='utf-8') as f:
+		reader = csv.DictReader(f)
+		for row in reader:
+			try:
+				date_str = row.get('date_created', '').rstrip('Z')
+				date_created = datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
+				if date_created < cutoff and row.get('creator') == 'frontend':
+					to_delete.append(row['dataset_name'])
+				else:
+					to_keep.append(row)
+			except (ValueError, KeyError):
+				to_keep.append(row)
+
+	if not to_delete:
+		return 0
+
+	for dataset_name in to_delete:
+		base = str(datasets_dir / dataset_name)
+		for suffix in ['.trees', '.truth_genotypes.csv', '.observed_genotypes.csv', '.pedigree.csv', '.run_metadata.json', '.pedigree.svg']:
+			path = Path(base + suffix)
+			if path.exists():
+				path.unlink()
+
+	with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+		writer = csv.DictWriter(f, fieldnames=['dataset_name', 'creator', 'date_created'])
+		writer.writeheader()
+		writer.writerows(to_keep)
+
+	return len(to_delete)
+
+
+def delete_old_logs(logs_dir: Path = LOGS_DIR, max_age_days: int = 1) -> int:
+	"""
+	Delete all log files older than max_age_days and remove their entries
+	from applied_models.csv. Returns the number of log entries deleted.
+	"""
+	csv_path = logs_dir / 'applied_models.csv'
+	if not csv_path.exists():
+		return 0
+
+	cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+
+	to_keep: List[Dict[str, str]] = []
+	deleted_count = 0
+
+	with open(csv_path, newline='', encoding='utf-8') as f:
+		reader = csv.DictReader(f)
+		fieldnames = reader.fieldnames or []
+		for row in reader:
+			try:
+				date_str = row.get('applied_date', '').rstrip('Z')
+				applied_date = datetime.fromisoformat(date_str).replace(tzinfo=timezone.utc)
+				if applied_date < cutoff:
+					for col in ('log_file', 'graph_test', 'graph_cm'):
+						file_path = row.get(col, '').strip()
+						if file_path:
+							p = Path(file_path)
+							if p.exists():
+								p.unlink()
+					deleted_count += 1
+				else:
+					to_keep.append(row)
+			except (ValueError, KeyError):
+				to_keep.append(row)
+
+	if deleted_count == 0:
+		return 0
+
+	with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+		writer = csv.DictWriter(f, fieldnames=fieldnames)
+		writer.writeheader()
+		writer.writerows(to_keep)
+
+	return deleted_count
 
 
 def get_model_list(models_dir: Path = MODELS_DIR) -> List[Dict[str, str]]:

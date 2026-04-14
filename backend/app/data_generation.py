@@ -24,6 +24,7 @@ Meta replay features:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 from dataclasses import asdict, dataclass
@@ -120,21 +121,26 @@ def now_utc_iso() -> str:
 	return datetime.utcnow().isoformat() + 'Z'
 
 
-def add_to_file(text: str, output_dir: str) -> None:
+def add_to_file(text: str, output_dir: str, creator: str = 'backend') -> None:
 	os.makedirs(output_dir, exist_ok=True)
-	path = os.path.join(output_dir, 'datasets.txt')
-	with open(path, 'a', encoding='utf-8') as f:
-		f.write(text.rstrip('\n') + '\n')
+	path = os.path.join(output_dir, 'datasets.csv')
+	write_header = not os.path.exists(path)
+	with open(path, 'a', newline='', encoding='utf-8') as f:
+		writer = csv.writer(f)
+		if write_header:
+			writer.writerow(['dataset_name', 'creator', 'date_created'])
+		writer.writerow([text, creator, now_utc_iso()])
 
 
 def dataset_exists(dataset_name: str, datasets_dir: str) -> bool:
-	"""Check if a dataset name already exists in datasets.txt."""
-	datasets_file = os.path.join(datasets_dir, 'datasets.txt')
+	"""Check if a dataset name already exists in datasets.csv."""
+	datasets_file = os.path.join(datasets_dir, 'datasets.csv')
 	if not os.path.exists(datasets_file):
 		return False
 
-	with open(datasets_file, 'r', encoding='utf-8') as f:
-		existing_datasets = {line.strip() for line in f if line.strip()}
+	with open(datasets_file, 'r', newline='', encoding='utf-8') as f:
+		reader = csv.DictReader(f)
+		existing_datasets = {row['dataset_name'] for row in reader}
 
 	return dataset_name in existing_datasets
 
@@ -658,11 +664,11 @@ def create_data() -> None:
 			# Create a unique config for each split
 			split_cfg = dict_to_config({**asdict(cfg), 'name': f'{cfg.name}.{split}', 'seed': cfg.seed + (i * 1000)})
 			run_generation(split_cfg)
-			add_to_file(f'{cfg.name}.{split}', PROTECTED_DATASETS_DIR)
+			add_to_file(f'{cfg.name}.{split}', PROTECTED_DATASETS_DIR, creator='backend')
 	else:
 		# Standard single run
 		outputs = run_generation(cfg)
-		add_to_file(args.name, cfg.datasets_dir)
+		add_to_file(args.name, cfg.datasets_dir, creator='backend')
 
 
 if __name__ == '__main__':
@@ -739,10 +745,10 @@ def create_data_from_params(params: Dict[str, Any], *, meta_in: Optional[str] = 
 		for i, split in enumerate(splits):
 			split_cfg = dict_to_config({**asdict(cfg), 'name': f'{cfg.name}.{split}', 'seed': cfg.seed + (i * 1000)})
 			run_generation(split_cfg)
-			add_to_file(f'{cfg.name}.{split}', cfg.protected_datasets_dir)
+			add_to_file(f'{cfg.name}.{split}', cfg.protected_datasets_dir, creator='frontend')
 		return {'config': asdict(cfg), 'outputs': cfg.name, 'mode': 'stratified_triplet'}
 
 	# else:
 	run_generation(cfg)
-	add_to_file(cfg.name, cfg.datasets_dir)
+	add_to_file(cfg.name, cfg.datasets_dir, creator='frontend')
 	return {'config': asdict(cfg), 'outputs': cfg.name, 'mode': 'single_dataset'}

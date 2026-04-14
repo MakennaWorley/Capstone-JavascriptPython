@@ -1,7 +1,9 @@
+import asyncio
 import base64
 import io
 import os
 import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List
 
@@ -15,6 +17,8 @@ from .functions import (
 	DashboardFilesMissing,
 	api_error,
 	api_success,
+	delete_old_datasets,
+	delete_old_logs,
 	get_all_dataset_files,
 	get_dataset_dashboard_files,
 	get_dataset_names,
@@ -61,6 +65,29 @@ async def verify_paths():
 	print(f'DEBUG: MODELS_DIR is resolved to: {MODELS_DIR}')
 	if not MODELS_DIR.exists():
 		print('WARNING: MODELS_DIR does not exist!')
+
+
+async def _midnight_gc_loop() -> None:
+	"""Background task: at midnight UTC, delete datasets and logs older than 1 day."""
+	while True:
+		now = datetime.now(timezone.utc)
+		next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+		await asyncio.sleep((next_midnight - now).total_seconds())
+		try:
+			deleted = delete_old_datasets(DATASETS_DIR, max_age_days=1)
+			print(f'Midnight GC: deleted {deleted} dataset(s) older than 1 day.')
+		except Exception as e:
+			print(f'Midnight GC dataset error: {e}')
+		try:
+			deleted_logs = delete_old_logs(LOGS_DIR, max_age_days=1)
+			print(f'Midnight GC: deleted {deleted_logs} log entry/entries older than 1 day.')
+		except Exception as e:
+			print(f'Midnight GC log error: {e}')
+
+
+@app.on_event('startup')
+async def start_midnight_gc():
+	asyncio.create_task(_midnight_gc_loop())
 
 
 # health check
