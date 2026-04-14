@@ -73,9 +73,7 @@ export default function DatasetModelCreationForm({
 	}
 
 	const derivedTotal =
-		Number.isFinite(cfg.nGenerations) && Number.isFinite(cfg.samplesPerGeneration)
-			? cfg.nGenerations * cfg.samplesPerGeneration
-			: undefined;
+		Number.isFinite(cfg.nGenerations) && Number.isFinite(cfg.samplesPerGeneration) ? cfg.nGenerations * cfg.samplesPerGeneration : undefined;
 
 	// ---------- validation ----------
 	const errors = useMemo(() => {
@@ -181,11 +179,16 @@ export default function DatasetModelCreationForm({
 	}
 
 	return (
-		<Box component="form" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} sx={{ display: 'grid', gap: '1.5rem', maxWidth: 720, pt: 2, pb: 2 }}>
+		<Box
+			component="form"
+			onSubmit={(e) => {
+				e.preventDefault();
+				handleSubmit();
+			}}
+			sx={{ display: 'grid', gap: '1.5rem', maxWidth: 720, pt: 2, pb: 2 }}
+		>
 			{/* AUTO-DELETE NOTICE */}
-			<Alert severity="info">
-				Datasets are automatically deleted within 24 hours of creation.
-			</Alert>
+			<Alert severity="info">Datasets are automatically deleted within 24 hours of creation.</Alert>
 
 			{/* BASIC */}
 			<Box>

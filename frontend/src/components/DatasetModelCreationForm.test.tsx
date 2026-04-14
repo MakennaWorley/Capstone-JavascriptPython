@@ -75,10 +75,7 @@ describe('DatasetModelCreationForm', () => {
 		await user.click(screen.getByRole('button', { name: /Generate Dataset/i }));
 
 		await waitFor(() => {
-			expect(fetch).toHaveBeenCalledWith(
-				expect.stringContaining('/api/create/data'),
-				expect.objectContaining({ method: 'POST' })
-			);
+			expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/create/data'), expect.objectContaining({ method: 'POST' }));
 		});
 	});
 

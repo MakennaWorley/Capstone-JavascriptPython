@@ -46,6 +46,16 @@ export default function App() {
 		images: unknown;
 		predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }>;
 	} | null>(null);
+
+	function handleSelectDataset(dataset: string) {
+		setSelectedDataset(dataset);
+		setTestResults(null);
+	}
+
+	function handleSelectModel(model: Model | null) {
+		setSelectedModel(model);
+		setTestResults(null);
+	}
 	const [debugMode, setDebugMode] = useState(false);
 	const [showCreateDatasetModal, setShowCreateDatasetModal] = useState(false);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -166,11 +176,11 @@ export default function App() {
 						<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
 							<div>
 								<span style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Dataset</span>
-								<DatasetSelector datasets={datasets} selected={selectedDataset} onSelect={setSelectedDataset} />
+								<DatasetSelector datasets={datasets} selected={selectedDataset} onSelect={handleSelectDataset} />
 							</div>
 							<div>
 								<span style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Model</span>
-								<ModelSelector models={models} selected={selectedModel} onSelect={setSelectedModel} />
+								<ModelSelector models={models} selected={selectedModel} onSelect={handleSelectModel} />
 							</div>
 						</div>
 					</div>

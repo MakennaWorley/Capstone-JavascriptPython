@@ -84,9 +84,7 @@ describe('ModelTrainer', () => {
 		await user.click(screen.getByRole('button', { name: /Test Model on Dataset/i }));
 
 		await waitFor(() => {
-			expect(onTestComplete).toHaveBeenCalledWith(
-				expect.objectContaining({ testMetrics: { accuracy: 0.9 } })
-			);
+			expect(onTestComplete).toHaveBeenCalledWith(expect.objectContaining({ testMetrics: { accuracy: 0.9 } }));
 		});
 	});
 
