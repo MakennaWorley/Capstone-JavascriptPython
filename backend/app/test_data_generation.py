@@ -217,16 +217,18 @@ class TestDatasetExists:
 		assert result is False
 
 	def test_found_in_file(self, tmp_path):
-		(tmp_path / 'datasets.txt').write_text('dataset_one\ndataset_two\n')
+		(tmp_path / 'datasets.csv').write_text(
+			'dataset_name,creator,date_created\ndataset_one,frontend,2026-01-01T00:00:00Z\ndataset_two,backend,2026-01-02T00:00:00Z\n'
+		)
 		assert dataset_exists('dataset_one', str(tmp_path)) is True
 		assert dataset_exists('dataset_two', str(tmp_path)) is True
 
 	def test_not_found_in_file(self, tmp_path):
-		(tmp_path / 'datasets.txt').write_text('dataset_one\n')
+		(tmp_path / 'datasets.csv').write_text('dataset_name,creator,date_created\ndataset_one,frontend,2026-01-01T00:00:00Z\n')
 		assert dataset_exists('dataset_three', str(tmp_path)) is False
 
 	def test_empty_file(self, tmp_path):
-		(tmp_path / 'datasets.txt').write_text('')
+		(tmp_path / 'datasets.csv').write_text('dataset_name,creator,date_created\n')
 		assert dataset_exists('anything', str(tmp_path)) is False
 
 
