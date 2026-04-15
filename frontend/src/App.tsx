@@ -125,7 +125,11 @@ export default function App() {
 				/>
 
 				{/* Main Content */}
-				<Box component="main" id="main-content" sx={{ flex: 1, overflowY: 'auto', padding: '2rem' }}>
+				<Box
+					component="main"
+					id="main-content"
+					sx={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column' }}
+				>
 					{/* Debug Features - Only visible when debug mode is ON */}
 					{debugMode && (
 						<Box sx={{ marginBottom: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', height: 'fit-content' }}>
@@ -171,8 +175,16 @@ export default function App() {
 						</Box>
 					)}
 
+					<Box sx={{ mb: 2.5 }}>
+						<Typography variant="h4" fontWeight="bold" sx={{ color: darkMode ? '#9d91f5' : '#452ee4', mb: 0.75 }}>
+							Probabilistic Ancestral Inference
+						</Typography>
+						<Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
+							A research capstone project exploring ancestral genotype reconstruction using Bayesian models, HMMs, DNNs, and GNNs.
+						</Typography>
+					</Box>
+
 					<div style={{ marginTop: '1.25rem' }}>
-						<h2>Selection</h2>
 						<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
 							<div>
 								<span style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Dataset</span>
@@ -224,7 +236,9 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">Dataset Dashboard</Typography>
+								<Typography variant="h6" fontWeight="bold">
+									Dataset Dashboard
+								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} />
@@ -250,7 +264,9 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">Model Dashboard</Typography>
+								<Typography variant="h6" fontWeight="bold">
+									Model Dashboard
+								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelDashboard model={selectedModel} />
@@ -276,7 +292,9 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">Test Model</Typography>
+								<Typography variant="h6" fontWeight="bold">
+									Test Model
+								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelTrainer
@@ -296,6 +314,34 @@ export default function App() {
 							</AccordionDetails>
 						</Accordion>
 					)}
+					<Box
+						component="footer"
+						sx={{
+							mt: 'auto',
+							pt: 4,
+							pb: 1,
+							textAlign: 'center',
+							borderTop: '1px solid',
+							borderColor: 'divider'
+						}}
+					>
+						<Typography variant="body2" sx={{ color: 'text.secondary' }}>
+							&copy; {new Date().getFullYear()}{' '}
+							<Box
+								component="a"
+								href="https://makennaworley.com"
+								target="_blank"
+								rel="noopener noreferrer"
+								sx={{
+									color: darkMode ? '#9d91f5' : '#452ee4',
+									textDecoration: 'none',
+									'&:hover': { textDecoration: 'underline' }
+								}}
+							>
+								Makenna Worley
+							</Box>
+						</Typography>
+					</Box>
 				</Box>
 
 				{/* Snackbar for Ping FastAPI feedback */}
