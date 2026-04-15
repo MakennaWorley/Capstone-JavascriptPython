@@ -2,6 +2,7 @@ import asyncio
 import base64
 import io
 import os
+import traceback
 import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -46,17 +47,6 @@ LOGS_DIR = (BASE_DIR / os.getenv('LOGS_DIR')).resolve()
 
 
 # debugging
-@app.on_event('startup')
-async def show_routes():
-	print('=== ROUTES ===')
-	for r in app.routes:
-		try:
-			print(f'{getattr(r, "methods", "")} {r.path}')
-		except Exception:
-			pass
-	print('==============')
-
-
 @app.on_event('startup')
 async def verify_paths():
 	print(f'DEBUG: DATASETS_DIR is resolved to: {DATASETS_DIR}')
@@ -174,8 +164,6 @@ async def dataset_family_tree(dataset_name: str, individual_id: int):
 	"""
 	Fetch the connected family tree and genetic data for a specific individual.
 	"""
-	print('this is the request', dataset_name, individual_id)
-
 	try:
 		data = get_individual_family_tree_data(dataset_name, individual_id, datasets_dir=DATASETS_DIR)
 
@@ -310,15 +298,11 @@ async def test_model_on_dataset(request: Request):
 	except ValueError as e:
 		error_msg = str(e)
 		print(f'[ValueError] {error_msg}')
-		import traceback
-
 		traceback.print_exc()
 		return api_error(message=error_msg, status_code=400, code='VALIDATION_ERROR')
 
 	except Exception as e:
 		error_msg = f'Unexpected server error while testing model: {str(e)}'
 		print(f'[Exception] {error_msg}')
-		import traceback
-
 		traceback.print_exc()
 		return api_error(message=error_msg, status_code=500, code='MODEL_TEST_FAILED')
