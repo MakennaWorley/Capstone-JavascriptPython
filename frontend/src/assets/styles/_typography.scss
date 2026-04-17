@@ -1,0 +1,146 @@
+@use 'variables' as *;
+
+// ── Section heading (h2/h3 with tight spacing) ──
+.section-heading {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+// ── Heading with no margin (e.g. inside flex rows) ──
+.heading-flush {
+    margin: 0;
+}
+
+// ── Description / body text ──
+.description-text {
+    margin: 0;
+    line-height: 1.6;
+    opacity: 0.85;
+}
+
+.description-text+.description-text {
+    margin-top: 0.75rem;
+}
+
+// ── Monospace text ──
+.nerd-text {
+    margin: 0.75rem 0 0;
+    line-height: 1.6;
+    opacity: 0.85;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+// ── Strengths list ──
+.strengths-list {
+    margin: 0;
+    padding-left: 1.4rem;
+    line-height: 1.8;
+    opacity: 0.85;
+}
+
+// ── Small contextual text (metrics, totals, etc.) ──
+.context-text {
+    opacity: 0.75;
+    font-size: 0.9rem;
+    line-height: 1.65;
+    margin: 0 0 0.75rem;
+}
+
+// ── Text colors: known / unknown ──
+.text-known {
+    color: var(--color-known);
+    font-weight: bold;
+}
+
+.text-unknown {
+    color: var(--color-unknown);
+    font-weight: bold;
+}
+
+// ── Empty state placeholder ──
+.empty-state {
+    opacity: 0.7;
+}
+
+// ── Inline fallback / connection error message ──
+.error-inline {
+    color: inherit;
+    font-size: 0.9rem;
+}
+
+// ── Selector label (above dropdowns) ──
+.selector-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+// ── Primary accent color (theme-aware purple) ──
+.text-accent {
+    color: var(--color-primary-accent);
+}
+
+a.text-accent {
+    color: var(--color-primary-accent);
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+// ── Skip to main content link ──
+.skip-link {
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+// ── Faint description text (row count preview, etc.) ──
+.description-faint {
+    margin-top: 0;
+    opacity: 0.8;
+}
+
+// ── Intro paragraph with bottom gap ──
+.para-intro {
+    margin-bottom: 1.25rem;
+}
+
+// ── Paragraph spacing utilities ──
+.para-mb {
+    margin: 0 0 $spacing-sm;
+}
+
+.para-mb-lg {
+    margin: 0 0 0.75rem;
+}
+
+.para-flush {
+    margin: 0;
+}
+
+// ── Table footnote / tip ──
+.table-note {
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+    opacity: 0.75;
+}
+
+// ── Bold inline text ──
+.text-bold {
+    font-weight: bold;
+}
+
+// ── Inline section sub-label (e.g. "(optional)") ──
+.label-hint {
+    font-size: 0.75rem;
+    font-weight: normal;
+}
+
+// ── Inline note / aside text ──
+.inline-note {
+    margin-left: 0.5rem;
+    opacity: 0.75;
+}

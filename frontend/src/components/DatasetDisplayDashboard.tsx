@@ -91,7 +91,6 @@ function clampText(s: string, maxLen = 80): string {
 
 export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: DatasetDashboardProps) {
 	const theme = useTheme();
-	const isDark = theme.palette.mode === 'dark';
 	const [loading, setLoading] = useState(false);
 	const [showLoadingProgress, setShowLoadingProgress] = useState(false);
 	const [data, setData] = useState<DashboardState>({});
@@ -276,7 +275,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 	}, [selectedIndId, selectedDataset, apiBase, xApiKey]);
 
 	async function downloadAllDatasetZip() {
-		if (!selectedDataset) return;
+		if (!selectedDataset || loading) return;
 
 		setLoading(true);
 
@@ -317,62 +316,52 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 	}
 
 	return (
-		<div style={{ marginTop: '1.25rem', width: '100%', maxWidth: '1400px', margin: '1.25rem auto 0 auto' }}>
+		<div className="dashboard-wrapper">
 			<LoadingProgress isLoading={showLoadingProgress} message="Fetching your data..." />
 
 			{/* CSV preview - merged view */}
 			{mergedPreview && (
-				<div
-					style={{
-						marginTop: '1rem',
-						padding: '0.9rem',
-						borderRadius: 10,
-						width: '100%',
-						maxWidth: '100%',
-						boxSizing: 'border-box',
-						overflow: 'hidden'
-					}}
-				>
-					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-						<h4 style={{ marginTop: 0 }}>Genotypes (preview)</h4>
+				<div className="section-wrapper">
+					<div className="flex-between-mb">
+						<h2 className="section-heading">Genotypes</h2>
 						<Button
 							variant="contained"
 							startIcon={<DownloadIcon />}
 							onClick={downloadAllDatasetZip}
-							disabled={loading || !selectedDataset}
+							disabled={!selectedDataset}
 							size="small"
-							sx={{ backgroundColor: '#452ee4', '&:hover': { backgroundColor: '#241291' } }}
 						>
-							{loading ? 'Preparing…' : 'Download Dataset'}
+							{'Download Dataset'}
 						</Button>
 					</div>
 
-					<p style={{ marginTop: 0, opacity: 0.8, display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-							<span
-								style={{
-									display: 'inline-block',
-									width: 12,
-									height: 12,
-									borderRadius: 2,
-									backgroundColor: isDark ? '#66bb6a' : '#2e7d32'
-								}}
-							/>
-							<span style={{ color: isDark ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Known</span>
-							<span style={{ opacity: 0.7 }}>= observed matches truth</span>
+					<p className="context-text">
+						This table shows the merged genotype data for the selected dataset. Each row is a genomic site and each column is an
+						individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of the
+						alternate allele carried at that site (0, 1, or 2). Cells highlighted in <span className="text-known">green</span> are{' '}
+						<strong>known data</strong> — individuals whose genes were successfully sequenced and are present in the dataset. Cells
+						highlighted in <span className="text-unknown">red</span> are <strong>unknown data</strong> — individuals intentionally left
+						out to simulate the real-world scenario of individuals who were never sequenced. The models are trained only on the known data
+						and must infer the genotypes of these missing individuals.
+					</p>
+
+					<p className="context-text">
+						Use the column paginator below to scroll across individuals. Select an individual ID from the family tree section to visualize
+						their pedigree and see how their relatives' genotypes inform the inference.
+					</p>
+
+					<p className="legend-label">Legend</p>
+
+					<p className="legend">
+						<span className="legend-item">
+							<span className="legend-square legend-square-known" />
+							<span className="text-known">Known</span>
+							<span className="empty-state">= data is known</span>
 						</span>
-						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-							<span
-								style={{
-									display: 'inline-block',
-									width: 12,
-									height: 12,
-									borderRadius: 2,
-									backgroundColor: isDark ? '#ff6b6b' : '#c62828'
-								}}
-							/>
-							<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Inferred</span>
-							<span style={{ opacity: 0.7 }}>= missing or unobserved</span>
+						<span className="legend-item">
+							<span className="legend-square legend-square-unknown" />
+							<span className="text-unknown">Unknown</span>
+							<span className="empty-state">= missing or unobserved</span>
 						</span>
 					</p>
 					{mergedPreview.headers.length > COLUMNS_PER_PAGE && (
@@ -399,17 +388,8 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 
 			{/* Family tree */}
 			{data.observedCsvRaw && (
-				<div
-					style={{
-						marginTop: '1rem',
-						padding: '0.9rem',
-						borderRadius: 10,
-						width: '100%',
-						boxSizing: 'border-box',
-						overflow: 'hidden'
-					}}
-				>
-					<h4 style={{ marginTop: 0 }}>Family Tree Explorer</h4>
+				<div className="section-wrapper">
+					<h2 className="section-heading">Family Tree Explorer</h2>
 					<TextField
 						select
 						size="small"
@@ -444,7 +424,6 @@ function GenotypeTable({
 	columnsPerPage: number;
 }) {
 	const theme = useTheme();
-	const tableRef = useRef<HTMLTableElement>(null);
 	const ROWS_PER_PAGE = 100;
 	const [rowPage, setRowPage] = useState(0);
 
@@ -455,33 +434,6 @@ function GenotypeTable({
 	const visibleIndices = Array.from({ length: endColIdx - startColIdx }, (_, i) => startColIdx + i);
 
 	const pagedRows = mergedRows.slice(rowPage * ROWS_PER_PAGE, (rowPage + 1) * ROWS_PER_PAGE);
-
-	const hoverColor = theme.palette.action.hover;
-
-	const handleMouseOver = (e: React.MouseEvent<HTMLTableElement>) => {
-		const cell = (e.target as HTMLElement).closest('td, th') as HTMLElement | null;
-		if (!cell || !tableRef.current) return;
-		const row = cell.parentElement;
-		if (!row) return;
-		const colIndex = Array.from(row.children).indexOf(cell);
-		tableRef.current.querySelectorAll<HTMLElement>('[data-col-h]').forEach((el) => {
-			el.style.backgroundColor = '';
-			delete el.dataset.colH;
-		});
-		if (colIndex > 0) {
-			tableRef.current.querySelectorAll<HTMLElement>(`tr > *:nth-child(${colIndex + 1})`).forEach((el) => {
-				el.style.backgroundColor = hoverColor;
-				el.dataset.colH = '1';
-			});
-		}
-	};
-
-	const handleMouseLeave = () => {
-		tableRef.current?.querySelectorAll<HTMLElement>('[data-col-h]').forEach((el) => {
-			el.style.backgroundColor = '';
-			delete el.dataset.colH;
-		});
-	};
 
 	return (
 		<>
@@ -498,25 +450,13 @@ function GenotypeTable({
 				/>
 			)}
 			<TableContainer component={Paper} sx={{ width: '100%', maxHeight: 400, overflow: 'auto' }}>
-				<Table
-					ref={tableRef}
-					size="small"
-					stickyHeader
-					sx={{ tableLayout: 'auto' }}
-					onMouseOver={handleMouseOver}
-					onMouseLeave={handleMouseLeave}
-				>
+				<Table size="small" stickyHeader sx={{ tableLayout: 'auto' }}>
 					<TableHead>
 						<TableRow>
 							<TableCell
+								className="sticky-col-header"
 								sx={{
-									fontWeight: 'bold',
-									whiteSpace: 'nowrap',
-									position: 'sticky',
-									left: 0,
-									backgroundColor: theme.palette.background.paper,
-									zIndex: 11,
-									minWidth: '100px'
+									backgroundColor: theme.palette.background.paper
 								}}
 								title={headers[0]}
 							>
@@ -531,16 +471,13 @@ function GenotypeTable({
 					</TableHead>
 					<TableBody>
 						{pagedRows.map((item, ridx) => (
-							<TableRow key={ridx} hover>
+							<TableRow key={ridx}>
 								<TableCell
+									className="sticky-col"
 									sx={{
 										fontWeight: 'bold',
-										whiteSpace: 'nowrap',
-										position: 'sticky',
-										left: 0,
 										backgroundColor:
-											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
-										zIndex: 9
+											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default
 									}}
 									title={item.displayed[0] ?? ''}
 								>
@@ -551,17 +488,8 @@ function GenotypeTable({
 									return (
 										<TableCell
 											key={colIdx}
-											sx={{
-												whiteSpace: 'nowrap',
-												fontWeight: isKnown ? 'bold' : 'normal',
-												color: isKnown
-													? theme.palette.mode === 'dark'
-														? '#66bb6a'
-														: '#2e7d32'
-													: theme.palette.mode === 'dark'
-														? '#ff6b6b'
-														: '#c62828'
-											}}
+											className={isKnown ? 'cell-known' : 'cell-unknown'}
+											sx={{ whiteSpace: 'nowrap' }}
 											title={item.displayed[colIdx] ?? ''}
 										>
 											{clampText(String(item.displayed[colIdx] ?? ''), 60)}
@@ -581,5 +509,62 @@ function GenotypeTable({
 				</Table>
 			</TableContainer>
 		</>
+	);
+}
+
+function CsvTable({ title, preview, maxRows }: { title: string; preview: CsvPreview; maxRows: number }) {
+	const { headers, rows, estimatedTotalRows } = preview;
+
+	return (
+		<div className="section-wrapper csv-preview-box">
+			<h4 className="section-heading">{title}</h4>
+
+			<p className="description-faint">
+				Showing first <b>{Math.min(rows.length, maxRows)}</b>
+				{typeof estimatedTotalRows === 'number' ? (
+					<>
+						{' '}
+						of about <b>{estimatedTotalRows.toLocaleString()}</b> rows
+					</>
+				) : null}
+				.
+			</p>
+
+			<TableContainer component={Paper}>
+				<Table size="small">
+					<TableHead>
+						<TableRow>
+							{headers.map((h, idx) => (
+								<TableCell key={idx} sx={{ fontWeight: 'bold' }} title={h}>
+									{clampText(h, 40)}
+								</TableCell>
+							))}
+						</TableRow>
+					</TableHead>
+					<TableBody>
+						{rows.map((r, ridx) => (
+							<TableRow key={ridx}>
+								{headers.map((_, cidx) => (
+									<TableCell key={cidx} sx={{ whiteSpace: 'nowrap' }} title={r[cidx] ?? ''}>
+										{clampText(String(r[cidx] ?? ''), 60)}
+									</TableCell>
+								))}
+							</TableRow>
+						))}
+						{rows.length === 0 && (
+							<TableRow>
+								<TableCell colSpan={headers.length || 1} sx={{ opacity: 0.75 }}>
+									No rows to display.
+								</TableCell>
+							</TableRow>
+						)}
+					</TableBody>
+				</Table>
+			</TableContainer>
+
+			<p className="table-note">
+				Tip: these CSVs are wide (lots of <code>ind_####</code> columns). Horizontal scroll is expected.
+			</p>
+		</div>
 	);
 }

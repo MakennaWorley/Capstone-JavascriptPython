@@ -1,0 +1,53 @@
+@use 'variables' as *;
+
+// ── Info / Identity Cards ──
+// Used in ModelDashboard, ModelTrainer for displaying model/dataset identity
+.info-card {
+    padding: $spacing-md;
+    border-radius: $radius-md;
+    border: 2px solid var(--mui-palette-divider, #cccccc);
+}
+
+[data-theme='dark'] .info-card {
+    border-color: var(--mui-palette-divider, #333333);
+}
+
+.info-card-label {
+    margin: 0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.7;
+}
+
+.info-card-value {
+    margin: 0.4rem 0 0 0;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+// ── Use-Case / Recommended Box (green accent) ──
+.use-case-box {
+    padding: $spacing-md;
+    border-radius: $radius-md;
+    background-color: $color-use-case-bg-light;
+    border: 2px solid $color-use-case-border-light;
+}
+
+[data-theme='dark'] .use-case-box {
+    background-color: $color-use-case-bg-dark;
+    border-color: $color-use-case-border-dark;
+}
+
+.use-case-label {
+    margin: 0;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+    color: $color-use-case-label-light;
+}
+
+[data-theme='dark'] .use-case-label {
+    color: $color-use-case-label-dark;
+}

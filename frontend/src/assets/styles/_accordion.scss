@@ -1,0 +1,19 @@
+@use 'variables' as *;
+
+// ── Panel accordion (MUI override) ──
+.panel-accordion {
+    &.MuiAccordion-root {
+        &::before {
+            display: none;
+        }
+
+        border: 2px solid;
+        border-color: var(--mui-palette-divider, #cccccc);
+        border-radius: $radius-lg !important;
+        box-shadow: none;
+    }
+
+    .MuiAccordionSummary-expandIconWrapper {
+        color: $color-primary;
+    }
+}

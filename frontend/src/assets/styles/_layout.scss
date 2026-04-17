@@ -1,0 +1,130 @@
+@use 'variables' as *;
+
+// ── Two-column grid ──
+.grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-md;
+}
+
+// ── Section wrapper ──
+.section-wrapper {
+    margin-top: $spacing-md;
+    padding: 0.9rem;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+// ── Dashboard root container ──
+.dashboard-wrapper {
+    margin-top: 1.25rem;
+    width: 100%;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+// ── Form grid (creation form) ──
+.form-grid {
+    display: grid;
+    gap: $spacing-lg;
+    max-width: 720px;
+    padding-top: $spacing-sm;
+    padding-bottom: $spacing-sm;
+}
+
+// ── Inline flex, space-between ──
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+// ── Dashboard section header row (flex-between + 1.25rem bottom gap) ──
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+// ── Flex-between with medium-large bottom gap (0.75rem) ──
+.flex-between-mb-lg {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+// ── Generic section block with bottom spacing ──
+.section-mb {
+    margin-bottom: $spacing-lg;
+}
+
+// ── Section block with extra-large bottom spacing (2rem) ──
+.section-mb-xl {
+    margin-bottom: $spacing-xl;
+}
+
+// ── Small bottom margin utility ──
+.mb-sm {
+    margin-bottom: $spacing-sm;
+}
+
+// ── Grid column span 2 ──
+.col-span-2 {
+    grid-column: span 2;
+}
+
+// ── Flex row with bottom spacing (section header rows) ──
+.flex-between-mb {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-sm;
+}
+
+// ── Selector grid wrapper ──
+.selector-grid {
+    margin-top: 1.25rem;
+}
+
+// ── Trainer / stats section wrapper ──
+.section-top {
+    margin-top: 2rem;
+}
+
+// ── Grid with bottom margin ──
+.grid-2col-mb {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-md;
+    margin-bottom: $spacing-lg;
+}
+
+// ── Performance graphs grid ──
+.graphs-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: $spacing-lg;
+    margin-top: $spacing-md;
+
+    @media (max-width: 900px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+// ── Graph images ──
+.dark-mode-image {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    display: block;
+    margin-top: $spacing-md;
+}
+
+[data-theme='dark'] .dark-mode-image {
+    filter: invert(1) hue-rotate(180deg) brightness(1.1);
+}

@@ -1,0 +1,99 @@
+@use 'variables' as *;
+
+// ── Sidebar drawer overrides ──
+.sidebar-drawer {
+    .MuiDrawer-paper {
+        box-sizing: border-box;
+        border-right: 4px solid $color-primary;
+        transition: width 0.3s ease;
+        overflow-x: hidden;
+    }
+}
+
+[data-theme='dark'] .sidebar-drawer .MuiDrawer-paper {
+    background-color: $sidebar-bg-dark;
+}
+
+[data-theme='light'] .sidebar-drawer .MuiDrawer-paper {
+    background-color: $sidebar-bg-light;
+}
+
+// ── Sidebar action buttons (need MUI class to win specificity over Emotion) ──
+.sidebar-btn-create.MuiListItemButton-root {
+    border-radius: $radius-lg;
+    background-color: $color-primary;
+    color: white;
+
+    &:hover {
+        background-color: $color-primary-dark;
+    }
+}
+
+.sidebar-btn-theme-dark.MuiListItemButton-root {
+    border-radius: $radius-lg;
+    background-color: $sidebar-theme-btn-bg-dark;
+    color: white;
+
+    &:hover {
+        background-color: $sidebar-theme-btn-hover-dark;
+    }
+}
+
+.sidebar-btn-theme-light.MuiListItemButton-root {
+    border-radius: $radius-lg;
+    background-color: $sidebar-theme-btn-bg-light;
+    color: #111;
+
+    &:hover {
+        background-color: $sidebar-theme-btn-hover-light;
+    }
+}
+
+.sidebar-btn-debug-on.MuiListItemButton-root {
+    border-radius: $radius-lg;
+    background-color: $color-debug-green;
+    color: white;
+
+    &:hover {
+        background-color: $color-debug-green-hover;
+    }
+}
+
+.sidebar-btn-debug-off.MuiListItemButton-root {
+    border-radius: $radius-lg;
+    background-color: $sidebar-debug-off-bg;
+    color: white;
+
+    &:hover {
+        background-color: $sidebar-debug-off-hover;
+    }
+}
+
+// ── Toggle button (menu/close) ──
+.sidebar-toggle {
+    &.MuiIconButton-root {
+        position: fixed;
+        top: $spacing-md;
+        left: $spacing-md;
+        z-index: 1300;
+        color: $color-primary;
+        border: 4px solid $color-primary;
+
+        &:hover {
+            background-color: $color-primary-bg;
+        }
+    }
+}
+
+[data-theme='dark'] .sidebar-toggle.MuiIconButton-root {
+    background-color: $sidebar-bg-dark;
+}
+
+[data-theme='light'] .sidebar-toggle.MuiIconButton-root {
+    background-color: $sidebar-bg-light;
+}
+
+.sidebar-item-label {
+    margin-left: $spacing-sm;
+    white-space: nowrap;
+}

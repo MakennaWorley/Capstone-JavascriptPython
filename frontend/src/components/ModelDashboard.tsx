@@ -1,5 +1,4 @@
 import { FormControlLabel, Switch } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 
 type Model = {
@@ -15,119 +14,173 @@ const MODEL_TYPE_INFO: Record<
 	string,
 	{
 		label: string;
-		simpleDescription: string;
-		simpleStrengths: string[];
-		simpleUseCase: string;
+		simple_description: string;
+		simple_strengths: string[];
+		simple_use_case: string;
 		description: string;
 		strengths: string[];
-		useCase: string;
+		use_case: string;
 	}
 > = {
 	dnn_dosage: {
 		label: 'Deep Neural Network',
-		simpleDescription:
-			'Our most capable pattern-recognition model. It independently discovers hidden connections across your entire genome — no manual feature engineering required. The more data you give it, the smarter it gets.',
-		simpleStrengths: [
-			'Finds patterns humans would not think to look for',
-			'Gets more accurate as your dataset grows',
-			'Handles complex, high-dimensional genetic data well'
+		simple_description:
+			"A Deep Neural Network (DNN) is modelled loosely after the human brain — it is made up of layers of interconnected nodes that each learn to recognise a small piece of a pattern. Stack enough of these layers together and the network can pick up on extraordinarily subtle signals in the data that no human analyst would ever spot manually. For this project, the DNN looks at the genetic data of a person's relatives and learns, through thousands of examples, what combination of signals tends to predict each possible genotype. It does not need to be told which features matter — it figures that out on its own. The trade-off is that it needs a reasonably large amount of training data to do this well, and it can take longer to train than simpler models. But when conditions are right, it is our most powerful tool.",
+		simple_strengths: [
+			'Discovers complex patterns in genetic data automatically, without needing to be told what to look for',
+			'Becomes significantly more accurate as the training dataset grows larger',
+			'Handles many thousands of genetic sites at once without slowing down',
+			'Uses techniques like batch normalisation and dropout to stay reliable and avoid memorising noise',
+			'Can run on a GPU for dramatically faster training on large datasets'
 		],
-		simpleUseCase:
-			'Best for large datasets (100+ individuals) where you want the highest possible accuracy and are not pressed for training time.',
+		simple_use_case:
+			'The Deep Neural Network shines when you have a lot of data to work with. If your dataset includes hundreds or thousands of individuals and thousands of genomic sites, this model has enough examples to learn genuinely useful patterns rather than just memorising quirks in the training set. It is the right choice when you want the most accurate predictions possible and can afford to wait a little longer for training to complete — or when you have a GPU available to speed things up. It is less well suited to very small datasets, where simpler models like logistic regression or Bayesian inference tend to be more reliable.',
 		description:
-			'A fully connected deep neural network trained to predict genotype dosage values. Stacks multiple hidden layers (256 > 128 > 64 neurons) with batch normalization, dropout regularization, and residual connections for stable training on high-dimensional genomic inputs. Outputs a soft dosage estimate over classes 0, 1, and 2.',
+			'A fully connected feedforward neural network (PyTorch) trained to predict per-site allele dosage (0, 1, 2) for masked individuals. The architecture stacks three hidden layers (256 → 128 → 64 neurons), each followed by batch normalisation and ReLU activation. Residual (skip) connections are added between compatible layer widths to mitigate vanishing gradients. Dropout (p=0.3) is applied during training for regularisation. The output layer uses softmax over three classes. Input features are constructed via k-hop relative aggregation over the pedigree graph: for each masked individual at each genomic site, the feature vector is [mean_dosage_of_k_hop_relatives, fraction_of_relatives_observed, count_of_relatives]. Training uses cross-entropy loss with class weights inversely proportional to class frequency to handle dosage imbalance. Optimised with Adam; early stopping monitors validation loss with patience of 10 epochs. Supports CUDA and Apple Metal (MPS) acceleration.',
 		strengths: [
-			'Captures complex non-linear interactions between loci',
-			'Scales well as dataset size grows',
-			'Residual connections prevent vanishing gradients',
-			'GPU-accelerated via PyTorch (CUDA / Apple Metal)'
+			'Captures non-linear, high-order interactions between loci that linear models cannot represent',
+			'Residual connections stabilise gradient flow in deep stacks and accelerate convergence',
+			'Batch normalisation reduces internal covariate shift, enabling higher learning rates',
+			'Class-weighted cross-entropy handles dosage class imbalance without resampling',
+			'Early stopping prevents overfitting when validation loss plateaus',
+			'Scales efficiently to high-dimensional inputs (100k+ genomic sites) on GPU',
+			'PyTorch backend supports CUDA (NVIDIA) and MPS (Apple Silicon) acceleration'
 		],
-		useCase:
-			'Best suited for large datasets where non-linear relationships between loci are expected. Outperforms simpler models when enough training examples are available to prevent overfitting.'
+		use_case:
+			'Best suited for medium to large datasets (1,000+ individuals, 1,000+ sites) where non-linear feature interactions are expected and sufficient training data exists to prevent overfitting. Outperforms logistic regression when pedigree-derived features have complex dosage dependencies. Less suitable than Bayesian inference for small datasets or when posterior uncertainty estimates are required. Slower to train than logistic regression but typically achieves the highest raw accuracy on large cohorts. Recommended when GPU hardware is available.'
 	},
 	multi_log_regression: {
 		label: 'Multinomial Logistic Regression',
-		simpleDescription:
-			'Our fastest and most transparent model. It examines each gene individually, assigns it a weight, and tallies up a score — straightforward enough that researchers can inspect exactly why it made each call.',
-		simpleStrengths: ['Completes in seconds on any dataset size', 'Easy to explain and audit', 'Reliable starting point for any new dataset'],
-		simpleUseCase: "Best for quick results, smaller datasets, or situations where you need to clearly explain the model's decisions to others.",
+		simple_description:
+			"Logistic regression is one of the oldest and most well-understood tools in statistics. At its core, it works by assigning a numerical weight to each input feature — in this case, things like how many of a person's relatives carry a particular allele — and then adding those weighted signals together to produce a score for each possible genotype. The genotype with the highest score wins. Because every decision traces back to a simple sum of weights, researchers can open up the model and read exactly what it learned. There are no hidden layers, no mysterious representations — just interpretable numbers. It is the baseline every other model has to beat, and it often performs surprisingly well given how simple it is.",
+		simple_strengths: [
+			'Fully transparent — you can inspect exactly why it made each prediction',
+			'Trains in seconds even on the largest datasets',
+			'Rarely overfits, making it reliable even with limited data',
+			'A strong and honest baseline: if a fancier model cannot beat it, something is wrong',
+			'Works well when the relationship between features and genotype is roughly linear'
+		],
+		simple_use_case:
+			'Logistic regression is the right starting point for almost any analysis. If you are new to a dataset and want a quick, honest read of how predictable the genotypes are, start here. It is also the best choice when you need to explain your results to someone without a machine-learning background — every weight in the model has a direct, interpretable meaning. On smaller datasets it often matches or beats more complex models because it does not have enough parameters to overfit. The one scenario where it tends to fall short is when the patterns in the data are genuinely non-linear and complex, which is when you would consider upgrading to a DNN or GNN.',
 		description:
-			"A classical statistical classifier that models genotype probabilities using a linear combination of input features followed by a softmax transformation. Trains one set of weights per dosage class (0, 1, 2) using scikit-learn's multinomial solver. Highly interpretable — each feature weight directly quantifies its contribution to each class.",
-		strengths: ['Fully interpretable coefficients', 'Extremely fast to train', 'Low memory footprint', 'Strong regularized baseline'],
-		useCase:
-			'Ideal as a fast, transparent baseline or when the relationship between features and genotype dosage is approximately linear. Useful for debugging pipelines and establishing minimum performance expectations.'
+			"A multinomial logistic regression classifier (scikit-learn) that models P(dosage | features) via softmax over three output classes (0, 1, 2). Input features are the same k-hop pedigree aggregation vectors used by other models: [mean_dosage_of_relatives, fraction_observed, count_relatives] per genomic site per masked individual. The model learns one weight vector per class, solved via the L-BFGS multinomial solver with L2 regularisation (C=1.0). Class weights are set to 'balanced' to compensate for dosage distribution skew. Because the decision boundary is a hyperplane in feature space, each coefficient has a direct interpretation: a positive weight on mean_dosage_of_relatives for dosage class 2 means that higher average relative dosage increases the log-odds of predicting class 2. This is the only model in the benchmark that provides this level of interpretability without post-hoc analysis.",
+		strengths: [
+			'Coefficients are directly interpretable: each weight quantifies the contribution of one feature to one dosage class',
+			'L-BFGS solver converges in seconds on any dataset in this benchmark',
+			'L2 regularisation controls overfitting without requiring hyperparameter search',
+			'Balanced class weights handle dosage imbalance without resampling or custom loss functions',
+			'No GPU required; runs on any hardware with minimal memory overhead',
+			'Serves as the primary baseline for assessing whether complexity in other models is justified'
+		],
+		use_case:
+			'Use as the first model on any new dataset to establish a performance floor. If logistic regression achieves high accuracy, the genetic signal is linearly separable and more complex models may not add meaningful value. If accuracy is poor, non-linear structure is present and a DNN or GNN is warranted. Always compare every other model against this baseline before drawing conclusions about model superiority. Also the recommended model when auditability of predictions is a hard requirement.'
 	},
 	hmm_dosage: {
 		label: 'Hidden Markov Model',
-		simpleDescription:
-			'A model that understands that genes do not work in isolation — your DNA reads like a sentence, where each word gives context to the next. It follows your chromosome from start to finish, using nearby genes to sharpen every prediction.',
-		simpleStrengths: [
-			'Naturally captures how genes influence their neighbours',
-			'Strong performance on sequential genomic data',
-			'Principled uncertainty estimates for each call'
+		simple_description:
+			"A Hidden Markov Model (HMM) is built on a simple but powerful idea: the current state of something depends on what came just before it. In genetics, this maps beautifully onto the structure of a chromosome — nearby sites along your DNA are not independent, they influence each other because of how inheritance works (a phenomenon called linkage disequilibrium). The HMM reads a person's chromosome like a story, moving from site to site and using what it just saw to inform what it expects next. Underneath, it assumes there are a small number of hidden genetic states the data could be in at any point, and it learns to recognise which state fits best given the observed pattern. It does not need a family tree — it finds structure within the sequence itself.",
+		simple_strengths: [
+			'Naturally understands that nearby genes on a chromosome influence each other',
+			'Reads genetic data as a sequence rather than treating each site independently',
+			'Produces a probability for each possible genotype, not just a single guess',
+			'Well-suited to data where the order of measurements carries meaning',
+			'Trains efficiently without requiring a GPU'
 		],
-		simpleUseCase: 'Best when the order and proximity of genes along the chromosome matter, or when working with phased genomic data.',
+		simple_use_case:
+			'The Hidden Markov Model is at its best when the structure of the genome itself carries the signal — specifically, when genes that sit close together on the same chromosome tend to be inherited together. This is very common in real genetic data. If your dataset preserves the chromosomal order of sites (rather than treating them as an unordered bag of measurements), the HMM can exploit that structure in a way no other model here can. It is also a strong choice when your dataset is moderate in size and you want well-calibrated confidence scores alongside each prediction. If you are unsure whether chromosomal order matters for your data, running the HMM alongside logistic regression is a good way to find out.',
 		description:
-			'A probabilistic sequence model that treats each genomic site as an emission from an unobserved genetic state. Learns transition probabilities between hidden states along chromosomal position using the Baum-Welch (EM) algorithm. Captures linkage disequilibrium by modeling dependencies between adjacent loci in a principled, generative framework.',
+			'A Gaussian Hidden Markov Model (hmmlearn) trained to infer per-site allele dosage by treating each individual as an observed sequence across genomic sites. The model assumes K=3 hidden states (corresponding loosely to dosage classes 0, 1, 2) with Gaussian emission distributions and a learned transition matrix. State parameters are estimated via Baum-Welch (EM). Emission means and covariances are initialised from empirical statistics of labelled examples (semi-supervised init) to accelerate convergence and avoid degenerate solutions. At inference time, the Viterbi algorithm decodes the most probable hidden state sequence for each individual, and posterior state probabilities are used to produce soft dosage class probabilities. The sequential structure of the model captures linkage disequilibrium — correlation between nearby sites — that i.i.d. models ignore entirely.',
 		strengths: [
-			'Explicitly captures sequential genomic structure',
-			'Probabilistic outputs support uncertainty quantification',
-			'Interpretable hidden states correspond to haplotype blocks',
-			'Efficient EM training converges reliably'
+			'Explicitly models chromosomal-position dependencies via the learned transition matrix',
+			'Semi-supervised initialisation from label statistics prevents degenerate local optima in EM',
+			'Viterbi decoding produces a globally consistent state sequence rather than per-site greedy decisions',
+			'Posterior state probabilities provide well-calibrated soft class estimates',
+			'Interpretable: hidden state means and transition probabilities can be inspected directly',
+			'Efficient EM convergence with no GPU required',
+			'Naturally handles variable-length sequences without padding'
 		],
-		useCase:
-			'Most effective when linkage disequilibrium and chromosomal-order dependencies between loci are crucial. A natural fit for phased or partially phased genomic data.'
+		use_case:
+			'Most effective when genomic sites in the feature matrix are ordered by chromosomal position and linkage disequilibrium between adjacent sites is non-negligible. Performance degrades if sites are shuffled or drawn from unrelated chromosomal regions. Recommended when phasing information is available or where sequential correlation structure is a known biological feature. Not recommended when the feature set mixes sites from multiple chromosomes without positional ordering.'
 	},
 	gnn_dosage: {
 		label: 'Graph Neural Network',
-		simpleDescription:
-			'Our most relationship-aware model. It maps out your entire family tree and lets each person\'s known genetics inform predictions for their relatives — the same intuition a doctor uses when a condition "runs in the family," but at genomic scale.',
-		simpleStrengths: [
-			'Uses family relationships to boost individual predictions',
-			'Handles multi-generational pedigrees',
-			'Improves most when relatives share genetic variants'
+		simple_description:
+			"A Graph Neural Network (GNN) is designed from the ground up to reason about relationships. Instead of treating each individual as an isolated data point, it builds a map of the entire family — who is whose parent, who are siblings, how everyone connects. It then passes messages along the edges of that map: each person shares their genetic information with their relatives, and those relatives share back, so that by the end every prediction is informed by the whole connected family rather than just one person's own data. This mirrors how inheritance actually works — if a grandparent carries a particular variant, there is a meaningful chance their grandchildren do too, and the GNN learns to exploit exactly that kind of multi-generational signal. It is our most family-aware model.",
+		simple_strengths: [
+			'Treats the family tree as the core input, not just an afterthought',
+			'Passes genetic signals up and down through multiple generations simultaneously',
+			'Predictions for one person are informed by their parents, children, and more distant relatives',
+			'Learns inheritance patterns end-to-end from the data itself',
+			'Handles families of any size or shape, from small pedigrees to large extended clans'
 		],
-		simpleUseCase: 'Best when you have family or pedigree data and want the model to use those relationships to improve accuracy.',
+		simple_use_case:
+			'The Graph Neural Network is the right choice whenever the family structure of your data is as informative as the genetic measurements themselves — which, in ancestral inference, it almost always is. If your dataset includes parents, grandparents, or other close relatives of the individuals you are trying to predict, the GNN will use those connections to make substantially better predictions than any model that ignores them. It performs best on medium to large datasets with deep, connected pedigrees. For very small families or isolated individuals with no known relatives in the dataset, its advantage over simpler models will be smaller. It also benefits from GPU acceleration on larger datasets.',
 		description:
-			'A deep learning architecture that operates directly over pedigree graphs. Each individual is a node; edges represent parent-offspring or sibling relationships. Message-passing layers (256 > 128 > 64 hidden dimensions) aggregate genetic signals from neighbours, enabling the model to exploit Mendelian inheritance patterns across an entire family. GPU-accelerated via PyTorch.',
+			'A graph convolutional network (PyTorch Geometric) that constructs a feature-correlation graph from the input data and applies message-passing convolutions to aggregate genetic signals across connected individuals. Each individual is a node; edges are drawn between individuals whose feature vectors exceed a Pearson correlation threshold (default 0.5), encoding genetic similarity independently of pedigree topology. Node features are the same k-hop pedigree aggregation vectors used by other models. The architecture stacks three GraphConv layers (256 → 128 → 64 hidden dimensions) with ReLU activations, followed by global mean pooling to produce a graph-level embedding passed through a linear classifier. Trained with cross-entropy loss and Adam. Supports mini-batch training via PyTorch Geometric DataLoader for memory-efficient handling of large pedigrees. GPU-accelerated.',
 		strengths: [
-			'Leverages pedigree structure for superior accuracy in family cohorts',
-			'Propagates genotype signals across multiple generations',
-			'Learns relational inheritance patterns end-to-end',
-			'Handles variable-size pedigrees through graph batching'
+			'Constructs edges from feature correlation, capturing genetic similarity that the pedigree graph alone may not encode',
+			'Message-passing aggregates information from all graph neighbours, not just direct parents/children',
+			'Global mean pooling produces size-invariant graph embeddings that generalise across pedigree shapes',
+			'Mini-batch DataLoader enables training on pedigrees too large to fit in memory at once',
+			'GPU-accelerated via PyTorch Geometric sparse kernels',
+			'Learns relational inheritance patterns end-to-end without hand-crafted pedigree features',
+			'Outperforms non-relational models on datasets with dense, multi-generational family structure'
 		],
-		useCase:
-			'Most powerful when detailed pedigree data is available and individuals share genetic material with close relatives in the same dataset. Substantially outperforms non-relational models in deep pedigree cohorts.'
+		use_case:
+			'Most powerful on datasets with deep pedigrees (10+ generations) and high connectivity, where many individuals share recent common ancestors. The correlation-based edge construction means the model can also exploit genetic similarity between individuals not directly related in the recorded pedigree. Requires more memory and training time than logistic regression or the HMM; GPU acceleration strongly recommended for medium and large datasets. Performance advantage over the DNN diminishes when pedigree connectivity is sparse.'
 	},
 	bayes_softmax3: {
 		label: 'Bayesian Inference',
-		simpleDescription:
-			'Our most statistically rigorous model. It arrives at every genotype prediction by running thousands of simulations to build up a full picture of what the data supports — rather than making one quick calculation. The result is a prediction you can trust, especially on small or tricky datasets.',
-		simpleStrengths: [
-			'More reliable predictions on small datasets',
-			'Does not overfit by jumping to conclusions',
-			'Incorporates existing biological knowledge as a starting point'
+		simple_description:
+			'Bayesian inference is a fundamentally different philosophy of prediction. Most models give you a single answer: "this person has genotype 1." Bayesian models give you a full picture: "there is a 70% chance it is 1, a 25% chance it is 0, and a 5% chance it is 2 — and here is how confident we are in those numbers." It achieves this by running thousands of simulated sampling steps (called Markov Chain Monte Carlo, or MCMC) to explore all the ways the data could be explained, then combining them into a final probability distribution. This means it is naturally cautious — it will not overcommit to an answer when the data is ambiguous. It also starts with a prior belief about how common each genotype is across the population, which helps it make sensible predictions even when very little data is available.',
+		simple_strengths: [
+			'Gives a full probability distribution for each prediction, not just a single answer',
+			'Naturally cautious — uncertainty in the data is reflected in uncertain predictions',
+			'Performs well even when the training dataset is very small',
+			'Can incorporate existing knowledge about allele frequencies as a starting point',
+			'The most trustworthy model when the consequences of a wrong prediction are serious'
 		],
-		simpleUseCase: 'Best when you need predictions you can trust even with limited data, or when the cost of a wrong call is high.',
+		simple_use_case:
+			'Bayesian inference is the right choice when trust matters as much as accuracy. Because it produces a full probability distribution rather than a single answer, you always know how confident the model is — and when it is uncertain, it says so rather than bluffing. This makes it particularly valuable when the dataset is small and other models might overfit, or when a wrong prediction has real consequences and you need to know the risk. It is also the best option if you have prior scientific knowledge about allele frequencies that you want to incorporate into the analysis. The trade-off is speed: because it runs thousands of sampling steps, it is the slowest model to train, especially on large datasets. But for the right problem, the extra rigour is worth it.',
 		description:
-			'A fully Bayesian multinomial logistic regression model fit via Markov Chain Monte Carlo (MCMC) using PyMC and the JAX/NUTS sampler. Places prior distributions over all model weights and generates a full posterior distribution rather than a single point estimate, enabling rigorous uncertainty quantification for each genotype call. Runs multiple parallel chains for convergence diagnostics.',
+			'A fully Bayesian multinomial logistic regression model implemented in PyMC and sampled via the No-U-Turn Sampler (NUTS) with JAX as the computational backend. Rather than optimising a single point estimate of model weights, NUTS draws samples from the full joint posterior P(weights | data) using Hamiltonian Monte Carlo dynamics. Priors are placed over all weight matrices: Normal(0, 1) for feature weights and Normal(0, 0.5) for per-generation group-level intercepts (hierarchical structure). The likelihood is a categorical distribution parameterised by softmax over three dosage classes. By default the model runs 4 parallel chains with 1,000 tuning steps and 500 draw steps each, producing 2,000 posterior samples. At inference time, predictions are made by averaging the softmax outputs across all posterior samples, yielding calibrated class probabilities. Convergence is assessed via R-hat (target < 1.01) and effective sample size (ESS) diagnostics computed by ArviZ.',
 		strengths: [
-			'Full posterior uncertainty quantification per prediction',
-			'Naturally incorporates allele-frequency priors',
-			'Convergence diagnostics (R-hat, ESS) via ArviZ',
-			'Robust to small sample sizes',
-			'GPU-accelerated sampling via JAX'
+			'Produces a full posterior distribution over model weights — every prediction comes with a credible interval',
+			'NUTS sampler is geometrically ergodic — guaranteed to converge to the true posterior given sufficient samples',
+			'Hierarchical priors over generation-level intercepts regularise predictions for generations with few observations',
+			'R-hat and ESS diagnostics provide objective convergence evidence unavailable in frequentist models',
+			'Posterior predictive averaging produces better-calibrated class probabilities than a single MAP estimate',
+			'Robust to small sample sizes due to prior regularisation',
+			'JAX backend enables GPU/TPU-accelerated HMC with just-in-time compilation'
 		],
-		useCase:
-			'The strongest choice when calibrated confidence intervals on genotype calls are required, prior allele-frequency knowledge is available, or the dataset is small and overfitting is a concern. Slower to train but provides the most statistically rigorous outputs.'
+		use_case:
+			'The strongest choice when statistically rigorous uncertainty quantification is required: credible intervals on dosage probabilities, posterior predictive checks, or sensitivity analysis over prior choices. Hierarchical structure makes it particularly well-suited to datasets spanning multiple generations with unequal sample sizes per generation. Slower than all other models by a significant margin — expect minutes to hours on medium/large datasets without GPU acceleration. Not recommended when training speed is a hard constraint or when the dataset is large enough that the DNN or GNN provides equivalent accuracy without the sampling overhead.'
 	}
 };
 
-const MODEL_SIZE_INFO: Record<string, string> = {
-	tiny: '250 individuals · 100 genomic sites · 5 generations. A minimal dataset for quick experiments and sanity checks.',
-	small: '1,000 individuals · 1,000 genomic sites · 10 generations. A compact but realistic dataset suitable for most models.',
-	medium: '5,000 individuals · 10,000 genomic sites · 25 generations. A full-scale dataset that exercises model capacity and captures richer genetic structure.',
-	large: '25,000 individuals · 100,000 genomic sites · 50 generations. A large-scale dataset designed to push model limits and reflect real-world population sizes.'
+const MODEL_SIZE_INFO: Record<
+	string,
+	{
+		simple: string;
+		nerd: string;
+	}
+> = {
+	tiny: {
+		simple: 'This model was trained on a small simulated family — 250 individuals spread across 5 generations, with 100 genetic sites measured per person. Think of it as a proof-of-concept: small enough to train in seconds, useful for quickly checking whether the model is working as expected. Because the dataset is so compact, the model has seen fewer examples and may not generalize as well to larger, more complex families.',
+		nerd: '250 diploid individuals · 100 genomic sites · 5 generations · 50 samples per generation. Minimal-scale dataset intended for pipeline validation and rapid iteration. Limited feature diversity; expect higher variance in model performance. Useful for debugging and sanity checks but not representative of real-world cohort complexity.'
+	},
+	small: {
+		simple: 'This model was trained on a moderate-sized simulated family — 1,000 individuals across 10 generations, with 1,000 genetic sites per person. This is a solid starting point: the model has seen enough variation to learn meaningful patterns, but training still completes quickly. It strikes a good balance between speed and reliability for most experiments.',
+		nerd: '1,000 diploid individuals · 1,000 genomic sites · 10 generations · 50 samples per generation. Compact but representative dataset. Sufficient feature diversity for most model architectures to learn stable decision boundaries. Recommended for exploratory comparisons between model types before scaling up.'
+	},
+	medium: {
+		simple: 'This model was trained on a large simulated family — 5,000 individuals across 25 generations, with 10,000 genetic sites per person. At this scale, the model has been exposed to a wide range of family structures and inheritance patterns. Training takes longer, but the result is a model that can handle more complex scenarios and is generally more accurate.',
+		nerd: '5,000 diploid individuals · 10,000 genomic sites · 25 generations · 100 samples per generation. Full-scale dataset that exercises model capacity meaningfully. Captures richer linkage structure and deeper pedigree relationships. Appropriate for benchmarking all five architectures under realistic conditions.'
+	},
+	large: {
+		simple: 'This model was trained on a very large simulated family — 25,000 individuals across 50 generations, with 100,000 genetic sites per person. This is the most demanding scale in the benchmark, designed to reflect the complexity of real-world population studies. Models trained here have seen an enormous range of genetic variation and are the most thoroughly tested — though they also take the longest to run.',
+		nerd: '25,000 diploid individuals · 100,000 genomic sites · 50 generations · 500 samples per generation. Large-scale dataset designed to stress-test model capacity and expose performance degradation under high-dimensional inputs. Reflects realistic population cohort complexity. GPU acceleration strongly recommended for DNN, GNN, and Bayesian models at this scale.'
+	}
 };
 
 const FALLBACK_INFO = {
@@ -141,27 +194,18 @@ const FALLBACK_INFO = {
 };
 
 export default function ModelDashboard({ model }: ModelDashboardProps) {
-	const theme = useTheme();
-	const isDark = theme.palette.mode === 'dark';
 	const info = MODEL_TYPE_INFO[model.model_type] ?? FALLBACK_INFO;
 	const [statsForNerds, setStatsForNerds] = useState(false);
 	const sizeKey = model.model_name?.toLowerCase() ?? '';
 	const sizeBlurb = MODEL_SIZE_INFO[sizeKey];
 
 	return (
-		<div style={{ marginTop: '1.25rem' }}>
-			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '1.25rem' }}>
+		<div className="dashboard-wrapper">
+			<div className="dashboard-header">
+				<h3 className="heading-flush">Model Dashboard</h3>
 				<FormControlLabel
 					control={
-						<Switch
-							checked={statsForNerds}
-							onChange={(e) => setStatsForNerds(e.target.checked)}
-							size="small"
-							sx={{
-								'& .MuiSwitch-switchBase.Mui-checked': { color: '#452ee4' },
-								'& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#452ee4' }
-							}}
-						/>
+						<Switch checked={statsForNerds} onChange={(e) => setStatsForNerds(e.target.checked)} size="small" className="purple-switch" />
 					}
 					label="Stats for Nerds"
 					labelPlacement="start"
@@ -170,104 +214,95 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 			</div>
 
 			{/* Identity */}
-			<div
-				style={{
-					display: 'grid',
-					gridTemplateColumns: '1fr 1fr',
-					gap: '1rem',
-					marginBottom: '1.5rem'
-				}}
-			>
-				<div
-					style={{
-						padding: '1rem',
-						borderRadius: '6px',
-						border: `1px solid ${theme.palette.divider}`
-					}}
-				>
-					<p
-						style={{
-							margin: 0,
-							fontSize: '0.75rem',
-							color: theme.palette.text.secondary,
-							textTransform: 'uppercase',
-							letterSpacing: '0.05em'
-						}}
-					>
-						Model Size
-					</p>
-					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
+			<div className="grid-2col-mb">
+				<div className="info-card">
+					<p className="info-card-label">Model Size</p>
+					<p className="info-card-value">
 						{model.model_name ? model.model_name.charAt(0).toUpperCase() + model.model_name.slice(1) : model.model_name}
 					</p>
 				</div>
-				<div
-					style={{
-						padding: '1rem',
-						borderRadius: '6px',
-						border: `1px solid ${theme.palette.divider}`
-					}}
-				>
-					<p
-						style={{
-							margin: 0,
-							fontSize: '0.75rem',
-							color: theme.palette.text.secondary,
-							textTransform: 'uppercase',
-							letterSpacing: '0.05em'
-						}}
-					>
-						Model Type
-					</p>
-					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>{info.label}</p>
+				<div className="info-card">
+					<p className="info-card-label">Model Type</p>
+					<p className="info-card-value">{info.label}</p>
 				</div>
 			</div>
 
 			{/* Dataset size blurb */}
 			{sizeBlurb && (
-				<div style={{ marginBottom: '1.5rem' }}>
-					<h4 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Dataset Scale</h4>
-					<p style={{ margin: 0, lineHeight: '1.6', opacity: 0.85 }}>{sizeBlurb}</p>
+				<div className="section-mb">
+					<h3 className="section-heading">Training Dataset</h3>
+					<p className="description-text">{sizeBlurb.simple}</p>
+					{statsForNerds && <p className="nerd-text">{sizeBlurb.nerd}</p>}
+					<p className="description-text">
+						All data is fully simulated — every individual is a computer-generated person, and their DNA is produced by a genetic
+						simulator called <strong>msprime</strong> that mimics how real inheritance works. Because the simulation controls everything,
+						the true genotype of every person is always known, even for the ones intentionally left out. This is what lets us measure
+						exactly how well the model performed.
+					</p>
 				</div>
 			)}
 
+			{/* Training pipeline */}
+			<div className="section-mb">
+				<h3 className="section-heading">{statsForNerds ? 'Training Pipeline' : 'How the Model Was Trained'}</h3>
+				{statsForNerds ? (
+					<div className="description-text">
+						<p className="para-mb-lg">
+							Training follows a 3-phase pipeline applied to three dataset splits derived from the simulation output.
+						</p>
+						<p className="para-mb">
+							<strong>Phase 1 — Initial Training:</strong> The model is fit on the training split using the full labelled feature
+							matrix. For each masked individual at each genomic site, the input feature vector is{' '}
+							<code>[mean_dosage_of_k_hop_relatives, fraction_of_relatives_observed, count_of_relatives]</code>, constructed via k-hop
+							relative aggregation over the pedigree graph. The target is allele dosage (0, 1, or 2).
+						</p>
+						<p className="para-mb">
+							<strong>Phase 2 — Cross-Validation &amp; Retraining:</strong> The trained model is evaluated on the validation split using
+							5-fold cross-validation (KFold, shuffle=True, random_state=123). Per-fold metrics are averaged to produce a robust
+							estimate of generalisation performance. The model is then retrained from scratch on the combined train + validation data
+							to maximise the information available before final testing.
+						</p>
+						<p className="para-mb-lg">
+							<strong>Phase 3 — Final Evaluation:</strong> The retrained model is applied once to a held-out test split that was never
+							seen during training or cross-validation. Metrics reported here (precision, recall, F1, ROC/PR AUC, confusion matrix) are
+							all computed from this final phase.
+						</p>
+						<p className="para-flush">
+							Results are cached per (model_name, model_type, test_dataset) tuple and served from the log on subsequent requests to
+							avoid redundant recomputation.
+						</p>
+					</div>
+				) : (
+					<p className="description-text">
+						Before training, a portion of individuals in the dataset were hidden — their genotypes were removed to simulate real-world
+						missing ancestors. The model was then shown only the remaining individuals and asked to learn the relationship between a
+						person's relatives' DNA and their own. Training happened in stages: first on a core set of examples, then validated and
+						refined, and finally tested on a completely separate group of hidden individuals the model had never encountered. This staged
+						approach helps ensure the model genuinely learned to infer genetics — not just memorise the training data.
+					</p>
+				)}
+			</div>
+
 			{/* Description */}
-			<div style={{ marginBottom: '1.5rem' }}>
-				<h4 style={{ marginTop: 0, marginBottom: '0.5rem' }}>About this Model</h4>
-				<p style={{ margin: 0, lineHeight: '1.6', opacity: 0.85 }}>{statsForNerds ? info.description : info.simpleDescription}</p>
+			<div className="section-mb">
+				<h3 className="section-heading">About this Model</h3>
+				<p className="description-text">{statsForNerds ? info.description : info.simple_description}</p>
 			</div>
 
 			{/* Strengths */}
-			<div style={{ marginBottom: '1.5rem' }}>
-				<h4 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Strengths</h4>
-				<ul style={{ margin: 0, paddingLeft: '1.4rem', lineHeight: '1.8', opacity: 0.85 }}>
-					{(statsForNerds ? info.strengths : info.simpleStrengths).map((s) => (
+			<div className="section-mb">
+				<h3 className="section-heading">Strengths</h3>
+				<ul className="strengths-list">
+					{(statsForNerds ? info.strengths : info.simple_strengths).map((s) => (
 						<li key={s}>{s}</li>
 					))}
 				</ul>
 			</div>
 
 			{/* Use case */}
-			<div
-				style={{
-					padding: '1rem',
-					backgroundColor: isDark ? '#0d1f0d' : '#e8f5e9',
-					borderRadius: '6px',
-					border: `1px solid ${isDark ? '#1e4d1e' : '#66bb6a'}`
-				}}
-			>
-				<p
-					style={{
-						margin: 0,
-						fontSize: '0.75rem',
-						color: isDark ? '#6fcf6f' : '#2e7d32',
-						textTransform: 'uppercase',
-						letterSpacing: '0.05em',
-						marginBottom: '0.4rem'
-					}}
-				>
-					{statsForNerds ? 'Recommended Use Case' : 'Best For'}
-				</p>
-				<p style={{ margin: 0, lineHeight: '1.6' }}>{statsForNerds ? info.useCase : info.simpleUseCase}</p>
+			<div className="use-case-box">
+				<p className="use-case-label">{statsForNerds ? 'Recommended Use Case' : 'Best For'}</p>
+				<p className="description-text">{statsForNerds ? info.use_case : info.simple_use_case}</p>
 			</div>
 		</div>
 	);

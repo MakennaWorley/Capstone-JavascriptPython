@@ -1,0 +1,63 @@
+@use 'variables' as *;
+
+// ── Horizontal legend row ──
+.legend {
+    display: flex;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+    align-items: center;
+    opacity: 0.8;
+}
+
+.legend-label {
+    opacity: 0.75;
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin: 0 0 0.5rem;
+}
+
+// ── Individual legend item (icon + text) ──
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+// ── Square swatch (for data tables) ──
+.legend-square {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.legend-square-known {
+    background-color: var(--color-known);
+}
+
+.legend-square-unknown {
+    background-color: var(--color-unknown);
+}
+
+// ── Circle swatch (for family tree) ──
+.legend-circle {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.legend-circle-focus {
+    background-color: $color-node-focus;
+    border: 4px solid $color-node-focus-dark;
+}
+
+.legend-circle-known {
+    background-color: $color-node-known-bg;
+    border: 4px solid $color-node-known-border;
+}
+
+.legend-circle-unknown {
+    background-color: $color-node-unknown-bg;
+    border: 4px solid $color-node-unknown-border;
+}

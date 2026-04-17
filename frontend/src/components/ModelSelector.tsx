@@ -27,9 +27,7 @@ function capitalize(s: string): string {
 
 export default function ModelSelector({ models, selected, onSelect, disabled = false }: ModelSelectorProps) {
 	if (models.length === 0) {
-		return (
-			<span style={{ color: 'inherit', fontSize: '0.9rem' }}>Failed to load models. Please check your connection and refresh the page.</span>
-		);
+		return <span className="error-inline">Failed to load models. Please check your connection and refresh the page.</span>;
 	}
 
 	// Create a unique key for each model
@@ -55,18 +53,7 @@ export default function ModelSelector({ models, selected, onSelect, disabled = f
 			label="Choose a model"
 			value={selectedKey}
 			onChange={(e) => handleChange(e.target.value)}
-			slotProps={{
-				inputLabel: {
-					sx: { color: 'text.secondary', '&.Mui-focused': { color: '#452ee4' } }
-				}
-			}}
-			sx={{
-				'& .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
-				'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#241291', borderWidth: '2px' },
-				'& .Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#452ee4', borderWidth: '2px' },
-				'& .MuiSvgIcon-root': { color: '#452ee4' },
-				'& .MuiInputBase-input': { color: 'text.primary' }
-			}}
+			className="purple-select"
 		>
 			<MenuItem value="" disabled>
 				Select…

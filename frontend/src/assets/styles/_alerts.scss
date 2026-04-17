@@ -1,0 +1,55 @@
+@use 'variables' as *;
+
+// ── Form error alert (MUI Alert override) ──
+.error-alert {
+    &.MuiAlert-root {
+        background-color: $color-error-alert-bg;
+        color: $color-error-alert-text;
+        border: 2px solid $color-error-alert-border;
+    }
+}
+
+// ── Inline error banner (non-MUI) ──
+.error-banner {
+    margin-top: $spacing-md;
+    padding: $spacing-md;
+    border-left: 8px solid $color-error;
+    border-radius: $radius-sm;
+}
+
+[data-theme='dark'] .error-banner {
+    background-color: $color-error-bg-dark;
+}
+
+[data-theme='light'] .error-banner {
+    background-color: $color-error-bg-light;
+}
+
+// ── Debug output panel ──
+.debug-output {
+    padding: $spacing-sm;
+    border: 4px solid $color-primary;
+    border-radius: $radius-sm;
+
+    pre {
+        margin: 0;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+}
+
+.debug-output-label {
+    color: $color-primary;
+    display: block;
+    margin-bottom: $spacing-xs;
+}
+
+.debug-output-pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    overflow: auto;
+    max-height: 300px;
+    margin: 0;
+}

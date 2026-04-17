@@ -27,17 +27,13 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 		<>
 			<Drawer
 				variant="permanent"
+				className="sidebar-drawer"
 				sx={{
 					width: drawerWidth,
 					flexShrink: 0,
 					transition: 'width 0.3s ease',
 					'& .MuiDrawer-paper': {
-						width: drawerWidth,
-						boxSizing: 'border-box',
-						backgroundColor: darkMode ? '#000000' : '#ffffff',
-						borderRight: '2px solid #452ee4',
-						transition: 'width 0.3s ease',
-						overflowX: 'hidden'
+						width: drawerWidth
 					}
 				}}
 			>
@@ -47,27 +43,22 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 							onClick={onCreateDataset}
 							title="Create new dataset"
 							aria-label="Create new dataset"
+							className="sidebar-btn-create"
 							sx={{
 								margin: open ? '0.5rem' : '0.5rem auto',
 								width: open ? 'auto' : '56px',
-								borderRadius: '8px',
-								backgroundColor: '#452ee4',
-								color: 'white',
 								justifyContent: open ? 'flex-start' : 'center',
-								px: open ? 1 : 0,
-								'&:hover': {
-									backgroundColor: '#241291'
-								}
+								px: open ? 1 : 0
 							}}
 						>
 							<ListItemIcon sx={{ color: 'white', minWidth: open ? '40px' : 'auto' }}>
 								<AddIcon />
 							</ListItemIcon>
-							{open && <span style={{ marginLeft: '0.5rem', whiteSpace: 'nowrap' }}>Create Dataset</span>}
+							{open && <span className="sidebar-item-label">Create Dataset</span>}
 						</ListItemButton>
 					</List>
 
-					<Divider sx={{ my: 1, backgroundColor: '#452ee4', mx: open ? 1 : 0.5 }} />
+					<Divider sx={{ my: 1, backgroundColor: 'var(--color-primary)', mx: open ? 1 : 0.5 }} />
 
 					{/* Bottom menu items */}
 					<Box sx={{ marginTop: 'auto', pb: 2, px: open ? 1 : 0 }}>
@@ -76,45 +67,35 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 								onClick={onThemeToggle}
 								title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
 								aria-label={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+								className={darkMode ? 'sidebar-btn-theme-dark' : 'sidebar-btn-theme-light'}
 								sx={{
 									margin: open ? '0.5rem' : '0.5rem auto',
 									width: open ? 'auto' : '56px',
-									borderRadius: '8px',
-									backgroundColor: darkMode ? '#333' : '#e0e0e0',
-									color: darkMode ? 'white' : '#111',
 									justifyContent: open ? 'flex-start' : 'center',
-									px: open ? 1 : 0,
-									'&:hover': {
-										backgroundColor: darkMode ? '#444' : '#cfcfcf'
-									}
+									px: open ? 1 : 0
 								}}
 							>
 								<ListItemIcon sx={{ color: darkMode ? 'white' : '#111', minWidth: open ? '40px' : 'auto' }}>
 									{darkMode ? <LightModeIcon /> : <DarkModeIcon />}
 								</ListItemIcon>
-								{open && <span style={{ marginLeft: '0.5rem', whiteSpace: 'nowrap' }}>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
+								{open && <span className="sidebar-item-label">{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
 							</ListItemButton>
 							<ListItemButton
 								onClick={onDebugToggle}
 								title={`Debug: ${debugMode ? 'ON' : 'OFF'}`}
 								aria-label={`Debug: ${debugMode ? 'ON' : 'OFF'}`}
+								className={debugMode ? 'sidebar-btn-debug-on' : 'sidebar-btn-debug-off'}
 								sx={{
 									margin: open ? '0.5rem' : '0.5rem auto',
 									width: open ? 'auto' : '56px',
-									borderRadius: '8px',
-									backgroundColor: debugMode ? '#4caf50' : '#555',
-									color: 'white',
 									justifyContent: open ? 'flex-start' : 'center',
-									px: open ? 1 : 0,
-									'&:hover': {
-										backgroundColor: debugMode ? '#45a049' : '#666'
-									}
+									px: open ? 1 : 0
 								}}
 							>
 								<ListItemIcon sx={{ color: 'white', minWidth: open ? '40px' : 'auto' }}>
 									<BugReportIcon />
 								</ListItemIcon>
-								{open && <span style={{ marginLeft: '0.5rem', whiteSpace: 'nowrap' }}>{debugMode ? 'Debug: ON' : 'Debug: OFF'}</span>}
+								{open && <span className="sidebar-item-label">{debugMode ? 'Debug: ON' : 'Debug: OFF'}</span>}
 							</ListItemButton>
 						</List>
 					</Box>
@@ -122,22 +103,7 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 			</Drawer>
 
 			{/* Fixed Toggle Button at top left */}
-			<IconButton
-				onClick={() => setOpen(!open)}
-				aria-label={open ? 'Close navigation' : 'Open navigation'}
-				sx={{
-					position: 'fixed',
-					top: '1rem',
-					left: '1rem',
-					zIndex: 1300,
-					color: '#452ee4',
-					backgroundColor: darkMode ? '#000000' : '#ffffff',
-					border: '2px solid #452ee4',
-					'&:hover': {
-						backgroundColor: 'rgba(69, 46, 228, 0.1)'
-					}
-				}}
-			>
+			<IconButton onClick={() => setOpen(!open)} aria-label={open ? 'Close navigation' : 'Open navigation'} className="sidebar-toggle">
 				{open ? <CloseIcon /> : <MenuIcon />}
 			</IconButton>
 		</>

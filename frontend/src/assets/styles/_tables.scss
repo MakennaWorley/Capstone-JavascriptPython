@@ -1,0 +1,21 @@
+@use 'variables' as *;
+
+// ── Data Table: Known / Unknown cell text colors ──
+.cell-known.MuiTableCell-root {
+    font-weight: bold;
+    color: var(--color-known);
+}
+
+.cell-unknown.MuiTableCell-root {
+    font-weight: normal;
+    color: var(--color-unknown);
+}
+
+// ── Prediction error table: predicted vs actual cell colors ──
+.cell-predicted {
+    color: var(--color-unknown);
+}
+
+.cell-actual {
+    color: var(--color-known);
+}
