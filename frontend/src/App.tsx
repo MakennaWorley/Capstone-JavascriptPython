@@ -86,6 +86,25 @@ export default function App() {
 		setSnackbarOpen(true);
 	}
 
+	function handleDatasetSelect(dataset: string) {
+		setSelectedDataset(dataset);
+		if (dataset) {
+			setSnackbarMessage('Dataset selected — scroll down to see the Dataset Dashboard!');
+			setSnackbarOpen(true);
+		}
+	}
+
+	function handleModelSelect(model: Model | null) {
+		setSelectedModel(model);
+		if (model) {
+			const msg = selectedDataset
+				? 'Model selected — scroll down to see the Model Dashboard and test your model!'
+				: 'Model selected — scroll down to see the Model Dashboard!';
+			setSnackbarMessage(msg);
+			setSnackbarOpen(true);
+		}
+	}
+
 	return (
 		<ThemeProvider theme={theme}>
 			<CssBaseline />
@@ -168,24 +187,36 @@ export default function App() {
 							Probabilistic Ancestral Inference
 						</Typography>
 						<Typography variant="subtitle1" sx={{ color: 'text.secondary', mb: 1 }}>
-							A research capstone project exploring ancestral genotype reconstruction using <strong>Bayesian Models</strong>, <strong>HMMs</strong>, <strong>DNNs</strong>, and <strong>GNNs</strong>.
+							A research capstone project exploring ancestral genotype reconstruction using <strong>Bayesian Models</strong>,{' '}
+							<strong>HMMs</strong>, <strong>DNNs</strong>, and <strong>GNNs</strong>.
 						</Typography>
 						<p style={{ margin: '0.5rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
+							<strong>Stochastic</strong> — involving random probability and unpredictability where future states cannot be precisely
+							determined. In genetics, this manifests as missing or unobservable data: ancestors whose genotypes were never sequenced
+							due to cost, sample degradation, or ethical constraints.
+						</p>
+						<p style={{ margin: '0.75rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
 							In genetics research, it is common for ancestors to be unsequenced — grandparents or earlier relatives may be deceased,
-							unavailable, or too costly to sequence. Without that data, downstream analyses like disease risk prediction, inheritance
-							tracing, and population history reconstruction become incomplete or impossible. This project tackles that gap computationally.
+							unavailable, or too costly to sequence. These gaps in family trees limit our ability to reconstruct inheritance patterns,
+							predict hereditary traits, and model population history. If we simply ignore these gaps, our analysis becomes biased and
+							our understanding of family inheritance patterns falls apart. This project tackles that gap computationally.
 						</p>
 						<p style={{ margin: '0.75rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
 							The system uses{' '}
-						<a href="https://pubmed.ncbi.nlm.nih.gov/34897427/" target="_blank" rel="noopener noreferrer" style={{ color: darkMode ? '#9d91f5' : '#452ee4' }}>
-							<strong>msprime</strong>
-						</a>{' '}
-						to simulate realistic diploid populations with explicit multi-generational pedigrees,
-							where every individual's true genotype is known. A configurable fraction of individuals are then masked — their genotypes
-							hidden — to simulate the real-world condition of absent family members. Five inference architectures are trained on the
-							visible data and tasked with recovering the hidden genotypes: a <strong>Bayesian Categorical Model</strong> (PyMC MCMC with
-							hierarchical priors), a <strong>Hidden Markov Model</strong> (hmmlearn, treating each individual as a sequence across
-							genomic sites), a <strong>Deep Neural Network</strong> (PyTorch, with batch normalization and dropout), a{' '}
+							<a
+								href="https://pubmed.ncbi.nlm.nih.gov/34897427/"
+								target="_blank"
+								rel="noopener noreferrer"
+								style={{ color: darkMode ? '#9d91f5' : '#452ee4' }}
+							>
+								<strong>msprime</strong>
+							</a>{' '}
+							to simulate realistic diploid populations with explicit multi-generational pedigrees, where every individual's true
+							genotype is known. A configurable fraction of individuals are then masked — their genotypes hidden — to simulate the
+							real-world condition of absent family members. Five inference architectures are trained on the visible data and tasked
+							with recovering the hidden genotypes: a <strong>Bayesian Categorical Model</strong> (PyMC MCMC with hierarchical priors),
+							a <strong>Hidden Markov Model</strong> (hmmlearn, treating each individual as a sequence across genomic sites), a{' '}
+							<strong>Deep Neural Network</strong> (PyTorch, with batch normalization and dropout), a{' '}
 							<strong>Graph Neural Network</strong> (PyTorch Geometric, using pedigree structure as the graph), and a{' '}
 							<strong>Multinomial Logistic Regression</strong> baseline (scikit-learn).
 						</p>
@@ -202,11 +233,11 @@ export default function App() {
 						<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
 							<div>
 								<span style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Dataset</span>
-								<DatasetSelector datasets={datasets} selected={selectedDataset} onSelect={setSelectedDataset} />
+								<DatasetSelector datasets={datasets} selected={selectedDataset} onSelect={handleDatasetSelect} />
 							</div>
 							<div>
 								<span style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Model</span>
-								<ModelSelector models={models} selected={selectedModel} onSelect={setSelectedModel} />
+								<ModelSelector models={models} selected={selectedModel} onSelect={handleModelSelect} />
 							</div>
 						</div>
 					</div>
@@ -250,7 +281,9 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold"><h2>Dataset Dashboard</h2></Typography>
+								<Typography fontWeight="bold">
+									<h2>Dataset Dashboard</h2>
+								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} />
@@ -276,7 +309,9 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold"><h2>Model Dashboard</h2></Typography>
+								<Typography fontWeight="bold">
+									<h2>Model Dashboard</h2>
+								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelDashboard model={selectedModel} />
@@ -302,7 +337,9 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold"><h2>Test Model</h2></Typography>
+								<Typography fontWeight="bold">
+									<h2>Test Model</h2>
+								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelTrainer
@@ -327,7 +364,7 @@ export default function App() {
 				{/* Snackbar for Ping FastAPI feedback */}
 				<Snackbar
 					open={snackbarOpen}
-					autoHideDuration={3000}
+					autoHideDuration={5000}
 					onClose={() => setSnackbarOpen(false)}
 					anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
 				>

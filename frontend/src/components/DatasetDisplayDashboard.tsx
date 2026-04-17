@@ -353,20 +353,18 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 
 					<p style={{ margin: '0 0 0.75rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
 						This table shows the merged genotype data for the selected dataset. Each row is a genomic site and each column is an
-						individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of
-						the alternate allele carried at that site (0, 1, or 2). Cells highlighted in{' '}
-						<span style={{ color: isDark ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>green</span> are{' '}
-						<strong>known data</strong> — individuals whose genes were successfully sequenced and are present in the dataset.
-						Cells highlighted in{' '}
-						<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>red</span> are{' '}
-						<strong>unknown data</strong> — individuals intentionally left out to simulate the real-world scenario of individuals
-						who were never sequenced. The models are trained only on the known data and must infer the genotypes of these
-						missing individuals.
+						individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of the
+						alternate allele carried at that site (0, 1, or 2). Cells highlighted in{' '}
+						<span style={{ color: isDark ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>green</span> are <strong>known data</strong> —
+						individuals whose genes were successfully sequenced and are present in the dataset. Cells highlighted in{' '}
+						<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>red</span> are <strong>unknown data</strong> —
+						individuals intentionally left out to simulate the real-world scenario of individuals who were never sequenced. The models are
+						trained only on the known data and must infer the genotypes of these missing individuals.
 					</p>
 
 					<p style={{ margin: '0 0 0.75rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
-						Use the column paginator below to scroll across individuals. Select an individual ID from the family tree section
-						to visualize their pedigree and see how their relatives' genotypes inform the inference.
+						Use the column paginator below to scroll across individuals. Select an individual ID from the family tree section to visualize
+						their pedigree and see how their relatives' genotypes inform the inference.
 					</p>
 
 					<p style={{ margin: '0 0 0.5rem', opacity: 0.75, fontSize: '0.85rem', fontWeight: 'bold' }}>Legend</p>

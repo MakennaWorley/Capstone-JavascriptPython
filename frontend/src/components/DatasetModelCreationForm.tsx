@@ -220,8 +220,8 @@ export default function DatasetModelCreationForm({
 						Advanced Settings <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>(optional)</span>
 					</Typography>
 					<Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', lineHeight: 1.6 }}>
-						These settings control how large and deep the simulated family is. Larger values produce richer, more realistic data
-						but take longer to generate. The defaults are a good starting point for most experiments.
+						These settings control how large and deep the simulated family is. Larger values produce richer, more realistic data but take
+						longer to generate. The defaults are a good starting point for most experiments.
 					</Typography>
 					<Stack spacing={2}>
 						<Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
@@ -253,7 +253,9 @@ export default function DatasetModelCreationForm({
 								value={Number.isFinite(cfg.n_generations) ? cfg.n_generations : ''}
 								placeholder="5"
 								onChange={(e) => update('n_generations', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
-								inputProps={{ min: 1, step: 1 }}							helperText="How many parent-to-child generations the family spans. More generations = deeper pedigree structure. Max 10."								variant="outlined"
+								inputProps={{ min: 1, step: 1 }}
+								helperText="How many parent-to-child generations the family spans. More generations = deeper pedigree structure. Max 10."
+								variant="outlined"
 								size="small"
 								sx={{
 									'& .MuiOutlinedInput-root': {
@@ -273,7 +275,9 @@ export default function DatasetModelCreationForm({
 								value={Number.isFinite(cfg.samples_per_generation) ? cfg.samples_per_generation : ''}
 								placeholder="50"
 								onChange={(e) => update('samples_per_generation', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
-								inputProps={{ min: 1, step: 1 }}							helperText="How many diploid individuals are simulated in each generation. Combined with generations, this sets the total family size. Total must not exceed 1,000."								variant="outlined"
+								inputProps={{ min: 1, step: 1 }}
+								helperText="How many diploid individuals are simulated in each generation. Combined with generations, this sets the total family size. Total must not exceed 1,000."
+								variant="outlined"
 								size="small"
 								sx={{
 									'& .MuiOutlinedInput-root': {
@@ -289,11 +293,19 @@ export default function DatasetModelCreationForm({
 							/>
 						</Box>
 						<Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
-							Total individuals: <strong>{derivedTotal ?? '—'}</strong>						{derivedTotal !== undefined && (
-							<span style={{ marginLeft: '0.5rem', opacity: 0.75 }}>
-								({derivedTotal <= 250 ? 'small dataset — fast, good for testing' : derivedTotal <= 1000 ? 'medium dataset — balanced speed and coverage' : 'large dataset — may take a while to generate'})
-							</span>
-						)}						</Typography>
+							Total individuals: <strong>{derivedTotal ?? '—'}</strong>{' '}
+							{derivedTotal !== undefined && (
+								<span style={{ marginLeft: '0.5rem', opacity: 0.75 }}>
+									(
+									{derivedTotal <= 250
+										? 'small dataset — fast, good for testing'
+										: derivedTotal <= 1000
+											? 'medium dataset — balanced speed and coverage'
+											: 'large dataset — may take a while to generate'}
+									)
+								</span>
+							)}{' '}
+						</Typography>
 					</Stack>
 				</Box>
 			)}
