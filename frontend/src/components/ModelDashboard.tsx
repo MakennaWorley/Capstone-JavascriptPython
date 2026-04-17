@@ -14,12 +14,12 @@ const MODEL_TYPE_INFO: Record<
 	string,
 	{
 		label: string;
-		simpleDescription: string;
-		simpleStrengths: string[];
-		simpleUseCase: string;
+		simple_description: string;
+		simple_strengths: string[];
+		simple_use_case: string;
 		description: string;
 		strengths: string[];
-		useCase: string;
+		use_case: string;
 	}
 > = {
 	dnn_dosage: {
