@@ -6,17 +6,17 @@
     .MuiOutlinedInput-root {
         fieldset {
             border-color: $color-primary;
-            border-width: 2px;
+            border-width: 4px;
         }
 
         &:hover fieldset {
             border-color: $color-primary-dark;
-            border-width: 2px;
+            border-width: 4px;
         }
 
         &.Mui-focused fieldset {
             border-color: $color-primary;
-            border-width: 2px;
+            border-width: 4px;
         }
     }
 
@@ -34,17 +34,17 @@
 .purple-select {
     .MuiOutlinedInput-notchedOutline {
         border-color: $color-primary;
-        border-width: 2px;
+        border-width: 4px;
     }
 
     &:hover .MuiOutlinedInput-notchedOutline {
         border-color: $color-primary-dark;
-        border-width: 2px;
+        border-width: 4px;
     }
 
     .Mui-focused .MuiOutlinedInput-notchedOutline {
         border-color: $color-primary;
-        border-width: 2px;
+        border-width: 4px;
     }
 
     .MuiSvgIcon-root {
@@ -87,4 +87,44 @@
     .MuiSwitch-switchBase.Mui-checked+.MuiSwitch-track {
         background-color: $color-primary;
     }
+}
+
+// ---------- Form Layout & Sections ----------
+.form-grid {
+    display: grid;
+    gap: $spacing-lg;
+    max-width: 720px;
+    padding-top: $spacing-sm;
+    padding-bottom: $spacing-sm;
+}
+
+.form-section-heading {
+    margin-top: 0;
+    margin-bottom: $spacing-md;
+    color: var(--color-text-primary);
+}
+
+.form-section-description {
+    margin-bottom: $spacing-md;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+}
+
+.form-label {
+    color: var(--color-text-primary);
+}
+
+.form-total-individuals {
+    color: var(--color-text-secondary);
+    margin-top: $spacing-sm;
+}
+
+.form-validation-error {
+    background-color: rgba(255, 107, 107, 0.1);
+    color: #ff6b6b;
+    border: 2px solid #ff6b6b;
+}
+
+.form-fields-stack {
+    margin-top: $spacing-lg;
 }

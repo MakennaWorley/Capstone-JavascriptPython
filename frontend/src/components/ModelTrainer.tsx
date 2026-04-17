@@ -115,17 +115,11 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 			{/* Identity cards */}
 			<div className="grid-2col-mb">
 				<div className="info-card">
-					<p className="info-card-label">
-						Selected Dataset
-					</p>
-					<p className="info-card-value">
-						{selectedDataset || <em className="empty-state">None</em>}
-					</p>
+					<p className="info-card-label">Selected Dataset</p>
+					<p className="info-card-value">{selectedDataset || <em className="empty-state">None</em>}</p>
 				</div>
 				<div className="info-card">
-					<p className="info-card-label">
-						Selected Model
-					</p>
+					<p className="info-card-label">Selected Model</p>
 					<p className="info-card-value">
 						{selectedModel ? (
 							`${capitalize(selectedModel.model_name)} ${MODEL_TYPE_SHORT_NAMES[selectedModel.model_type] ?? selectedModel.model_type}`
@@ -136,11 +130,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 				</div>
 			</div>
 
-			<Button
-				variant="contained"
-				onClick={handleTestModel}
-				disabled={!canTest}
-			>
+			<Button variant="contained" onClick={handleTestModel} disabled={!canTest}>
 				Test Model on Dataset
 			</Button>
 
@@ -153,10 +143,7 @@ export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, select
 			)}
 
 			{error && (
-				<div
-					role="alert"
-					className="error-banner"
-				>
+				<div role="alert" className="error-banner">
 					<strong>Error:</strong> {error}
 				</div>
 			)}

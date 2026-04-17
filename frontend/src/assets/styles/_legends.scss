@@ -49,15 +49,15 @@
 
 .legend-circle-focus {
     background-color: $color-node-focus;
-    border: 2px solid $color-node-focus-dark;
+    border: 4px solid $color-node-focus-dark;
 }
 
 .legend-circle-known {
     background-color: $color-node-known-bg;
-    border: 2px solid $color-node-known-border;
+    border: 4px solid $color-node-known-border;
 }
 
 .legend-circle-unknown {
     background-color: $color-node-unknown-bg;
-    border: 2px solid $color-node-unknown-border;
+    border: 4px solid $color-node-unknown-border;
 }

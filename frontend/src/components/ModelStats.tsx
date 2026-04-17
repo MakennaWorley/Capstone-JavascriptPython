@@ -113,12 +113,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 						<h2 className="heading-flush">Test Metrics</h2>
 						<FormControlLabel
 							control={
-								<Switch
-									checked={nerdsMode}
-									onChange={(e) => setNerdsMode(e.target.checked)}
-									size="small"
-									className="purple-switch"
-								/>
+								<Switch checked={nerdsMode} onChange={(e) => setNerdsMode(e.target.checked)} size="small" className="purple-switch" />
 							}
 							label="Stats for Nerds"
 							sx={{ mr: 0, '& .MuiFormControlLabel-label': { fontSize: '0.85rem', opacity: 0.8 } }}
@@ -137,7 +132,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							</TableHead>
 							<TableBody>
 								{metricRows.map(([key, value]) => (
-									<TableRow key={key} hover>
+									<TableRow key={key}>
 										<TableCell sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>{METRIC_LABELS[key] ?? key}</TableCell>
 										<TableCell
 											align="right"
@@ -164,7 +159,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 					<h1>Performance Graphs</h1>
 					<div className="graphs-grid">
 						{images.graph_test_base64 && (
-						<div className="col-span-2">
+							<div>
 								<h2 className="section-heading">Test Performance</h2>
 								{nerdsMode ? (
 									<p className="description-text">
@@ -179,10 +174,12 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 										means the model only predicts a class when very confident but misses many true positives.
 									</p>
 								) : (
-									<p className="description-text"> how well the model distinguishes between dosage 0, 1, and 2 — one line
-										per class. <strong>Left (ROC curves):</strong> Each line traces the trade-off between correctly identifying a
-										dosage class and accidentally mislabelling others as that type. A line hugging the top-left corner is ideal;
-										the dashed diagonal means no better than a coin flip. The AUC number in the legend summarises this — 1.0 is
+									<p className="description-text">
+										{' '}
+										how well the model distinguishes between dosage 0, 1, and 2 — one line per class.{' '}
+										<strong>Left (ROC curves):</strong> Each line traces the trade-off between correctly identifying a dosage
+										class and accidentally mislabelling others as that type. A line hugging the top-left corner is ideal; the
+										dashed diagonal means no better than a coin flip. The AUC number in the legend summarises this — 1.0 is
 										perfect, 0.5 is random. <strong>Right (Precision-Recall curves):</strong> Shows the balance between only
 										speaking up when confident (precision) versus catching every true case (recall). A line that stays high across
 										the full width means the model is both accurate and thorough for that dosage class.
@@ -197,7 +194,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							</div>
 						)}
 						{images.graph_cm_base64 && (
-						<div>
+							<div>
 								<h2 className="section-heading">Confusion Matrix</h2>
 								{nerdsMode ? (
 									<p className="description-text">
@@ -295,11 +292,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 									</>
 								)}
 							</p>
-							<img
-								src={`data:image/png;base64,${images?.graph_cm_base64}`}
-								alt="Confusion Matrix"
-								className="dark-mode-image-static"
-							/>
+							<img src={`data:image/png;base64,${images?.graph_cm_base64}`} alt="Confusion Matrix" className="dark-mode-image-static" />
 						</>
 					)}
 				</DialogContent>
@@ -428,23 +421,19 @@ function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
 					</TableHead>
 					<TableBody>
 						{pagedErrors.map((e, ridx) => (
-							<TableRow key={ridx} hover>
+							<TableRow key={ridx}>
 								<TableCell
 									className="sticky-col"
 									sx={{
 										backgroundColor:
-											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
+											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default
 									}}
 								>
 									{e.individual}
 								</TableCell>
 								<TableCell sx={{ whiteSpace: 'nowrap' }}>{e.site}</TableCell>
-								<TableCell className="cell-predicted">
-									{e.predicted}
-								</TableCell>
-								<TableCell className="cell-actual">
-									{e.actual}
-								</TableCell>
+								<TableCell className="cell-predicted">{e.predicted}</TableCell>
+								<TableCell className="cell-actual">{e.actual}</TableCell>
 							</TableRow>
 						))}
 						{errors.length === 0 && (

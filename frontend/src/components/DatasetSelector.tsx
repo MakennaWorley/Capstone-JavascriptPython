@@ -9,9 +9,7 @@ type DatasetSelectorProps = {
 
 export default function DatasetSelector({ datasets, selected, onSelect, disabled = false }: DatasetSelectorProps) {
 	if (datasets.length === 0) {
-		return (
-			<span className="error-inline">Failed to load datasets. Please check your connection and refresh the page.</span>
-		);
+		return <span className="error-inline">Failed to load datasets. Please check your connection and refresh the page.</span>;
 	}
 
 	return (

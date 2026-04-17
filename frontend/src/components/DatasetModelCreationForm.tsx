@@ -192,7 +192,7 @@ export default function DatasetModelCreationForm({
 
 			{/* BASIC */}
 			<Box>
-				<Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
+				<Typography variant="h6" className="form-section-heading">
 					Basic Settings
 				</Typography>
 				<Stack spacing={2}>
@@ -208,15 +208,9 @@ export default function DatasetModelCreationForm({
 						className="purple-text-field"
 					/>
 					<FormControlLabel
-						control={
-							<Checkbox
-								checked={advanced}
-								onChange={(e) => setAdvanced(e.target.checked)}
-								className="purple-checkbox"
-							/>
-						}
+						control={<Checkbox checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} className="purple-checkbox" />}
 						label="Advanced Settings (scale individuals)"
-						sx={{ color: 'text.primary' }}
+						className="form-label"
 					/>
 				</Stack>
 			</Box>
@@ -224,14 +218,14 @@ export default function DatasetModelCreationForm({
 			{/* ADVANCED */}
 			{advanced && (
 				<Box>
-					<Typography variant="h6" sx={{ mb: 1, color: 'text.primary' }}>
-					Advanced Settings <span className="label-hint">(optional)</span>
+					<Typography variant="h6" className="form-section-heading">
+						Advanced Settings <span className="label-hint">(optional)</span>
 					</Typography>
-					<Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', lineHeight: 1.6 }}>
+					<Typography variant="body2" className="form-section-description">
 						These settings control how large and deep the simulated family is. Larger values produce richer, more realistic data but take
 						longer to generate. The defaults are a good starting point for most experiments.
 					</Typography>
-					<Stack spacing={2}>
+					<Stack spacing={2} className="form-fields-stack">
 						<Box className="grid-2col">
 							<TextField
 								label="Sequence Length"
@@ -270,7 +264,7 @@ export default function DatasetModelCreationForm({
 								className="purple-text-field"
 							/>
 						</Box>
-						<Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+						<Typography variant="body2" className="form-total-individuals">
 							Total individuals: <strong>{derivedTotal ?? '—'}</strong>{' '}
 							{derivedTotal !== undefined && (
 								<span className="inline-note">
@@ -289,14 +283,7 @@ export default function DatasetModelCreationForm({
 			)}
 
 			{/* SUBMIT BUTTON */}
-			<Button
-				type="button"
-				disabled={sending}
-				onClick={handleSubmit}
-				variant="contained"
-				fullWidth
-				className="form-submit-btn"
-			>
+			<Button type="button" disabled={sending} onClick={handleSubmit} variant="contained" fullWidth className="form-submit-btn">
 				{sending ? 'Generating Dataset...' : 'Generate Dataset'}
 			</Button>
 
@@ -304,14 +291,7 @@ export default function DatasetModelCreationForm({
 
 			{/* VALIDATION ERRORS */}
 			{submitted && errors.length > 0 && (
-				<Alert
-					severity="error"
-					sx={{
-						backgroundColor: 'rgba(255, 107, 107, 0.1)',
-						color: '#ff6b6b',
-						border: '1px solid #ff6b6b'
-					}}
-				>
+				<Alert severity="error" className="form-validation-error">
 					{errors.map((error, i) => (
 						<div key={i}>{error}</div>
 					))}
@@ -320,10 +300,7 @@ export default function DatasetModelCreationForm({
 
 			{/* STATUS MESSAGE - ERRORS ONLY */}
 			{status && (
-				<Alert
-					severity="error"
-					className="error-alert"
-				>
+				<Alert severity="error" className="error-alert">
 					{status}
 				</Alert>
 			)}
@@ -334,17 +311,7 @@ export default function DatasetModelCreationForm({
 					<Typography variant="caption" className="debug-output-label">
 						Debug: Response
 					</Typography>
-					<Box
-						component="pre"
-						sx={{
-							whiteSpace: 'pre-wrap',
-							wordWrap: 'break-word',
-							color: 'text.primary',
-							fontSize: '0.75rem',
-							overflow: 'auto',
-							maxHeight: '300px'
-						}}
-					>
+					<Box component="pre" className="debug-output-pre">
 						{typeof responseJson === 'string' ? responseJson : JSON.stringify(responseJson, null, 2)}
 					</Box>
 				</Paper>

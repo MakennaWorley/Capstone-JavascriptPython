@@ -17,7 +17,7 @@ import {
 	useMediaQuery
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createAppTheme } from './assets/theme/index.js';
 import DatasetDashboard from './components/DatasetDisplayDashboard.js';
 import DatasetModelCreationForm from './components/DatasetModelCreationForm.js';
@@ -61,6 +61,7 @@ export default function App() {
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState('');
 	const [panelOpen, setPanelOpen] = useState({ dataset: true, model: true, test: true });
+	const testAccordionRef = useRef<HTMLDivElement>(null);
 	const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 	const [darkModeOverride, setDarkModeOverride] = useState<boolean | null>(null);
 	const darkMode = darkModeOverride !== null ? darkModeOverride : systemPrefersDark;
@@ -174,9 +175,8 @@ export default function App() {
 									gap: '0.5rem'
 								}}
 							>
-							<strong className="text-accent">Datasets:</strong>{' '}
-							{datasetsLoading ? 'Loading...' : `${datasets.length}`}
-							{datasetsError && <span className="text-unknown"> - Error: {datasetsError}</span>}
+								<strong className="text-accent">Datasets:</strong> {datasetsLoading ? 'Loading...' : `${datasets.length}`}
+								{datasetsError && <span className="text-unknown"> - Error: {datasetsError}</span>}
 							</Box>
 
 							<Box
@@ -187,21 +187,11 @@ export default function App() {
 									gap: '0.5rem'
 								}}
 							>
-							<strong className="text-accent">Models:</strong>{' '}
-							{modelsLoading ? 'Loading...' : `${models.length}`}
-							{modelsError && <span className="text-unknown"> - Error: {modelsError}</span>}
+								<strong className="text-accent">Models:</strong> {modelsLoading ? 'Loading...' : `${models.length}`}
+								{modelsError && <span className="text-unknown"> - Error: {modelsError}</span>}
 							</Box>
 						</Box>
 					)}
-
-					<Box sx={{ mb: 2.5 }}>
-						<Typography variant="h4" fontWeight="bold" sx={{ color: darkMode ? '#9d91f5' : '#452ee4', mb: 0.75 }}>
-							Probabilistic Ancestral Inference
-						</Typography>
-						<Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
-							A research capstone project exploring ancestral genotype reconstruction using Bayesian models, HMMs, DNNs, and GNNs.
-						</Typography>
-					</Box>
 
 					<Box sx={{ mb: 2.5 }}>
 						<Typography variant="h2" fontWeight="bold" sx={{ color: 'var(--color-primary-accent)', mb: 0.75 }}>
@@ -224,12 +214,7 @@ export default function App() {
 						</p>
 						<p className="context-text">
 							The system uses{' '}
-							<a
-								href="https://pubmed.ncbi.nlm.nih.gov/34897427/"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="text-accent"
-							>
+							<a href="https://pubmed.ncbi.nlm.nih.gov/34897427/" target="_blank" rel="noopener noreferrer" className="text-accent">
 								<strong>msprime</strong>
 							</a>{' '}
 							to simulate realistic diploid populations with explicit multi-generational pedigrees, where every individual's true
@@ -265,18 +250,10 @@ export default function App() {
 
 					{(selectedDataset || selectedModel) && (
 						<Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', mt: 2 }}>
-							<Button
-								size="small"
-								variant="contained"
-								onClick={() => setPanelOpen({ dataset: true, model: true, test: true })}
-							>
+							<Button size="small" variant="contained" onClick={() => setPanelOpen({ dataset: true, model: true, test: true })}>
 								Expand All
 							</Button>
-							<Button
-								size="small"
-								variant="contained"
-								onClick={() => setPanelOpen({ dataset: false, model: false, test: false })}
-							>
+							<Button size="small" variant="contained" onClick={() => setPanelOpen({ dataset: false, model: false, test: false })}>
 								Collapse All
 							</Button>
 						</Box>
@@ -295,9 +272,7 @@ export default function App() {
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
 								<Typography variant="h6" fontWeight="bold">
-									<h2>
-									Dataset Dashboard</h2>
-								
+									<h2>Dataset Dashboard</h2>
 								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
@@ -330,8 +305,22 @@ export default function App() {
 
 					{selectedDataset && selectedModel && (
 						<Accordion
+							ref={testAccordionRef}
 							expanded={panelOpen.test}
-							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, test: expanded }))}
+							onChange={(_, expanded) => {
+								setPanelOpen((p) => ({ ...p, test: expanded }));
+								if (expanded && testAccordionRef.current) {
+									setTimeout(() => {
+										const rect = testAccordionRef.current?.getBoundingClientRect();
+										if (rect) {
+											window.scrollTo({
+												top: window.scrollY + rect.top - 100,
+												behavior: 'smooth'
+											});
+										}
+									}, 500);
+								}
+							}}
 							slotProps={{ transition: { unmountOnExit: false } }}
 							className="panel-accordion"
 							sx={{ mt: 2 }}
@@ -420,11 +409,7 @@ export default function App() {
 				>
 					<DialogTitle className="create-dialog-title">
 						Create Dataset
-						<IconButton
-							onClick={() => setShowCreateDatasetModal(false)}
-							aria-label="Close"
-							className="create-dialog-close"
-						>
+						<IconButton onClick={() => setShowCreateDatasetModal(false)} aria-label="Close" className="create-dialog-close">
 							<CloseIcon />
 						</IconButton>
 					</DialogTitle>

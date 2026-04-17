@@ -107,7 +107,24 @@
 // ── Performance graphs grid ──
 .graphs-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    grid-template-columns: 2fr 1fr;
     gap: $spacing-lg;
     margin-top: $spacing-md;
+
+    @media (max-width: 900px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+// ── Graph images ──
+.dark-mode-image {
+    width: 100%;
+    max-width: 600px;
+    height: auto;
+    display: block;
+    margin-top: $spacing-md;
+}
+
+[data-theme='dark'] .dark-mode-image {
+    filter: invert(1) hue-rotate(180deg) brightness(1.1);
 }

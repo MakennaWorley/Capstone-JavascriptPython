@@ -205,12 +205,7 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 				<h3 className="heading-flush">Model Dashboard</h3>
 				<FormControlLabel
 					control={
-						<Switch
-							checked={statsForNerds}
-							onChange={(e) => setStatsForNerds(e.target.checked)}
-							size="small"
-							className="purple-switch"
-						/>
+						<Switch checked={statsForNerds} onChange={(e) => setStatsForNerds(e.target.checked)} size="small" className="purple-switch" />
 					}
 					label="Stats for Nerds"
 					labelPlacement="start"
@@ -237,11 +232,7 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 				<div className="section-mb">
 					<h3 className="section-heading">Training Dataset</h3>
 					<p className="description-text">{sizeBlurb.simple}</p>
-					{statsForNerds && (
-						<p className="nerd-text">
-							{sizeBlurb.nerd}
-						</p>
-					)}
+					{statsForNerds && <p className="nerd-text">{sizeBlurb.nerd}</p>}
 					<p className="description-text">
 						All data is fully simulated — every individual is a computer-generated person, and their DNA is produced by a genetic
 						simulator called <strong>msprime</strong> that mimics how real inheritance works. Because the simulation controls everything,
@@ -310,9 +301,7 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 
 			{/* Use case */}
 			<div className="use-case-box">
-				<p className="use-case-label">
-					{statsForNerds ? 'Recommended Use Case' : 'Best For'}
-				</p>
+				<p className="use-case-label">{statsForNerds ? 'Recommended Use Case' : 'Best For'}</p>
 				<p className="description-text">{statsForNerds ? info.use_case : info.simple_use_case}</p>
 			</div>
 		</div>

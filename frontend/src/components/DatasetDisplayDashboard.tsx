@@ -321,9 +321,9 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 
 			{/* CSV preview - merged view */}
 			{mergedPreview && (
-			<div className="section-wrapper">
-				<div className="flex-between-mb">
-					<h2 className="section-heading">Genotypes</h2>
+				<div className="section-wrapper">
+					<div className="flex-between-mb">
+						<h2 className="section-heading">Genotypes</h2>
 						<Button
 							variant="contained"
 							startIcon={<DownloadIcon />}
@@ -338,12 +338,11 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 					<p className="context-text">
 						This table shows the merged genotype data for the selected dataset. Each row is a genomic site and each column is an
 						individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of the
-						alternate allele carried at that site (0, 1, or 2). Cells highlighted in{' '}
-						<span className="text-known">green</span> are <strong>known data</strong> —
-						individuals whose genes were successfully sequenced and are present in the dataset. Cells highlighted in{' '}
-						<span className="text-unknown">red</span> are <strong>unknown data</strong> —
-						individuals intentionally left out to simulate the real-world scenario of individuals who were never sequenced. The models are
-						trained only on the known data and must infer the genotypes of these missing individuals.
+						alternate allele carried at that site (0, 1, or 2). Cells highlighted in <span className="text-known">green</span> are{' '}
+						<strong>known data</strong> — individuals whose genes were successfully sequenced and are present in the dataset. Cells
+						highlighted in <span className="text-unknown">red</span> are <strong>unknown data</strong> — individuals intentionally left
+						out to simulate the real-world scenario of individuals who were never sequenced. The models are trained only on the known data
+						and must infer the genotypes of these missing individuals.
 					</p>
 
 					<p className="context-text">
@@ -389,8 +388,8 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 
 			{/* Family tree */}
 			{data.observedCsvRaw && (
-			<div className="section-wrapper">
-				<h2 className="section-heading">Family Tree Explorer</h2>
+				<div className="section-wrapper">
+					<h2 className="section-heading">Family Tree Explorer</h2>
 					<TextField
 						select
 						size="small"
@@ -425,7 +424,6 @@ function GenotypeTable({
 	columnsPerPage: number;
 }) {
 	const theme = useTheme();
-	const tableRef = useRef<HTMLTableElement>(null);
 	const ROWS_PER_PAGE = 100;
 	const [rowPage, setRowPage] = useState(0);
 
@@ -436,33 +434,6 @@ function GenotypeTable({
 	const visibleIndices = Array.from({ length: endColIdx - startColIdx }, (_, i) => startColIdx + i);
 
 	const pagedRows = mergedRows.slice(rowPage * ROWS_PER_PAGE, (rowPage + 1) * ROWS_PER_PAGE);
-
-	const hoverColor = theme.palette.action.hover;
-
-	const handleMouseOver = (e: React.MouseEvent<HTMLTableElement>) => {
-		const cell = (e.target as HTMLElement).closest('td, th') as HTMLElement | null;
-		if (!cell || !tableRef.current) return;
-		const row = cell.parentElement;
-		if (!row) return;
-		const colIndex = Array.from(row.children).indexOf(cell);
-		tableRef.current.querySelectorAll<HTMLElement>('[data-col-h]').forEach((el) => {
-			el.style.backgroundColor = '';
-			delete el.dataset.colH;
-		});
-		if (colIndex > 0) {
-			tableRef.current.querySelectorAll<HTMLElement>(`tr > *:nth-child(${colIndex + 1})`).forEach((el) => {
-				el.style.backgroundColor = hoverColor;
-				el.dataset.colH = '1';
-			});
-		}
-	};
-
-	const handleMouseLeave = () => {
-		tableRef.current?.querySelectorAll<HTMLElement>('[data-col-h]').forEach((el) => {
-			el.style.backgroundColor = '';
-			delete el.dataset.colH;
-		});
-	};
 
 	return (
 		<>
@@ -479,20 +450,13 @@ function GenotypeTable({
 				/>
 			)}
 			<TableContainer component={Paper} sx={{ width: '100%', maxHeight: 400, overflow: 'auto' }}>
-				<Table
-					ref={tableRef}
-					size="small"
-					stickyHeader
-					sx={{ tableLayout: 'auto' }}
-					onMouseOver={handleMouseOver}
-					onMouseLeave={handleMouseLeave}
-				>
+				<Table size="small" stickyHeader sx={{ tableLayout: 'auto' }}>
 					<TableHead>
 						<TableRow>
 							<TableCell
 								className="sticky-col-header"
 								sx={{
-									backgroundColor: theme.palette.background.paper,
+									backgroundColor: theme.palette.background.paper
 								}}
 								title={headers[0]}
 							>
@@ -507,13 +471,13 @@ function GenotypeTable({
 					</TableHead>
 					<TableBody>
 						{pagedRows.map((item, ridx) => (
-							<TableRow key={ridx} hover>
+							<TableRow key={ridx}>
 								<TableCell
 									className="sticky-col"
 									sx={{
 										fontWeight: 'bold',
 										backgroundColor:
-											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
+											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default
 									}}
 									title={item.displayed[0] ?? ''}
 								>
@@ -566,45 +530,37 @@ function CsvTable({ title, preview, maxRows }: { title: string; preview: CsvPrev
 				.
 			</p>
 
-			<div className="table-scroll">
-				<table className="csv-table">
-					<thead>
-						<tr>
+			<TableContainer component={Paper}>
+				<Table size="small">
+					<TableHead>
+						<TableRow>
 							{headers.map((h, idx) => (
-								<th
-									key={idx}
-									className="csv-th"
-									title={h}
-								>
+								<TableCell key={idx} sx={{ fontWeight: 'bold' }} title={h}>
 									{clampText(h, 40)}
-								</th>
+								</TableCell>
 							))}
-						</tr>
-					</thead>
-					<tbody>
+						</TableRow>
+					</TableHead>
+					<TableBody>
 						{rows.map((r, ridx) => (
-							<tr key={ridx}>
+							<TableRow key={ridx}>
 								{headers.map((_, cidx) => (
-									<td
-										key={cidx}
-										className="csv-td"
-										title={r[cidx] ?? ''}
-									>
+									<TableCell key={cidx} sx={{ whiteSpace: 'nowrap' }} title={r[cidx] ?? ''}>
 										{clampText(String(r[cidx] ?? ''), 60)}
-									</td>
+									</TableCell>
 								))}
-							</tr>
+							</TableRow>
 						))}
 						{rows.length === 0 && (
-							<tr>
-								<td colSpan={headers.length || 1} className="empty-state">
+							<TableRow>
+								<TableCell colSpan={headers.length || 1} sx={{ opacity: 0.75 }}>
 									No rows to display.
-								</td>
-							</tr>
+								</TableCell>
+							</TableRow>
 						)}
-					</tbody>
-				</table>
-			</div>
+					</TableBody>
+				</Table>
+			</TableContainer>
 
 			<p className="table-note">
 				Tip: these CSVs are wide (lots of <code>ind_####</code> columns). Horizontal scroll is expected.

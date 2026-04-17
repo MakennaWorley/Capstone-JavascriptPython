@@ -5,7 +5,7 @@
 .info-card {
     padding: $spacing-md;
     border-radius: $radius-md;
-    border: 1px solid var(--mui-palette-divider, #cccccc);
+    border: 2px solid var(--mui-palette-divider, #cccccc);
 }
 
 [data-theme='dark'] .info-card {
@@ -31,7 +31,7 @@
     padding: $spacing-md;
     border-radius: $radius-md;
     background-color: $color-use-case-bg-light;
-    border: 1px solid $color-use-case-border-light;
+    border: 2px solid $color-use-case-border-light;
 }
 
 [data-theme='dark'] .use-case-box {

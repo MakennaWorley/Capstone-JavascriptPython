@@ -27,9 +27,7 @@ function capitalize(s: string): string {
 
 export default function ModelSelector({ models, selected, onSelect, disabled = false }: ModelSelectorProps) {
 	if (models.length === 0) {
-		return (
-			<span className="error-inline">Failed to load models. Please check your connection and refresh the page.</span>
-		);
+		return <span className="error-inline">Failed to load models. Please check your connection and refresh the page.</span>;
 	}
 
 	// Create a unique key for each model

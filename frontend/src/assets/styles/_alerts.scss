@@ -5,7 +5,7 @@
     &.MuiAlert-root {
         background-color: $color-error-alert-bg;
         color: $color-error-alert-text;
-        border: 1px solid $color-error-alert-border;
+        border: 2px solid $color-error-alert-border;
     }
 }
 
@@ -13,7 +13,7 @@
 .error-banner {
     margin-top: $spacing-md;
     padding: $spacing-md;
-    border-left: 4px solid $color-error;
+    border-left: 8px solid $color-error;
     border-radius: $radius-sm;
 }
 
@@ -28,7 +28,7 @@
 // ── Debug output panel ──
 .debug-output {
     padding: $spacing-sm;
-    border: 2px solid $color-primary;
+    border: 4px solid $color-primary;
     border-radius: $radius-sm;
 
     pre {
@@ -42,4 +42,14 @@
     color: $color-primary;
     display: block;
     margin-bottom: $spacing-xs;
+}
+
+.debug-output-pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: var(--color-text-primary);
+    font-size: 0.75rem;
+    overflow: auto;
+    max-height: 300px;
+    margin: 0;
 }

@@ -134,11 +134,11 @@ export default function FamilyTreeVisualization({ data }: Props) {
 				down are descendants. Only direct connections are shown: the parents above and children below the selected individual.
 			</p>
 			<p className="context-text">
-				<span className="text-known">Green</span> nodes represent
-				individuals whose genotypes were successfully sequenced and are present in the dataset.
-				<span className="text-unknown"> Red</span> nodes represent
-				individuals who were never sequenced — their genotypes are missing and must be inferred by the model using information from their
-				relatives. The <strong>blue</strong> node is the currently selected individual. Hover over any node to inspect its genotype values.
+				<span className="text-known">Green</span> nodes represent individuals whose genotypes were successfully sequenced and are present in
+				the dataset.
+				<span className="text-unknown"> Red</span> nodes represent individuals who were never sequenced — their genotypes are missing and must
+				be inferred by the model using information from their relatives. The <strong>blue</strong> node is the currently selected individual.
+				Hover over any node to inspect its genotype values.
 			</p>
 
 			<div className="tree-svg-wrapper">
@@ -424,15 +424,10 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							const rawX = hovered.x + gap + TW > WIDTH ? hovered.x - gap - TW : hovered.x + gap;
 							const rawY = Math.min(Math.max(hovered.y - TH / 2, 4), HEIGHT - TH - 4);
 							return (
-								<div
-									className="tree-tooltip"
-									style={{ left: rawX, top: rawY }}
-								>
-									<div className="tree-tooltip-header">
-										Individual {hovered.node.id}
-									</div>
-								<div className="tree-tooltip-label">Genotypes (first 20):</div>
-								<div className="tree-tooltip-values">
+								<div className="tree-tooltip" style={{ left: rawX, top: rawY }}>
+									<div className="tree-tooltip-header">Individual {hovered.node.id}</div>
+									<div className="tree-tooltip-label">Genotypes (first 20):</div>
+									<div className="tree-tooltip-values">
 										{hovered.node.observed
 											.slice(0, 20)
 											.map((v) => (v === null ? '?' : v))

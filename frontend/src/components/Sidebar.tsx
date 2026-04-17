@@ -103,11 +103,7 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 			</Drawer>
 
 			{/* Fixed Toggle Button at top left */}
-			<IconButton
-				onClick={() => setOpen(!open)}
-				aria-label={open ? 'Close navigation' : 'Open navigation'}
-				className="sidebar-toggle"
-			>
+			<IconButton onClick={() => setOpen(!open)} aria-label={open ? 'Close navigation' : 'Open navigation'} className="sidebar-toggle">
 				{open ? <CloseIcon /> : <MenuIcon />}
 			</IconButton>
 		</>
