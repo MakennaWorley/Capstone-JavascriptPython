@@ -14,12 +14,12 @@ const MODEL_TYPE_INFO: Record<
 	string,
 	{
 		label: string;
-		simple_description: string;
-		simple_strengths: string[];
-		simple_use_case: string;
+		simpleDescription: string;
+		simpleStrengths: string[];
+		simpleUseCase: string;
 		description: string;
 		strengths: string[];
-		use_case: string;
+		useCase: string;
 	}
 > = {
 	dnn_dosage: {
@@ -185,12 +185,12 @@ const MODEL_SIZE_INFO: Record<
 
 const FALLBACK_INFO = {
 	label: 'Custom Model',
-	simple_description: 'This is a custom model. Refer to the model documentation for details on how it works.',
-	simple_strengths: ['User-defined architecture'],
-	simple_use_case: 'Application-specific. Consult the model configuration for details.',
+	simpleDescription: 'This is a custom model. Refer to the model documentation for details on how it works.',
+	simpleStrengths: ['User-defined architecture'],
+	simpleUseCase: 'Application-specific. Consult the model configuration for details.',
 	description: 'This model type does not have a built-in description. Refer to the model documentation for details.',
 	strengths: ['User-defined architecture'],
-	use_case: 'Application-specific. Consult the model configuration for details.'
+	useCase: 'Application-specific. Consult the model configuration for details.'
 };
 
 export default function ModelDashboard({ model }: ModelDashboardProps) {

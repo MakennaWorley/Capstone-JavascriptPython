@@ -1,5 +1,5 @@
 import { Alert, Box, Button, Checkbox, FormControlLabel, Paper, Stack, TextField, Typography } from '@mui/material';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import LoadingProgress from './LoadingProgress.js';
 
 // ---------- helpers ----------
@@ -20,13 +20,19 @@ type SimConfig = {
 	name: string;
 
 	// advanced (scaling)
-	sequence_length: number;
-	n_generations: number;
-	samples_per_generation: number;
+	sequenceLength: number;
+	nGenerations: number;
+	samplesPerGeneration: number;
 };
 
 type GenerateRequest = {
-	params: { name: string } & Partial<SimConfig> & { n_diploid_samples?: number };
+	params: {
+		name: string;
+		sequence_length?: number;
+		n_generations?: number;
+		samples_per_generation?: number;
+		n_diploid_samples?: number;
+	};
 };
 
 type Props = {
@@ -41,9 +47,9 @@ type Props = {
 // ---------- defaults ----------
 const DEFAULTS: SimConfig = {
 	name: '',
-	sequence_length: 100,
-	n_generations: 5,
-	samples_per_generation: 50
+	sequenceLength: 100,
+	nGenerations: 5,
+	samplesPerGeneration: 50
 };
 
 export default function DatasetModelCreationForm({
@@ -58,6 +64,7 @@ export default function DatasetModelCreationForm({
 	const [sending, setSending] = useState(false);
 	const [status, setStatus] = useState('');
 	const [responseJson, setResponseJson] = useState<any>(null);
+	const [submitted, setSubmitted] = useState(false);
 
 	const [cfg, setCfg] = useState<SimConfig>(DEFAULTS);
 
@@ -66,9 +73,7 @@ export default function DatasetModelCreationForm({
 	}
 
 	const derivedTotal =
-		Number.isFinite(cfg.n_generations) && Number.isFinite(cfg.samples_per_generation)
-			? cfg.n_generations * cfg.samples_per_generation
-			: undefined;
+		Number.isFinite(cfg.nGenerations) && Number.isFinite(cfg.samplesPerGeneration) ? cfg.nGenerations * cfg.samplesPerGeneration : undefined;
 
 	// ---------- validation ----------
 	const errors = useMemo(() => {
@@ -80,19 +85,19 @@ export default function DatasetModelCreationForm({
 		}
 
 		if (advanced) {
-			if (!Number.isFinite(cfg.sequence_length) || !Number.isInteger(cfg.sequence_length) || cfg.sequence_length <= 0) {
+			if (!Number.isFinite(cfg.sequenceLength) || !Number.isInteger(cfg.sequenceLength) || cfg.sequenceLength <= 0) {
 				e.push('Sequence length must be a positive number.');
 			}
-			if (!Number.isFinite(cfg.n_generations) || !Number.isInteger(cfg.n_generations) || cfg.n_generations <= 0) {
+			if (!Number.isFinite(cfg.nGenerations) || !Number.isInteger(cfg.nGenerations) || cfg.nGenerations <= 0) {
 				e.push('Number of generations must be a positive integer.');
 			}
-			if (!Number.isFinite(cfg.samples_per_generation) || !Number.isInteger(cfg.samples_per_generation) || cfg.samples_per_generation <= 0) {
+			if (!Number.isFinite(cfg.samplesPerGeneration) || !Number.isInteger(cfg.samplesPerGeneration) || cfg.samplesPerGeneration <= 0) {
 				e.push('Individuals per generation must be a positive integer.');
 			}
 
-			if (cfg.sequence_length > MAX_USER_LENGTH) e.push(`Sequence length cannot exceed ${MAX_USER_LENGTH}.`);
-			if (cfg.n_generations > MAX_USER_GENERATIONS) e.push(`Generations cannot exceed ${MAX_USER_GENERATIONS}.`);
-			if (cfg.n_generations * cfg.samples_per_generation > MAX_USER_SAMPLES)
+			if (cfg.sequenceLength > MAX_USER_LENGTH) e.push(`Sequence length cannot exceed ${MAX_USER_LENGTH}.`);
+			if (cfg.nGenerations > MAX_USER_GENERATIONS) e.push(`Generations cannot exceed ${MAX_USER_GENERATIONS}.`);
+			if (cfg.nGenerations * cfg.samplesPerGeneration > MAX_USER_SAMPLES)
 				e.push(
 					`Total individuals cannot exceed ${MAX_USER_SAMPLES}. Please lower either number of generations or individuals per generation.`
 				);
@@ -102,9 +107,15 @@ export default function DatasetModelCreationForm({
 	}, [cfg, advanced]);
 
 	// ---------- submit ----------
-	async function submit(e: React.FormEvent) {
-		e.preventDefault();
+	function handleSubmit() {
+		setSubmitted(true);
 
+		if (errors.length > 0) return;
+
+		performSubmit();
+	}
+
+	async function performSubmit() {
 		setSending(true);
 		setStatus('');
 		setResponseJson(null);
@@ -116,10 +127,10 @@ export default function DatasetModelCreationForm({
 
 			// Only include parameters if Advanced is enabled
 			if (advanced) {
-				params.sequence_length = cfg.sequence_length;
-				params.n_generations = cfg.n_generations;
-				params.samples_per_generation = cfg.samples_per_generation;
-				params.n_diploid_samples = cfg.n_generations * cfg.samples_per_generation;
+				params.sequence_length = cfg.sequenceLength;
+				params.n_generations = cfg.nGenerations;
+				params.samples_per_generation = cfg.samplesPerGeneration;
+				params.n_diploid_samples = cfg.nGenerations * cfg.samplesPerGeneration;
 			}
 
 			const payload: GenerateRequest = { params };
@@ -168,7 +179,17 @@ export default function DatasetModelCreationForm({
 	}
 
 	return (
-		<Box component="form" onSubmit={submit} className="form-grid">
+		<Box
+			component="form"
+			onSubmit={(e) => {
+				e.preventDefault();
+				handleSubmit();
+			}}
+			className="form-grid"
+		>
+			{/* AUTO-DELETE NOTICE */}
+			<Alert severity="info">Datasets are automatically deleted within 24 hours of creation.</Alert>
+
 			{/* BASIC */}
 			<Box>
 				<Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
@@ -215,9 +236,9 @@ export default function DatasetModelCreationForm({
 							<TextField
 								label="Sequence Length"
 								type="number"
-								value={Number.isFinite(cfg.sequence_length) ? cfg.sequence_length : ''}
+								value={Number.isFinite(cfg.sequenceLength) ? cfg.sequenceLength : ''}
 								placeholder="100"
-								onChange={(e) => update('sequence_length', Number(e.target.value))}
+								onChange={(e) => update('sequenceLength', Number(e.target.value))}
 								inputProps={{ min: 1, step: 1 }}
 								helperText="Number of genomic sites (SNP positions) simulated per individual. More sites = more features for the model, but slower generation. Max 1,000."
 								variant="outlined"
@@ -227,9 +248,9 @@ export default function DatasetModelCreationForm({
 							<TextField
 								label="Number of generations"
 								type="number"
-								value={Number.isFinite(cfg.n_generations) ? cfg.n_generations : ''}
+								value={Number.isFinite(cfg.nGenerations) ? cfg.nGenerations : ''}
 								placeholder="5"
-								onChange={(e) => update('n_generations', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
+								onChange={(e) => update('nGenerations', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
 								inputProps={{ min: 1, step: 1 }}
 								helperText="How many parent-to-child generations the family spans. More generations = deeper pedigree structure. Max 10."
 								variant="outlined"
@@ -239,9 +260,9 @@ export default function DatasetModelCreationForm({
 							<TextField
 								label="Individuals per generation"
 								type="number"
-								value={Number.isFinite(cfg.samples_per_generation) ? cfg.samples_per_generation : ''}
+								value={Number.isFinite(cfg.samplesPerGeneration) ? cfg.samplesPerGeneration : ''}
 								placeholder="50"
-								onChange={(e) => update('samples_per_generation', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
+								onChange={(e) => update('samplesPerGeneration', e.target.value === '' ? (NaN as any) : Number(e.target.value))}
 								inputProps={{ min: 1, step: 1 }}
 								helperText="How many diploid individuals are simulated in each generation. Combined with generations, this sets the total family size. Total must not exceed 1,000."
 								variant="outlined"
@@ -269,20 +290,40 @@ export default function DatasetModelCreationForm({
 
 			{/* SUBMIT BUTTON */}
 			<Button
-				type="submit"
+				type="button"
 				disabled={sending}
+				onClick={handleSubmit}
 				variant="contained"
 				fullWidth
 				className="form-submit-btn"
 			>
-				{sending ? 'Generating...' : 'Generate Data'}
+				{sending ? 'Generating Dataset...' : 'Generate Dataset'}
 			</Button>
 
 			<LoadingProgress isLoading={sending} message="Generating your data..." />
 
+			{/* VALIDATION ERRORS */}
+			{submitted && errors.length > 0 && (
+				<Alert
+					severity="error"
+					sx={{
+						backgroundColor: 'rgba(255, 107, 107, 0.1)',
+						color: '#ff6b6b',
+						border: '1px solid #ff6b6b'
+					}}
+				>
+					{errors.map((error, i) => (
+						<div key={i}>{error}</div>
+					))}
+				</Alert>
+			)}
+
 			{/* STATUS MESSAGE - ERRORS ONLY */}
-			{status && status !== 'Dataset created successfully!' && (
-				<Alert severity="error" className="error-alert">
+			{status && (
+				<Alert
+					severity="error"
+					className="error-alert"
+				>
 					{status}
 				</Alert>
 			)}

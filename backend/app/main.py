@@ -1,7 +1,10 @@
+import asyncio
 import base64
 import io
 import os
+import traceback
 import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List
 
@@ -15,6 +18,8 @@ from .functions import (
 	DashboardFilesMissing,
 	api_error,
 	api_success,
+	delete_old_datasets,
+	delete_old_logs,
 	get_all_dataset_files,
 	get_dataset_dashboard_files,
 	get_dataset_names,
@@ -43,17 +48,6 @@ LOGS_DIR = (BASE_DIR / os.getenv('LOGS_DIR')).resolve()
 
 # debugging
 @app.on_event('startup')
-async def show_routes():
-	print('=== ROUTES ===')
-	for r in app.routes:
-		try:
-			print(f'{getattr(r, "methods", "")} {r.path}')
-		except Exception:
-			pass
-	print('==============')
-
-
-@app.on_event('startup')
 async def verify_paths():
 	print(f'DEBUG: DATASETS_DIR is resolved to: {DATASETS_DIR}')
 	if not DATASETS_DIR.exists():
@@ -61,6 +55,29 @@ async def verify_paths():
 	print(f'DEBUG: MODELS_DIR is resolved to: {MODELS_DIR}')
 	if not MODELS_DIR.exists():
 		print('WARNING: MODELS_DIR does not exist!')
+
+
+async def _midnight_gc_loop() -> None:
+	"""Background task: at midnight UTC, delete datasets and logs older than 1 day."""
+	while True:
+		now = datetime.now(timezone.utc)
+		next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+		await asyncio.sleep((next_midnight - now).total_seconds())
+		try:
+			deleted = delete_old_datasets(DATASETS_DIR, max_age_days=1)
+			print(f'Midnight GC: deleted {deleted} dataset(s) older than 1 day.')
+		except Exception as e:
+			print(f'Midnight GC dataset error: {e}')
+		try:
+			deleted_logs = delete_old_logs(LOGS_DIR, max_age_days=1)
+			print(f'Midnight GC: deleted {deleted_logs} log entry/entries older than 1 day.')
+		except Exception as e:
+			print(f'Midnight GC log error: {e}')
+
+
+@app.on_event('startup')
+async def start_midnight_gc():
+	asyncio.create_task(_midnight_gc_loop())
 
 
 # health check
@@ -147,8 +164,6 @@ async def dataset_family_tree(dataset_name: str, individual_id: int):
 	"""
 	Fetch the connected family tree and genetic data for a specific individual.
 	"""
-	print('this is the request', dataset_name, individual_id)
-
 	try:
 		data = get_individual_family_tree_data(dataset_name, individual_id, datasets_dir=DATASETS_DIR)
 
@@ -259,9 +274,9 @@ async def test_model_on_dataset(request: Request):
 		graph_cm_path = Path(paths_data.get('graph_cm', ''))
 
 		image_data = {}
-		if graph_test_path.exists():
+		if graph_test_path.is_file():
 			image_data['graph_test_base64'] = base64.b64encode(graph_test_path.read_bytes()).decode('ascii')
-		if graph_cm_path.exists():
+		if graph_cm_path.is_file():
 			image_data['graph_cm_base64'] = base64.b64encode(graph_cm_path.read_bytes()).decode('ascii')
 
 		return api_success(
@@ -283,15 +298,11 @@ async def test_model_on_dataset(request: Request):
 	except ValueError as e:
 		error_msg = str(e)
 		print(f'[ValueError] {error_msg}')
-		import traceback
-
 		traceback.print_exc()
 		return api_error(message=error_msg, status_code=400, code='VALIDATION_ERROR')
 
 	except Exception as e:
 		error_msg = f'Unexpected server error while testing model: {str(e)}'
 		print(f'[Exception] {error_msg}')
-		import traceback
-
 		traceback.print_exc()
 		return api_error(message=error_msg, status_code=500, code='MODEL_TEST_FAILED')

@@ -60,19 +60,19 @@ def check_gpu_status():
 
 		gpu_devices = jax.devices('gpu')
 		if gpu_devices:
-			print(f'🚀 GPU acceleration available: {len(gpu_devices)} GPU(s) detected')
+			print(f'GPU acceleration available: {len(gpu_devices)} GPU(s) detected')
 			for i, device in enumerate(gpu_devices):
 				print(f'  GPU {i}: {device}')
 		else:
-			print('💻 Running on CPU (no GPU devices found)')
+			print('Running on CPU (no GPU devices found)')
 
 		# Update this for your computer, this was running on my i9-12900k
 		os.environ['OMP_NUM_THREADS'] = '12'
 		os.environ['MKL_NUM_THREADS'] = '12'
 	except ImportError:
-		print('💻 Running on CPU (JAX not installed)')
+		print('Running on CPU (JAX not installed)')
 	except Exception as e:
-		print(f'💻 Running on CPU (GPU check failed: {e})')
+		print(f'Running on CPU (GPU check failed: {e})')
 
 
 def get_optimal_training_config():
@@ -118,21 +118,21 @@ def get_optimal_training_config():
 		optimal_draws = 1500  # More samples for better accuracy
 		optimal_tune = 1500
 		strategy = 'aggressive'
-		print('🚀 High-end system detected: Using aggressive optimization')
+		print('High-end system detected: Using aggressive optimization')
 	elif has_gpu:  # GPU but less RAM
 		optimal_chains = min(6, physical_cores)
 		optimal_cores = min(logical_cores - 1, 12)
 		optimal_draws = 1200
 		optimal_tune = 1200
 		strategy = 'aggressive'
-		print('🚀 GPU system detected: Using moderate optimization')
+		print('GPU system detected: Using moderate optimization')
 	else:  # CPU only
 		optimal_chains = min(4, physical_cores)
 		optimal_cores = min(logical_cores, 8)
 		optimal_draws = 1000
 		optimal_tune = 1000
 		strategy = 'safe'
-		print('💻 CPU-only system: Using conservative settings')
+		print('CPU-only system: Using conservative settings')
 
 	config = {'chains': optimal_chains, 'cores': optimal_cores, 'draws': optimal_draws, 'tune': optimal_tune, 'gpu_strategy': strategy}
 
@@ -201,38 +201,6 @@ def _select_model(model_label: str) -> Tuple[Type[ModelType], str]:
 			return (GNNDosageClassifier, 'gnn_dosage')
 		case _:
 			raise ValueError(f'Unknown model label: {model_label}')
-
-
-def _run_fold_parallel(args):
-	"""
-	Helper function to run a single fold in a separate process.
-	"""
-	fold_idx, X_t, X_v, y_t, y_v, g_t, model_label = args
-
-	ModelCls, _ = _select_model(model_label)
-
-	if model_label == 'bayes_softmax3':
-		# Bayesian with optimized settings for CV (faster but still accurate)
-		fold_model = ModelCls(chains=2, draws=500, tune=500, cores=2)
-	elif model_label == 'hmm_dosage':
-		# HMM with optimized settings for CV
-		fold_model = ModelCls(n_iter=20, verbose=False)
-	elif model_label == 'dnn_dosage':
-		# DNN with optimized settings for CV
-		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
-	elif model_label == 'gnn_dosage':
-		# GNN with optimized settings for CV
-		fold_model = ModelCls(epochs=50, verbose=False, early_stopping_patience=5)
-	else:
-		fold_model = ModelCls()
-
-	# X_t and y_t are already resampled by the caller
-	fold_model.fit(X_t, y_t, groups=g_t)
-
-	y_pred = fold_model.predict(X_v)
-	mse = np.mean((y_v - y_pred) ** 2)
-
-	return fold_idx, mse
 
 
 # -----------------------------
@@ -366,7 +334,7 @@ def train_eval(
 			pass  # Continue without optimization
 
 	# 1. Setup Model Types
-	ModelCls, model_tag = _select_model(model_label)
+	model_cls, model_tag = _select_model(model_label)
 	paths = model_paths(models_dir, train_base, model_tag)
 
 	# Create images directory
@@ -383,9 +351,9 @@ def train_eval(
 
 	# EARLY EXIT: Skip training if model already exists and force_retrain is False
 	if exists_check and not force_retrain:
-		print(f'✓ Model already exists: Loading {model_tag} from {paths["meta"]}')
+		print(f'Model already exists: Loading {model_tag} from {paths["meta"]}')
 		print('  To retrain, use force_retrain=True')
-		model = ModelCls.load(paths)
+		model = model_cls.load(paths)
 		trained = False
 		return {
 			'trained': trained,
@@ -405,7 +373,7 @@ def train_eval(
 	# Handle different constructor signatures with auto-optimized settings
 	if model_label == 'bayes_softmax3':
 		optimal_config = get_optimal_training_config()
-		model = ModelCls(
+		model = model_cls(
 			draws=optimal_config['draws'],
 			tune=optimal_config['tune'],
 			chains=optimal_config['chains'],
@@ -415,13 +383,13 @@ def train_eval(
 			gpu_strategy=optimal_config['gpu_strategy'],
 		)
 	elif model_label == 'hmm_dosage':
-		model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
+		model = model_cls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
 	elif model_label == 'dnn_dosage':
-		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+		model = model_cls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	elif model_label == 'gnn_dosage':
-		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+		model = model_cls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	else:
-		model = ModelCls(random_seed=seed)
+		model = model_cls(random_seed=seed)
 
 	model.fit(X_resampled, y_resampled, groups=groups_resampled)
 	trained = True
@@ -445,7 +413,7 @@ def train_eval(
 	# Reinitialize and train on combined data with auto-optimized settings
 	if model_label == 'bayes_softmax3':
 		optimal_config = get_optimal_training_config()
-		model = ModelCls(
+		model = model_cls(
 			draws=optimal_config['draws'],
 			tune=optimal_config['tune'],
 			chains=optimal_config['chains'],
@@ -455,13 +423,13 @@ def train_eval(
 			gpu_strategy=optimal_config['gpu_strategy'],
 		)
 	elif model_label == 'hmm_dosage':
-		model = ModelCls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
+		model = model_cls(n_iter=20, random_seed=seed, use_gpu=True, verbose=True)
 	elif model_label == 'dnn_dosage':
-		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+		model = model_cls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	elif model_label == 'gnn_dosage':
-		model = ModelCls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
+		model = model_cls(hidden_dims=(256, 128, 64), epochs=100, random_seed=seed, use_gpu=True, verbose=True, early_stopping_patience=10)
 	else:
-		model = ModelCls(random_seed=seed)
+		model = model_cls(random_seed=seed)
 
 	model.fit(X_combined_resampled, y_combined_resampled, groups=groups_combined_resampled)
 
@@ -612,11 +580,11 @@ def test_on_new_data(
 	# 0.5 Check if this model has already been tested on this dataset (log it, but always re-run to return full stats)
 	cached_result = check_model_already_applied(model_name, model_type, test_base)
 	if cached_result:
-		print(f'✓ Model "{model_name}" ({model_type}) previously tested on "{test_base}" ({cached_result["applied_date"]})')
+		print(f'Model "{model_name}" ({model_type}) previously tested on "{test_base}" ({cached_result["applied_date"]})')
 		print('  Re-running prediction to return full stats and error analysis.')
 
 	# 1. Setup Model Types and Paths
-	ModelCls, model_tag = _select_model(model_type)
+	model_cls, model_tag = _select_model(model_type)
 	paths = model_paths(models_dir, model_name, model_tag)
 
 	# 2. Check if Model Exists
@@ -629,7 +597,7 @@ def test_on_new_data(
 
 	# 3. Load the Pre-trained Model
 	print(f'Loading existing {model_tag} from {paths["meta"]}')
-	model = ModelCls.load(paths)
+	model = model_cls.load(paths)
 
 	# Setup log file for test output
 	logs_dir = get_or_create_logs_dir()
@@ -753,7 +721,7 @@ def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECT
 
 	# EARLY EXIT: All models exist
 	if all_exist:
-		print(f'✓ All models already trained for {train_f}')
+		print(f'All models already trained for {train_f}')
 		print(f'  All model types exist: {", ".join(model_labels)}')
 		print('  Skipping training. Use force_retrain=True in train_eval() to retrain.')
 		return {'status': 'skipped', 'reason': 'All models already exist', 'train_f': train_f}
@@ -780,12 +748,4 @@ def train_eval_all(train_f, val_f, test_f, *, datasets_dir: str | Path = PROTECT
 
 
 if __name__ == '__main__':
-	# Force use of the protected datasets directory for training runs
-	# train_eval_all('tiny.training', 'tiny.validation', 'tiny.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-	# train_eval_all('small.training', 'small.validation', 'small.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-	# train_eval_all('medium.training', 'medium.validation', 'medium.testing', datasets_dir=PROTECTED_DATASETS_DIR)
-
 	print(test_on_new_data('public', 'bayes_softmax3', 'tiny.training'))
-	# print(test_on_new_data('small.testing', 'multi_log_regression', 'small.training'))
-	# print(test_on_new_data('medium.testing', 'bayes_softmax3', 'medium.training'))
-	# print(test_on_new_data('medium.testing', 'multi_log_regression', 'medium.training'))

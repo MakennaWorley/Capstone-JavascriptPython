@@ -123,9 +123,9 @@ class HMMDosageClassifier:
 		self.pycm_metrics_: Optional[Dict[str, Any]] = None
 
 		if self.use_gpu:
-			print('🚀 HMM GPU acceleration enabled')
+			print('HMM GPU acceleration enabled')
 		else:
-			print('💻 HMM running on CPU')
+			print('HMM running on CPU')
 
 	@property
 	def tag(self) -> str:

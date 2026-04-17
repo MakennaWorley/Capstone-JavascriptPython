@@ -1,3 +1,4 @@
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -5,6 +6,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 import torch
+
+# Ensure MODELS_DIR is set so fit() checkpoint logic doesn't raise KeyError
+os.environ.setdefault('MODELS_DIR', '/tmp')
 
 # Add backend directory to path for package imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -63,7 +67,8 @@ class TestDNNDosageClassifierInitialization:
 		assert model.use_batch_norm is True
 		assert model.use_residual is True
 		assert isinstance(model.random_seed, int)
-		assert model.use_gpu is True or not torch.cuda.is_available()  # GPU if available
+		# use_gpu reflects actual GPU availability (constructor does `use_gpu and GPU_AVAILABLE`)
+		assert model.use_gpu == (torch.cuda.is_available() or torch.backends.mps.is_available())
 		assert model.verbose is True
 		assert model.use_class_weights is True
 
@@ -110,6 +115,10 @@ class TestDNNDosageClassifierInitialization:
 		assert model.feature_mean_ is None
 		assert model.feature_std_ is None
 		assert model.class_weights_ is None
+		assert model.pycm_train_ is None
+		assert model.pycm_metrics_ is None
+		assert model.train_history_ == {'loss': [], 'accuracy': []}
+		assert model.val_history_ == {'loss': [], 'accuracy': []}
 
 
 class TestDNNDosageClassifierFit:
@@ -213,6 +222,14 @@ class TestDNNDosageClassifierPredict:
 		with pytest.raises(RuntimeError, match='Model must be fitted'):
 			model.predict_proba(X_test)
 
+	def test_predict_class_unfitted_raises(self):
+		"""Test predict_class raises error when model not fitted"""
+		model = DNNDosageClassifier()
+		X_test = np.random.randn(8, 10).astype(np.float32)
+
+		with pytest.raises(RuntimeError, match='Model must be fitted'):
+			model.predict_class(X_test)
+
 	def test_predict_class_shape(self):
 		"""Test predict_class returns correct shape"""
 		model = DNNDosageClassifier(epochs=2, batch_size=16, verbose=False)
@@ -240,6 +257,21 @@ class TestDNNDosageClassifierPredict:
 
 		assert predictions.shape == (16,)
 		assert all(0 <= p <= 2 for p in predictions)  # Expected values in [0, 2]
+
+	def test_predict_expected_dosage_formula(self):
+		"""Test predict() equals Σ c·p(c) for c in {0,1,2}"""
+		model = DNNDosageClassifier(epochs=2, batch_size=16, verbose=False)
+		X_train = np.random.randn(32, 10).astype(np.float32)
+		y_train = np.array([0, 1, 2] * 10 + [0, 1], dtype=np.float32)
+		groups_train = np.zeros(32, dtype=np.int32)
+		model.fit(X_train, y_train, groups_train)
+
+		X_test = np.random.randn(16, 10).astype(np.float32)
+		probas = model.predict_proba(X_test)
+		expected_dosage = (probas * np.array([0.0, 1.0, 2.0], dtype=np.float32)).sum(axis=1)
+		predictions = model.predict(X_test)
+
+		np.testing.assert_array_almost_equal(predictions, expected_dosage)
 
 	def test_predict_on_cpu_only(self):
 		"""Test predictions work without GPU"""
@@ -285,6 +317,27 @@ class TestDNNDosageClassifierEvaluation:
 		assert model.pycm_metrics_ is not None
 		assert 'overall_accuracy' in model.pycm_metrics_
 		assert 'kappa' in model.pycm_metrics_
+
+	def test_pycm_metrics_all_keys_present(self):
+		"""Test that all expected keys are present in pycm_metrics_ after fit"""
+		model = DNNDosageClassifier(epochs=2, batch_size=16, verbose=False)
+		X_train = np.random.randn(32, 10).astype(np.float32)
+		y_train = np.array([0, 1, 2] * 10 + [0, 1], dtype=np.float32)
+		groups_train = np.zeros(32, dtype=np.int32)
+		model.fit(X_train, y_train, groups_train)
+
+		required_keys = {
+			'overall_accuracy',
+			'kappa',
+			'overall_f1',
+			'overall_precision',
+			'overall_recall',
+			'class_accuracy',
+			'class_f1',
+			'class_precision',
+			'class_recall',
+		}
+		assert required_keys <= set(model.pycm_metrics_.keys())
 
 
 class TestDNNDosageClassifierPersistence:
@@ -366,6 +419,30 @@ class TestDNNDosageClassifierPersistence:
 			assert loaded_model.dropout_rate == custom_params['dropout_rate']
 			assert loaded_model.learning_rate == custom_params['learning_rate']
 			assert loaded_model.epochs == custom_params['epochs']
+
+	def test_save_load_predict_roundtrip(self):
+		"""Test that predictions are identical before and after save/load"""
+		model = DNNDosageClassifier(epochs=2, batch_size=16, use_gpu=False, verbose=False)
+		X_train = np.random.randn(32, 10).astype(np.float32)
+		y_train = np.array([0, 1, 2] * 10 + [0, 1], dtype=np.float32)
+		groups_train = np.zeros(32, dtype=np.int32)
+		model.fit(X_train, y_train, groups_train)
+
+		X_test = np.random.randn(8, 10).astype(np.float32)
+		proba_before = model.predict_proba(X_test)
+		classes_before = model.predict_class(X_test)
+
+		with tempfile.TemporaryDirectory() as tmpdir:
+			tmpdir_path = Path(tmpdir)
+			paths = {'dir': tmpdir_path, 'meta': tmpdir_path / 'meta.json'}
+			model.save(paths, {})
+			loaded = DNNDosageClassifier.load(paths)
+
+		proba_after = loaded.predict_proba(X_test)
+		classes_after = loaded.predict_class(X_test)
+
+		np.testing.assert_allclose(proba_after, proba_before, rtol=1e-5)
+		np.testing.assert_array_equal(classes_after, classes_before)
 
 
 class TestDNNDosageClassifierEdgeCases:

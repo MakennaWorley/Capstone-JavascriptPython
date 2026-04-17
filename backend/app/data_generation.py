@@ -24,6 +24,7 @@ Meta replay features:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import os
 from dataclasses import asdict, dataclass
@@ -120,21 +121,26 @@ def now_utc_iso() -> str:
 	return datetime.utcnow().isoformat() + 'Z'
 
 
-def add_to_file(text: str, output_dir: str) -> None:
+def add_to_file(text: str, output_dir: str, creator: str = 'backend') -> None:
 	os.makedirs(output_dir, exist_ok=True)
-	path = os.path.join(output_dir, 'datasets.txt')
-	with open(path, 'a', encoding='utf-8') as f:
-		f.write(text.rstrip('\n') + '\n')
+	path = os.path.join(output_dir, 'datasets.csv')
+	write_header = not os.path.exists(path)
+	with open(path, 'a', newline='', encoding='utf-8') as f:
+		writer = csv.writer(f)
+		if write_header:
+			writer.writerow(['dataset_name', 'creator', 'date_created'])
+		writer.writerow([text, creator, now_utc_iso()])
 
 
 def dataset_exists(dataset_name: str, datasets_dir: str) -> bool:
-	"""Check if a dataset name already exists in datasets.txt."""
-	datasets_file = os.path.join(datasets_dir, 'datasets.txt')
+	"""Check if a dataset name already exists in datasets.csv."""
+	datasets_file = os.path.join(datasets_dir, 'datasets.csv')
 	if not os.path.exists(datasets_file):
 		return False
 
-	with open(datasets_file, 'r', encoding='utf-8') as f:
-		existing_datasets = {line.strip() for line in f if line.strip()}
+	with open(datasets_file, 'r', newline='', encoding='utf-8') as f:
+		reader = csv.DictReader(f)
+		existing_datasets = {row['dataset_name'] for row in reader}
 
 	return dataset_name in existing_datasets
 
@@ -458,19 +464,6 @@ def pedigree_table(ts: tskit.TreeSequence) -> pd.DataFrame:
 	return pd.DataFrame(rows)
 
 
-def write_genotypes_by_generation(ts, G_dip, df_sites, output_dir, name_prefix):
-	ped = pedigree_table(ts)
-	for t in sorted(ped['time'].unique()):
-		ids = ped.loc[ped['time'] == t, 'individual_id'].to_list()
-		cols = [f'ind_{i:04d}' for i in ids]
-
-		df = pd.DataFrame(G_dip[:, ids], columns=cols)
-		df = pd.concat([df_sites, df], axis=1)
-
-		out = os.path.join(output_dir, f'{name_prefix}.gen_t{int(t)}.truth_genotypes.csv')
-		df.to_csv(out, index=False)
-
-
 # -----------------------------
 # IO paths + metadata writing
 # -----------------------------
@@ -515,7 +508,6 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None) -> Dict[str
 	# Build tables
 	df_sites = sites_table(cfg)
 	df_pedigree = pedigree_table(ts)
-	# write_genotypes_by_generation(ts=ts, G_dip=G_dip, df_sites=df_sites, output_dir=cfg.datasets_dir, name_prefix=cfg.name)
 
 	# Mask at diploid-individual level
 	rng = np.random.default_rng(cfg.seed + 999)
@@ -584,29 +576,6 @@ def run_generation(cfg: SimConfig, *, meta_in: Optional[str] = None) -> Dict[str
 
 
 # -----------------------------
-# Checks
-# -----------------------------
-
-
-def checks(truth_csv: str, observed_csv: str) -> None:
-	truth = pd.read_csv(truth_csv)
-	obs = pd.read_csv(observed_csv)
-
-	assert len(truth) == len(obs), 'Row mismatch between truth and observed'
-	assert (truth['site_index'].values == obs['site_index'].values).all(), 'Site index mismatch'
-
-	genotype_cols = [c for c in truth.columns if c.startswith('ind_')]
-	truth_vals = truth[genotype_cols].to_numpy()
-	obs_vals = obs[genotype_cols].to_numpy()
-
-	masking_fraction = np.isnan(obs_vals).mean()
-	print(f'[check] Observed masking fraction: {masking_fraction:.3f}')
-
-	uniq = np.unique(truth_vals)
-	print(f'[check] Unique truth dosages (first few): {uniq[:10]} (total unique={len(uniq)})')
-
-
-# -----------------------------
 # CLI / main
 # -----------------------------
 
@@ -634,8 +603,6 @@ def parse_args() -> argparse.Namespace:
 	ap.add_argument('--name', type=str, default=SimConfig.name)
 
 	ap.add_argument('--meta-in', type=str, default=None, help='JSON meta file to reproduce a previous run.')
-
-	ap.add_argument('--checks', action='store_true', default=False, help='Run lightweight integrity checks on saved CSVs.')
 
 	return ap.parse_args()
 
@@ -697,15 +664,11 @@ def create_data() -> None:
 			# Create a unique config for each split
 			split_cfg = dict_to_config({**asdict(cfg), 'name': f'{cfg.name}.{split}', 'seed': cfg.seed + (i * 1000)})
 			run_generation(split_cfg)
-			add_to_file(f'{cfg.name}.{split}', PROTECTED_DATASETS_DIR)
+			add_to_file(f'{cfg.name}.{split}', PROTECTED_DATASETS_DIR, creator='backend')
 	else:
 		# Standard single run
 		outputs = run_generation(cfg)
-		add_to_file(args.name, cfg.datasets_dir)
-
-	# Optional quick checksgener
-	if args.checks:
-		checks(outputs['truth_csv'], outputs['observed_csv'])
+		add_to_file(args.name, cfg.datasets_dir, creator='backend')
 
 
 if __name__ == '__main__':
@@ -782,10 +745,10 @@ def create_data_from_params(params: Dict[str, Any], *, meta_in: Optional[str] = 
 		for i, split in enumerate(splits):
 			split_cfg = dict_to_config({**asdict(cfg), 'name': f'{cfg.name}.{split}', 'seed': cfg.seed + (i * 1000)})
 			run_generation(split_cfg)
-			add_to_file(f'{cfg.name}.{split}', cfg.protected_datasets_dir)
+			add_to_file(f'{cfg.name}.{split}', cfg.protected_datasets_dir, creator='frontend')
 		return {'config': asdict(cfg), 'outputs': cfg.name, 'mode': 'stratified_triplet'}
 
 	# else:
 	run_generation(cfg)
-	add_to_file(cfg.name, cfg.datasets_dir)
+	add_to_file(cfg.name, cfg.datasets_dir, creator='frontend')
 	return {'config': asdict(cfg), 'outputs': cfg.name, 'mode': 'single_dataset'}

@@ -91,7 +91,7 @@ class BayesianCategoricalDosageClassifier:
 		self.feature_std_: Optional[np.ndarray] = None
 
 		# posterior means for fast inference
-		self._W_mean: Optional[np.ndarray] = None  # (k, 3)
+		self._w_mean: Optional[np.ndarray] = None  # (k, 3)
 		self._b_mean: Optional[np.ndarray] = None  # (3,)
 
 	@property
@@ -122,26 +122,24 @@ class BayesianCategoricalDosageClassifier:
 			logits = b[groups] + pm.math.dot(Xz, W)
 			pm.Categorical('y', logit_p=logits, observed=y_int)
 
-			# Configure sampling strategy
-			sampler_kwargs = {}
 			if self.gpu_available:
 				if self.gpu_strategy == 'safe':
 					# Balanced GPU Mode: Parallel chains + GPU, but fewer chains for stability
 					effective_chains = min(self.chains, 4)  # Keep your original chain count
 					effective_cores = min(self.cores, 4)  # Use multiple cores but not all
-					print(f'🚀 GPU Balanced Mode: {effective_chains} chains across {effective_cores} cores')
-					print('  → Parallel chains + GPU acceleration (fork warnings are OK)')
+					print(f'GPU Balanced Mode: {effective_chains} chains across {effective_cores} cores')
+					print('  Parallel chains + GPU acceleration (fork warnings are OK)')
 				else:
 					# Aggressive GPU Mode: Use everything
 					effective_chains = self.chains
 					effective_cores = self.cores
-					print(f'🚀 GPU Max Mode: {effective_chains} chains across {effective_cores} cores')
-					print('  → Maximum parallelism + GPU (ignore fork warnings)')
+					print(f'GPU Max Mode: {effective_chains} chains across {effective_cores} cores')
+					print('  Maximum parallelism + GPU (ignore fork warnings)')
 			else:
 				# CPU Mode: Use all resources
 				effective_chains = self.chains
 				effective_cores = self.cores
-				print(f'💻 CPU Mode: {effective_chains} chains across {effective_cores} cores')
+				print(f'CPU Mode: {effective_chains} chains across {effective_cores} cores')
 
 			self.idata = pm.sample(
 				draws=self.draws,
@@ -151,10 +149,9 @@ class BayesianCategoricalDosageClassifier:
 				random_seed=self.random_seed,
 				return_inferencedata=True,
 				cores=effective_cores,
-				**sampler_kwargs,
 			)
 
-		self._W_mean = self.idata.posterior['W'].mean(axis=(0, 1)).values
+		self._w_mean = self.idata.posterior['W'].mean(axis=(0, 1)).values
 		self._mu_b_mean = self.idata.posterior['mu_b'].mean(axis=(0, 1)).values
 		return self
 
@@ -181,16 +178,9 @@ class BayesianCategoricalDosageClassifier:
 			# Fallback to global category means
 			intercept = self._mu_b_mean  # shape (3,)
 
-		logits = intercept + Xz @ self._W_mean
+		logits = intercept + Xz @ self._w_mean
 		expz = np.exp(logits - logits.max(axis=1, keepdims=True))
 		return (expz / expz.sum(axis=1, keepdims=True)).astype(np.float32)
-
-	def get_calibration_data(self):
-		if self.idata is None:
-			raise RuntimeError('Model must be fit first.')
-		with pm.Model():
-			ppc = pm.sample_posterior_predictive(self.idata)
-		return ppc
 
 	def predict_class(self, X: np.ndarray, groups: Optional[np.ndarray] = None) -> np.ndarray:
 		p = self.predict_proba(X, groups=groups)
@@ -216,7 +206,7 @@ class BayesianCategoricalDosageClassifier:
 			'tag': self.tag,
 			'feature_mean': self.feature_mean_.tolist(),
 			'feature_std': self.feature_std_.tolist(),
-			'posterior_means': {'W': self._W_mean.tolist(), 'mu_b': self._mu_b_mean.tolist()},
+			'posterior_means': {'W': self._w_mean.tolist(), 'mu_b': self._mu_b_mean.tolist()},
 			'params': {
 				'draws': self.draws,
 				'tune': self.tune,
@@ -239,6 +229,6 @@ class BayesianCategoricalDosageClassifier:
 
 		m.feature_mean_ = np.array(meta['feature_mean'], dtype=np.float32)
 		m.feature_std_ = np.array(meta['feature_std'], dtype=np.float32)
-		m._W_mean = np.array(meta['posterior_means']['W'], dtype=np.float32)
+		m._w_mean = np.array(meta['posterior_means']['W'], dtype=np.float32)
 		m._mu_b_mean = np.array(meta['posterior_means']['mu_b'], dtype=np.float32)
 		return m

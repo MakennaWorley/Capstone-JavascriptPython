@@ -9,7 +9,6 @@ type DatasetDashboardProps = {
 	apiBase: string;
 	xApiKey: string;
 	selectedDataset: string;
-	maxPreviewRows?: number;
 };
 
 type CsvPreview = {
@@ -90,7 +89,7 @@ function clampText(s: string, maxLen = 80): string {
 	return `${s.slice(0, maxLen - 1)}…`;
 }
 
-export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, maxPreviewRows = 10 }: DatasetDashboardProps) {
+export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: DatasetDashboardProps) {
 	const theme = useTheme();
 	const [loading, setLoading] = useState(false);
 	const [showLoadingProgress, setShowLoadingProgress] = useState(false);
@@ -112,9 +111,6 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 			setShowLoadingProgress(false);
 		}
 	}, [loading]);
-
-	const canLoad = selectedDataset.trim().length > 0 && !loading;
-	const hasLoadedDashboard = !!(data.observedCsvRaw || data.truthCsvRaw);
 
 	// Previews
 	const MAX_PARSE_ROWS = 1000;

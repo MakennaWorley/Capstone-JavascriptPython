@@ -38,8 +38,6 @@ export default function App() {
 	const API_BASE = import.meta.env.VITE_API_BASE;
 	const API_KEY = import.meta.env.VITE_X_API_KEY;
 
-	const [msg, setMsg] = useState<string | null>(null);
-	const [status, setStatus] = useState('');
 	const [selectedDataset, setSelectedDataset] = useState<string>('');
 	const [selectedModel, setSelectedModel] = useState<Model | null>(null);
 	const [testResults, setTestResults] = useState<{
@@ -48,6 +46,16 @@ export default function App() {
 		images: unknown;
 		predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }>;
 	} | null>(null);
+
+	function handleSelectDataset(dataset: string) {
+		setSelectedDataset(dataset);
+		setTestResults(null);
+	}
+
+	function handleSelectModel(model: Model | null) {
+		setSelectedModel(model);
+		setTestResults(null);
+	}
 	const [debugMode, setDebugMode] = useState(false);
 	const [showCreateDatasetModal, setShowCreateDatasetModal] = useState(false);
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -138,7 +146,11 @@ export default function App() {
 				/>
 
 				{/* Main Content */}
-				<Box component="main" id="main-content" sx={{ flex: 1, overflowY: 'auto', padding: '2rem' }}>
+				<Box
+					component="main"
+					id="main-content"
+					sx={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column' }}
+				>
 					{/* Debug Features - Only visible when debug mode is ON */}
 					{debugMode && (
 						<Box sx={{ marginBottom: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center', height: 'fit-content' }}>
@@ -181,6 +193,15 @@ export default function App() {
 							</Box>
 						</Box>
 					)}
+
+					<Box sx={{ mb: 2.5 }}>
+						<Typography variant="h4" fontWeight="bold" sx={{ color: darkMode ? '#9d91f5' : '#452ee4', mb: 0.75 }}>
+							Probabilistic Ancestral Inference
+						</Typography>
+						<Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
+							A research capstone project exploring ancestral genotype reconstruction using Bayesian models, HMMs, DNNs, and GNNs.
+						</Typography>
+					</Box>
 
 					<Box sx={{ mb: 2.5 }}>
 						<Typography variant="h2" fontWeight="bold" sx={{ color: 'var(--color-primary-accent)', mb: 0.75 }}>
@@ -273,8 +294,10 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">
-									<h2>Dataset Dashboard</h2>
+								<Typography variant="h6" fontWeight="bold">
+									<h2>
+									Dataset Dashboard</h2>
+								
 								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
@@ -339,6 +362,34 @@ export default function App() {
 							</AccordionDetails>
 						</Accordion>
 					)}
+					<Box
+						component="footer"
+						sx={{
+							mt: 'auto',
+							pt: 4,
+							pb: 1,
+							textAlign: 'center',
+							borderTop: '1px solid',
+							borderColor: 'divider'
+						}}
+					>
+						<Typography variant="body2" sx={{ color: 'text.secondary' }}>
+							&copy; {new Date().getFullYear()}{' '}
+							<Box
+								component="a"
+								href="https://makennaworley.com"
+								target="_blank"
+								rel="noopener noreferrer"
+								sx={{
+									color: darkMode ? '#9d91f5' : '#452ee4',
+									textDecoration: 'none',
+									'&:hover': { textDecoration: 'underline' }
+								}}
+							>
+								Makenna Worley
+							</Box>
+						</Typography>
+					</Box>
 				</Box>
 
 				{/* Snackbar for Ping FastAPI feedback */}

@@ -29,15 +29,21 @@ sys.modules.update(
 
 # Now safely import model_main and its functions
 from app.model_main import (
+	OutputLogger,
 	_select_model,
 	check_gpu_status,
+	check_model_already_applied,
 	evaluate_with_cross_val,
+	get_applied_models_csv_path,
 	get_optimal_training_config,
+	get_or_create_logs_dir,
 	load_whole_dataset,
+	register_model_application,
 	train_eval,
 	train_eval_all,
 	update_models_csv,
 )
+from app.model_main import test_on_new_data as apply_to_new_data
 
 
 class TestCheckGpuStatus:
@@ -76,33 +82,33 @@ class TestSelectModel:
 
 	def test_select_model_bayes(self):
 		"""Test model selection - Bayes"""
-		ModelCls, tag = _select_model('bayes_softmax3')
+		model_cls, tag = _select_model('bayes_softmax3')
 		assert tag == 'bayes_softmax3'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_sklearn(self):
 		"""Test model selection - Sklearn"""
-		ModelCls, tag = _select_model('multi_log_regression')
+		model_cls, tag = _select_model('multi_log_regression')
 		assert tag == 'multi_log_regression'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_hmm(self):
 		"""Test model selection - HMM"""
-		ModelCls, tag = _select_model('hmm_dosage')
+		model_cls, tag = _select_model('hmm_dosage')
 		assert tag == 'hmm_dosage'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_dnn(self):
 		"""Test model selection - DNN"""
-		ModelCls, tag = _select_model('dnn_dosage')
+		model_cls, tag = _select_model('dnn_dosage')
 		assert tag == 'dnn_dosage'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_gnn(self):
 		"""Test model selection - GNN"""
-		ModelCls, tag = _select_model('gnn_dosage')
+		model_cls, tag = _select_model('gnn_dosage')
 		assert tag == 'gnn_dosage'
-		assert ModelCls is not None
+		assert model_cls is not None
 
 	def test_select_model_invalid(self):
 		"""Test model selection with invalid model"""
@@ -210,3 +216,120 @@ class TestTrainEvalAll:
 
 			assert isinstance(results, dict)
 			assert len(results) > 0
+
+	def test_train_eval_all_skipped_result_structure(self):
+		"""Early-exit result has the expected keys when all models already appear to exist."""
+		# model_paths is fully mocked so paths['meta'].exists() returns a truthy MagicMock
+		# all_exist is True, so the function returns the skipped dict immediately
+		results = train_eval_all('train', 'val', 'test')
+		assert results.get('status') == 'skipped'
+		assert 'reason' in results
+		assert results.get('train_f') == 'train'
+
+
+class TestOutputLogger:
+	"""Tests for OutputLogger context manager"""
+
+	def test_captures_stdout_to_file(self, tmp_path):
+		"""Content printed inside the context manager is written to the log file."""
+		log_path = tmp_path / 'output.txt'
+		with OutputLogger(log_path):
+			print('hello from logger')
+		assert log_path.exists()
+		assert 'hello from logger' in log_path.read_text()
+
+	def test_restores_stdout_after_exit(self, tmp_path):
+		"""sys.stdout is restored to the original stream after the context manager exits."""
+		import sys as _sys
+
+		original_stdout = _sys.stdout
+		log_path = tmp_path / 'output.txt'
+		with OutputLogger(log_path):
+			pass
+		assert _sys.stdout is original_stdout
+
+
+class TestGetOrCreateLogsDir:
+	"""Tests for get_or_create_logs_dir function"""
+
+	def test_creates_directory_if_missing(self, tmp_path):
+		"""Creates the directory (including parents) when it does not exist."""
+		new_dir = tmp_path / 'sub' / 'logs'
+		result = get_or_create_logs_dir(new_dir)
+		assert new_dir.exists()
+		assert result == new_dir
+
+	def test_returns_path_if_already_exists(self, tmp_path):
+		"""Returns the path without error when the directory already exists."""
+		result = get_or_create_logs_dir(tmp_path)
+		assert result == tmp_path
+
+
+class TestGetAppliedModelsCsvPath:
+	"""Tests for get_applied_models_csv_path function"""
+
+	def test_returns_applied_models_csv_inside_logs_dir(self, tmp_path):
+		"""Path ends with 'applied_models.csv' inside the given logs_dir."""
+		result = get_applied_models_csv_path(tmp_path)
+		assert result.name == 'applied_models.csv'
+		assert result.parent == tmp_path
+
+
+class TestCheckModelAlreadyApplied:
+	"""Tests for check_model_already_applied function"""
+
+	def test_returns_none_when_no_csv(self, tmp_path):
+		"""Returns None when applied_models.csv does not exist."""
+		result = check_model_already_applied('model', 'type', 'data', logs_dir=tmp_path)
+		assert result is None
+
+	def test_returns_none_when_not_in_csv(self, tmp_path):
+		"""Returns None when the model/type/data combination is not in the CSV."""
+		register_model_application('other_model', 'bayes', 'data', 'log.txt', 'graph.png', 'cm.png', logs_dir=tmp_path)
+		result = check_model_already_applied('model', 'bayes', 'data', logs_dir=tmp_path)
+		assert result is None
+
+	def test_returns_cached_result_when_found(self, tmp_path):
+		"""Returns a dict with the expected keys when the entry is found."""
+		register_model_application('mymodel', 'hmm_dosage', 'testdata', '/p/log.txt', '/p/graph.png', '/p/cm.png', logs_dir=tmp_path)
+		result = check_model_already_applied('mymodel', 'hmm_dosage', 'testdata', logs_dir=tmp_path)
+		assert result is not None
+		assert 'log_file' in result
+		assert 'graph_test' in result
+		assert 'graph_cm' in result
+		assert 'applied_date' in result
+
+
+class TestRegisterModelApplication:
+	"""Tests for register_model_application function"""
+
+	def test_creates_csv_and_writes_entry(self, tmp_path):
+		"""Creates applied_models.csv and writes the entry with all fields."""
+		register_model_application('mymodel', 'hmm_dosage', 'testdata', 'log.txt', 'graph.png', 'cm.png', logs_dir=tmp_path)
+		csv_path = tmp_path / 'applied_models.csv'
+		assert csv_path.exists()
+		content = csv_path.read_text()
+		assert 'mymodel' in content
+		assert 'hmm_dosage' in content
+		assert 'testdata' in content
+
+	def test_does_not_write_duplicate(self, tmp_path):
+		"""Calling twice with the same arguments does not add a second row."""
+		for _ in range(2):
+			register_model_application('m', 't', 'd', 'l', 'g', 'c', logs_dir=tmp_path)
+		csv_path = tmp_path / 'applied_models.csv'
+		lines = csv_path.read_text().strip().split('\n')
+		assert len(lines) == 2  # header + 1 entry only
+
+
+class TestTestOnNewData:
+	"""Tests for test_on_new_data function"""
+
+	def test_raises_file_not_found_when_model_missing(self, tmp_path):
+		"""Raises FileNotFoundError when the model meta file does not exist."""
+		meta_mock = MagicMock()
+		meta_mock.exists.return_value = False
+		paths_mock = {'meta': meta_mock, 'idata': MagicMock(), 'dir': tmp_path}
+		with patch('app.model_main.model_paths', return_value=paths_mock):
+			with pytest.raises(FileNotFoundError, match='Model not found'):
+				apply_to_new_data('testdata', 'hmm_dosage', 'mymodel', datasets_dir=tmp_path)
