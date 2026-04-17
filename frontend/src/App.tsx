@@ -17,7 +17,7 @@ import {
 	useMediaQuery
 } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createAppTheme } from './assets/theme/index.js';
 import DatasetDashboard from './components/DatasetDisplayDashboard.js';
 import DatasetModelCreationForm from './components/DatasetModelCreationForm.js';
@@ -57,6 +57,10 @@ export default function App() {
 	const [darkModeOverride, setDarkModeOverride] = useState<boolean | null>(null);
 	const darkMode = darkModeOverride !== null ? darkModeOverride : systemPrefersDark;
 	const theme = useMemo(() => createAppTheme(darkMode ? 'dark' : 'light'), [darkMode]);
+
+	useEffect(() => {
+		document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+	}, [darkMode]);
 
 	// Use RxJS observables for automatic polling (updates every 5 seconds)
 	const { datasets, error: datasetsError, isLoading: datasetsLoading, refresh: refreshDatasets } = useDatasetsPoll(API_BASE, API_KEY, 5000);
@@ -111,15 +115,13 @@ export default function App() {
 			<Box
 				component="a"
 				href="#main-content"
+				className="skip-link"
 				sx={{
 					position: 'absolute',
 					left: '-9999px',
 					zIndex: 9999,
 					padding: '1rem',
-					background: '#452ee4',
-					color: '#fff',
-					textDecoration: 'none',
-					fontWeight: 'bold',
+					background: 'var(--color-primary)',
 					'&:focus': { left: 0, top: 0 }
 				}}
 			>
@@ -144,8 +146,6 @@ export default function App() {
 								variant="contained"
 								onClick={pingBackend}
 								sx={{
-									backgroundColor: '#452ee4',
-									'&:hover': { backgroundColor: '#241291' },
 									flex: 1,
 									padding: '0.5rem 1rem',
 									whiteSpace: 'nowrap'
@@ -162,9 +162,9 @@ export default function App() {
 									gap: '0.5rem'
 								}}
 							>
-								<strong style={{ color: darkMode ? '#7c6bf0' : '#452ee4' }}>Datasets:</strong>{' '}
-								{datasetsLoading ? 'Loading...' : `${datasets.length}`}
-								{datasetsError && <span style={{ color: darkMode ? '#ff6b6b' : '#c62828' }}> - Error: {datasetsError}</span>}
+							<strong className="text-accent">Datasets:</strong>{' '}
+							{datasetsLoading ? 'Loading...' : `${datasets.length}`}
+							{datasetsError && <span className="text-unknown"> - Error: {datasetsError}</span>}
 							</Box>
 
 							<Box
@@ -175,39 +175,39 @@ export default function App() {
 									gap: '0.5rem'
 								}}
 							>
-								<strong style={{ color: darkMode ? '#7c6bf0' : '#452ee4' }}>Models:</strong>{' '}
-								{modelsLoading ? 'Loading...' : `${models.length}`}
-								{modelsError && <span style={{ color: darkMode ? '#ff6b6b' : '#c62828' }}> - Error: {modelsError}</span>}
+							<strong className="text-accent">Models:</strong>{' '}
+							{modelsLoading ? 'Loading...' : `${models.length}`}
+							{modelsError && <span className="text-unknown"> - Error: {modelsError}</span>}
 							</Box>
 						</Box>
 					)}
 
 					<Box sx={{ mb: 2.5 }}>
-						<Typography variant="h2" fontWeight="bold" sx={{ color: darkMode ? '#9d91f5' : '#452ee4', mb: 0.75 }}>
+						<Typography variant="h2" fontWeight="bold" sx={{ color: 'var(--color-primary-accent)', mb: 0.75 }}>
 							Probabilistic Ancestral Inference
 						</Typography>
 						<Typography variant="subtitle1" sx={{ color: 'text.secondary', mb: 1 }}>
 							A research capstone project exploring ancestral genotype reconstruction using <strong>Bayesian Models</strong>,{' '}
 							<strong>HMMs</strong>, <strong>DNNs</strong>, and <strong>GNNs</strong>.
 						</Typography>
-						<p style={{ margin: '0.5rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
+						<p className="context-text">
 							<strong>Stochastic</strong> — involving random probability and unpredictability where future states cannot be precisely
 							determined. In genetics, this manifests as missing or unobservable data: ancestors whose genotypes were never sequenced
 							due to cost, sample degradation, or ethical constraints.
 						</p>
-						<p style={{ margin: '0.75rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
+						<p className="context-text">
 							In genetics research, it is common for ancestors to be unsequenced — grandparents or earlier relatives may be deceased,
 							unavailable, or too costly to sequence. These gaps in family trees limit our ability to reconstruct inheritance patterns,
 							predict hereditary traits, and model population history. If we simply ignore these gaps, our analysis becomes biased and
 							our understanding of family inheritance patterns falls apart. This project tackles that gap computationally.
 						</p>
-						<p style={{ margin: '0.75rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
+						<p className="context-text">
 							The system uses{' '}
 							<a
 								href="https://pubmed.ncbi.nlm.nih.gov/34897427/"
 								target="_blank"
 								rel="noopener noreferrer"
-								style={{ color: darkMode ? '#9d91f5' : '#452ee4' }}
+								className="text-accent"
 							>
 								<strong>msprime</strong>
 							</a>{' '}
@@ -220,7 +220,7 @@ export default function App() {
 							<strong>Graph Neural Network</strong> (PyTorch Geometric, using pedigree structure as the graph), and a{' '}
 							<strong>Multinomial Logistic Regression</strong> baseline (scikit-learn).
 						</p>
-						<p style={{ margin: '0.75rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
+						<p className="context-text">
 							Each model predicts the <strong>allele dosage</strong> (0, 1, or 2 copies of the alternate allele) for every masked
 							individual at every genomic site. Predictions are then compared against the known ground truth and evaluated using
 							precision, recall, F1-score, ROC and precision-recall curves, confusion matrices, and calibration plots. The goal is not
@@ -229,14 +229,14 @@ export default function App() {
 						</p>
 					</Box>
 
-					<div style={{ marginTop: '1.25rem' }}>
-						<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+					<div className="selector-grid">
+						<div className="grid-2col">
 							<div>
-								<span style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Dataset</span>
+								<span className="selector-label">Dataset</span>
 								<DatasetSelector datasets={datasets} selected={selectedDataset} onSelect={handleDatasetSelect} />
 							</div>
 							<div>
-								<span style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Model</span>
+								<span className="selector-label">Model</span>
 								<ModelSelector models={models} selected={selectedModel} onSelect={handleModelSelect} />
 							</div>
 						</div>
@@ -248,7 +248,6 @@ export default function App() {
 								size="small"
 								variant="contained"
 								onClick={() => setPanelOpen({ dataset: true, model: true, test: true })}
-								sx={{ backgroundColor: '#452ee4', '&:hover': { backgroundColor: '#241291' } }}
 							>
 								Expand All
 							</Button>
@@ -256,7 +255,6 @@ export default function App() {
 								size="small"
 								variant="contained"
 								onClick={() => setPanelOpen({ dataset: false, model: false, test: false })}
-								sx={{ backgroundColor: '#452ee4', '&:hover': { backgroundColor: '#241291' } }}
 							>
 								Collapse All
 							</Button>
@@ -268,17 +266,11 @@ export default function App() {
 							expanded={panelOpen.dataset}
 							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, dataset: expanded }))}
 							slotProps={{ transition: { unmountOnExit: false } }}
-							sx={{
-								mt: 2,
-								'&:before': { display: 'none' },
-								border: `1px solid`,
-								borderColor: 'divider',
-								borderRadius: '8px !important',
-								boxShadow: 'none'
-							}}
+							className="panel-accordion"
+							sx={{ mt: 2 }}
 						>
 							<AccordionSummary
-								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
+								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
 								<Typography fontWeight="bold">
@@ -296,17 +288,11 @@ export default function App() {
 							expanded={panelOpen.model}
 							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, model: expanded }))}
 							slotProps={{ transition: { unmountOnExit: false } }}
-							sx={{
-								mt: 2,
-								'&:before': { display: 'none' },
-								border: `1px solid`,
-								borderColor: 'divider',
-								borderRadius: '8px !important',
-								boxShadow: 'none'
-							}}
+							className="panel-accordion"
+							sx={{ mt: 2 }}
 						>
 							<AccordionSummary
-								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
+								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
 								<Typography fontWeight="bold">
@@ -324,17 +310,11 @@ export default function App() {
 							expanded={panelOpen.test}
 							onChange={(_, expanded) => setPanelOpen((p) => ({ ...p, test: expanded }))}
 							slotProps={{ transition: { unmountOnExit: false } }}
-							sx={{
-								mt: 2,
-								'&:before': { display: 'none' },
-								border: `1px solid`,
-								borderColor: 'divider',
-								borderRadius: '8px !important',
-								boxShadow: 'none'
-							}}
+							className="panel-accordion"
+							sx={{ mt: 2 }}
 						>
 							<AccordionSummary
-								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
+								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
 								<Typography fontWeight="bold">
@@ -384,38 +364,20 @@ export default function App() {
 					maxWidth="sm"
 					fullWidth
 					PaperProps={{
-						sx: {
-							bgcolor: 'background.paper',
-							borderRadius: '8px',
-							border: '2px solid #452ee4'
-						}
+						className: 'create-dialog'
 					}}
 				>
-					<DialogTitle
-						sx={{
-							display: 'flex',
-							justifyContent: 'space-between',
-							alignItems: 'center',
-							bgcolor: 'background.paper',
-							borderBottom: '2px solid #452ee4',
-							color: 'text.primary'
-						}}
-					>
+					<DialogTitle className="create-dialog-title">
 						Create Dataset
 						<IconButton
 							onClick={() => setShowCreateDatasetModal(false)}
 							aria-label="Close"
-							sx={{
-								color: '#452ee4',
-								'&:hover': {
-									backgroundColor: 'rgba(69, 46, 228, 0.1)'
-								}
-							}}
+							className="create-dialog-close"
 						>
 							<CloseIcon />
 						</IconButton>
 					</DialogTitle>
-					<DialogContent sx={{ p: 3, bgcolor: 'background.paper' }}>
+					<DialogContent sx={{ p: 3 }}>
 						<DatasetModelCreationForm
 							apiBase={API_BASE}
 							xApiKey={API_KEY}

@@ -1,7 +1,19 @@
+@use 'variables';
+@use 'layout';
+@use 'typography';
+@use 'tables';
+@use 'sidebar';
+@use 'cards';
+@use 'dialogs';
+@use 'forms';
+@use 'accordion';
+@use 'alerts';
+@use 'legends';
+@use 'loading';
+@use 'family-tree';
+
 :root {
 	font-family: Arial, sans-serif;
-	line-height: 1.5;
-	font-weight: 400;
 
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
@@ -26,8 +38,23 @@ body {
 }
 
 h1 {
-	font-size: 3.2em;
-	line-height: 1.1;
+	font-size: 3em;
+	line-height: 1.5;
+}
+
+h2 {
+	font-size: 2em;
+	line-height: 1.25;
+}
+
+h3 {
+	font-size: 1.5em;
+	line-height: 1;
+}
+
+p {
+	font-size: 1em;
+	line-height: 1;
 }
 
 button {

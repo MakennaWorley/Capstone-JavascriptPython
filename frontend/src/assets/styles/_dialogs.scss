@@ -1,0 +1,26 @@
+@use 'variables' as *;
+
+// ── Create Dataset Dialog ──
+.create-dialog {
+    .MuiDialog-paper {
+        border-radius: $radius-lg;
+        border: 2px solid $color-primary;
+    }
+}
+
+.create-dialog-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid $color-primary;
+}
+
+.create-dialog-close {
+    &.MuiIconButton-root {
+        color: $color-primary;
+
+        &:hover {
+            background-color: $color-primary-bg;
+        }
+    }
+}

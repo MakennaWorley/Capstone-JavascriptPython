@@ -123,30 +123,30 @@ export default function FamilyTreeVisualization({ data }: Props) {
 	const hovered = hoveredNode !== null ? layout.nodesById.get(hoveredNode) : undefined;
 
 	return (
-		<div style={{ padding: '1rem', borderRadius: '12px' }}>
+		<div className="family-tree">
 			<h2>
 				Family Tree: {data.dataset} focusing on individual {data.focus_id}
 			</h2>
 
-			<p style={{ margin: '0 0 0.75rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
+			<p className="context-text">
 				This diagram shows the immediate family connections for the selected individual. Each circle represents a person in the simulated
 				pedigree. The <strong>vertical axis</strong> corresponds to generation — individuals higher up are older ancestors, while those lower
 				down are descendants. Only direct connections are shown: the parents above and children below the selected individual.
 			</p>
-			<p style={{ margin: '0 0 1rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
-				<span style={{ color: theme.palette.mode === 'dark' ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Green</span> nodes represent
+			<p className="context-text">
+				<span className="text-known">Green</span> nodes represent
 				individuals whose genotypes were successfully sequenced and are present in the dataset.
-				<span style={{ color: theme.palette.mode === 'dark' ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}> Red</span> nodes represent
+				<span className="text-unknown"> Red</span> nodes represent
 				individuals who were never sequenced — their genotypes are missing and must be inferred by the model using information from their
 				relatives. The <strong>blue</strong> node is the currently selected individual. Hover over any node to inspect its genotype values.
 			</p>
 
-			<div style={{ position: 'relative' }}>
-				<div style={{ overflowX: 'auto', position: 'relative' }}>
+			<div className="tree-svg-wrapper">
+				<div className="tree-svg-scroll">
 					<svg
 						width={WIDTH}
 						height={HEIGHT}
-						style={{ border: `1px solid ${theme.palette.divider}`, background: theme.palette.background.default }}
+						className="tree-svg"
 						role="img"
 						aria-label={`Family tree diagram for ${data.dataset}, focused on individual ${data.focus_id}`}
 					>
@@ -367,7 +367,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							return (
 								<g
 									key={node.id}
-									style={{ cursor: 'pointer' }}
+									className="tree-node"
 									role="img"
 									aria-label={`Individual ${node.id}${isFocus ? ' (focus)' : ''}, ${hasGenetics ? 'known' : 'unknown'} genotype`}
 								>
@@ -425,34 +425,14 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							const rawY = Math.min(Math.max(hovered.y - TH / 2, 4), HEIGHT - TH - 4);
 							return (
 								<div
-									style={{
-										position: 'absolute',
-										left: rawX,
-										top: rawY,
-										width: TW,
-										pointerEvents: 'none',
-										background: theme.palette.background.paper,
-										border: `1px solid ${theme.palette.divider}`,
-										borderRadius: 6,
-										padding: '6px 10px',
-										boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-										fontSize: '0.75rem',
-										color: theme.palette.text.primary,
-										zIndex: 10
-									}}
+									className="tree-tooltip"
+									style={{ left: rawX, top: rawY }}
 								>
-									<div
-										style={{
-											fontWeight: 'bold',
-											marginBottom: 4,
-											borderBottom: `1px solid ${theme.palette.divider}`,
-											paddingBottom: 3
-										}}
-									>
+									<div className="tree-tooltip-header">
 										Individual {hovered.node.id}
 									</div>
-									<div style={{ opacity: 0.7, marginBottom: 2 }}>Genotypes (first 20):</div>
-									<div style={{ wordBreak: 'break-all', lineHeight: 1.4 }}>
+								<div className="tree-tooltip-label">Genotypes (first 20):</div>
+								<div className="tree-tooltip-values">
 										{hovered.node.observed
 											.slice(0, 20)
 											.map((v) => (v === null ? '?' : v))
@@ -465,48 +445,21 @@ export default function FamilyTreeVisualization({ data }: Props) {
 				</div>
 			</div>
 
-			<p style={{ fontSize: '0.8rem', marginTop: '10px', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', opacity: 0.8 }}>
-				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-					<span
-						style={{
-							display: 'inline-block',
-							width: 12,
-							height: 12,
-							borderRadius: '50%',
-							backgroundColor: '#2563eb',
-							border: '2px solid #1d4ed8'
-						}}
-					/>
-					<span style={{ fontWeight: 'bold' }}>Focused Individual</span>
+			<p className="tree-legend">
+				<span className="legend-item">
+					<span className="legend-circle legend-circle-focus" />
+					<span className="text-bold">Focused Individual</span>
 				</span>
-				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-					<span
-						style={{
-							display: 'inline-block',
-							width: 12,
-							height: 12,
-							borderRadius: '50%',
-							backgroundColor: '#bbf7d0',
-							border: '2px solid #16a34a'
-						}}
-					/>
-					<span style={{ color: theme.palette.mode === 'dark' ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Known genotype</span>
+				<span className="legend-item">
+					<span className="legend-circle legend-circle-known" />
+					<span className="text-known">Known genotype</span>
 				</span>
-				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-					<span
-						style={{
-							display: 'inline-block',
-							width: 12,
-							height: 12,
-							borderRadius: '50%',
-							backgroundColor: '#fecaca',
-							border: '2px solid #dc2626'
-						}}
-					/>
-					<span style={{ color: theme.palette.mode === 'dark' ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Unknown genotype</span>
+				<span className="legend-item">
+					<span className="legend-circle legend-circle-unknown" />
+					<span className="text-unknown">Unknown genotype</span>
 				</span>
-				<span style={{ opacity: 0.7 }}>Vertical axis = Time. Click on the nodes to see genotype vectors.</span>
-				<span style={{ opacity: 0.7 }}>
+				<span className="empty-state">Vertical axis = Time. Click on the nodes to see genotype vectors.</span>
+				<span className="empty-state">
 					Shows direct connections only — parents and children of the selected node. Siblings and partners are not shown.
 				</span>
 			</p>

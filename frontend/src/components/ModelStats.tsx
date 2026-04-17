@@ -76,7 +76,6 @@ function formatValue(v: any): string {
 }
 
 export default function ModelStats({ paths, testMetrics, images, debugMode = false, predictionErrors }: ModelStatsProps) {
-	const theme = useTheme();
 	const [rowPageIndex, setRowPageIndex] = useState(0);
 	const [nerdsMode, setNerdsMode] = useState(false);
 	const [modalGraph, setModalGraph] = useState<'test' | 'cm' | null>(null);
@@ -86,9 +85,9 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 
 	if (!paths && !images && !testMetrics) {
 		return (
-			<div style={{ marginTop: '2rem' }}>
-				<h2 style={{ marginTop: 0 }}>Model Statistics</h2>
-				<p style={{ opacity: 0.7 }}>No test results available. Run a test first.</p>
+			<div className="section-top">
+				<h2 className="heading-flush">Model Statistics</h2>
+				<p className="empty-state">No test results available. Run a test first.</p>
 			</div>
 		);
 	}
@@ -96,31 +95,28 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 	const metricRows = testMetrics ? Object.entries(testMetrics as Record<string, any>).filter(([k]) => !SKIP_KEYS.has(k)) : [];
 
 	return (
-		<div style={{ marginTop: '2rem' }}>
-			<h2 style={{ marginTop: 0 }}>Model Statistics</h2>
+		<div className="section-top">
+			<h2 className="heading-flush">Model Statistics</h2>
 
 			{/* Summary sentence */}
 			{testMetrics && (
-				<p style={{ marginBottom: '1.25rem' }}>
+				<p className="para-intro">
 					Model <strong>{testMetrics.model ?? '—'}</strong> was applied to dataset <strong>{testMetrics.dataset ?? '—'}</strong>.
 				</p>
 			)}
 
 			{/* Metrics table */}
 			{metricRows.length > 0 && (
-				<div style={{ marginBottom: '2rem' }}>
-					<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-						<h2 style={{ margin: 0 }}>Test Metrics</h2>
+				<div className="section-mb-xl">
+					<div className="flex-between-mb-lg">
+						<h2 className="heading-flush">Test Metrics</h2>
 						<FormControlLabel
 							control={
 								<Switch
 									checked={nerdsMode}
 									onChange={(e) => setNerdsMode(e.target.checked)}
 									size="small"
-									sx={{
-										'& .MuiSwitch-switchBase.Mui-checked': { color: '#452ee4' },
-										'& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#452ee4' }
-									}}
+									className="purple-switch"
 								/>
 							}
 							label="Stats for Nerds"
@@ -163,14 +159,14 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 
 			{/* Graphs Section */}
 			{images && (images.graph_test_base64 || images.graph_cm_base64) && (
-				<div style={{ marginBottom: '2rem' }}>
+				<div className="section-mb-xl">
 					<h1>Performance Graphs</h1>
-					<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1rem' }}>
+					<div className="graphs-grid">
 						{images.graph_test_base64 && (
-							<div style={{ gridColumn: 'span 2' }}>
-								<h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Test Performance</h2>
+						<div className="col-span-2">
+								<h2 className="section-heading">Test Performance</h2>
 								{nerdsMode ? (
-									<p style={{ margin: '0 0 1rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+									<p className="description-text">
 										Side-by-side one-vs-rest curves for all three dosage classes (0 = homozygous reference, 1 = heterozygous, 2 =
 										homozygous alt). <strong>Left — ROC curve:</strong> True Positive Rate (sensitivity) vs False Positive Rate (1
 										− specificity) as the classification threshold is swept from 1 → 0. The dashed diagonal is the random-chance
@@ -182,8 +178,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 										means the model only predicts a class when very confident but misses many true positives.
 									</p>
 								) : (
-									<p style={{ margin: '0 0 1rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
-										This chart shows two ways of measuring how well the model distinguishes between dosage 0, 1, and 2 — one line
+									<p className="description-text"> how well the model distinguishes between dosage 0, 1, and 2 — one line
 										per class. <strong>Left (ROC curves):</strong> Each line traces the trade-off between correctly identifying a
 										dosage class and accidentally mislabelling others as that type. A line hugging the top-left corner is ideal;
 										the dashed diagonal means no better than a coin flip. The AUC number in the legend summarises this — 1.0 is
@@ -196,21 +191,15 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 									src={`data:image/png;base64,${images.graph_test_base64}`}
 									alt="Test Performance Graph"
 									onClick={() => setModalGraph('test')}
-									style={{
-										width: '100%',
-										height: 'auto',
-										borderRadius: '4px',
-										filter: theme.palette.mode === 'dark' ? 'invert(1) hue-rotate(180deg)' : 'none',
-										cursor: 'zoom-in'
-									}}
+									className="dark-mode-image"
 								/>
 							</div>
 						)}
 						{images.graph_cm_base64 && (
-							<div style={{ gridColumn: 'span 1' }}>
-								<h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Confusion Matrix</h2>
+						<div>
+								<h2 className="section-heading">Confusion Matrix</h2>
 								{nerdsMode ? (
-									<p style={{ margin: '0 0 1rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+									<p className="description-text">
 										A 3×3 matrix where rows index the true dosage class and columns index the predicted class. Diagonal cells
 										(top-left → bottom-right) are correct classifications; all off-diagonal cells are errors. Cell colour
 										intensity is proportional to count, making systematic biases immediately visible. Common failure modes: high
@@ -219,7 +208,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 										well-calibrated model will have a strongly diagonal matrix with near-zero off-diagonal counts.
 									</p>
 								) : (
-									<p style={{ margin: '0 0 1rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+									<p className="description-text">
 										This grid shows every combination of what the model predicted (columns) versus what was actually true (rows).
 										The numbers along the diagonal (top-left to bottom-right) are correct predictions. Anything off the diagonal
 										is a mistake — for example, a number in the "True: 1, Predicted: 0" cell means the model thought someone had
@@ -232,13 +221,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 									src={`data:image/png;base64,${images.graph_cm_base64}`}
 									alt="Confusion Matrix"
 									onClick={() => setModalGraph('cm')}
-									style={{
-										width: '100%',
-										height: 'auto',
-										borderRadius: '4px',
-										filter: theme.palette.mode === 'dark' ? 'invert(1) hue-rotate(180deg)' : 'none',
-										cursor: 'zoom-in'
-									}}
+									className="dark-mode-image"
 								/>
 							</div>
 						)}
@@ -257,7 +240,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 				<DialogContent dividers>
 					{modalGraph === 'test' ? (
 						<>
-							<p style={{ margin: '0 0 1.25rem', lineHeight: '1.7', opacity: 0.85 }}>
+							<p className="context-text">
 								{nerdsMode ? (
 									<>
 										Side-by-side one-vs-rest curves for all three dosage classes (0 = homozygous reference, 1 = heterozygous, 2 =
@@ -285,17 +268,12 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							<img
 								src={`data:image/png;base64,${images?.graph_test_base64}`}
 								alt="Test Performance Graph"
-								style={{
-									width: '100%',
-									height: 'auto',
-									borderRadius: '4px',
-									filter: theme.palette.mode === 'dark' ? 'invert(1) hue-rotate(180deg)' : 'none'
-								}}
+								className="dark-mode-image-static"
 							/>
 						</>
 					) : (
 						<>
-							<p style={{ margin: '0 0 1.25rem', lineHeight: '1.7', opacity: 0.85 }}>
+							<p className="context-text">
 								{nerdsMode ? (
 									<>
 										A 3×3 matrix where rows index the true dosage class and columns index the predicted class. Diagonal cells
@@ -319,12 +297,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							<img
 								src={`data:image/png;base64,${images?.graph_cm_base64}`}
 								alt="Confusion Matrix"
-								style={{
-									width: '100%',
-									height: 'auto',
-									borderRadius: '4px',
-									filter: theme.palette.mode === 'dark' ? 'invert(1) hue-rotate(180deg)' : 'none'
-								}}
+								className="dark-mode-image-static"
 							/>
 						</>
 					)}
@@ -333,44 +306,38 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 
 			{/* Raw JSON dump — debug only */}
 			{debugMode && testMetrics && (
-				<div style={{ marginBottom: '2rem' }}>
+				<div className="section-mb-xl">
 					<h4>Raw Response</h4>
-					<div
-						style={{
-							padding: '1rem',
-							borderRadius: '4px',
-							border: `1px solid ${theme.palette.divider}`
-						}}
-					>
-						<pre style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.6' }}>{JSON.stringify(testMetrics, null, 2)}</pre>
+					<div className="debug-output">
+						<pre>{JSON.stringify(testMetrics, null, 2)}</pre>
 					</div>
 				</div>
 			)}
 
 			{/* Context: why results look the way they do */}
 			{testMetrics && (
-				<div style={{ marginTop: '2rem', marginBottom: '0.5rem' }}>
-					<h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Understanding the Results</h2>
-					<p style={{ marginTop: 0, marginBottom: '0.75rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+				<div className="section-top mb-sm">
+					<h2 className="section-heading">Understanding the Results</h2>
+					<p className="description-text">
 						<strong>The Test Lab:</strong> To evaluate whether models actually work, a dataset where the ground truth is known is required
 						— something impossible with real sequencing data. msprime (Baumdicker et al., <em>Genetics</em>, 2022) was used to simulate
 						entire biological histories and ancestral lineages. A fraction of individuals were then masked — their genotypes hidden — to
 						simulate the real-world condition of absent family members. The model you just tested was evaluated on that held-out masked
 						data.
 					</p>
-					<p style={{ marginTop: 0, marginBottom: '0.75rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+					<p className="description-text">
 						<strong>Why isn't it 100%?</strong> Reconstructing the past is a game of probability, not certainty. While the best models are
 						roughly <strong>2× more accurate than random guessing</strong>, they struggle as data becomes sparse. Just as a detective
 						can't solve a case with zero clues, the models lose accuracy when relatives are too far apart in the pedigree to provide a
 						clear mathematical trail.
 					</p>
-					<p style={{ marginTop: 0, marginBottom: '0.75rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+					<p className="description-text">
 						<strong>What I Figured Out:</strong> The most important takeaway is that pedigree structure contains a real, exploitable
 						signal — even when significant portions of ancestors are missing, the surrounding relatives provide enough context for models
 						to reconstruct genotypes better than guessing. However, performance degrades sharply as dataset scale increases, pointing to a
 						fundamental limit: the signal from relatives weakens as data gets sparser.
 					</p>
-					<p style={{ marginTop: 0, marginBottom: 0, lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+					<p className="description-text para-flush">
 						<strong>Obstacles:</strong> Accuracy dropped from <strong>~63% on the tiny dataset</strong> to as low as{' '}
 						<strong>~17% (HMM)</strong> and <strong>~37% (DNN, logistic regression)</strong> on the medium dataset. The hardest case to
 						predict was always the <strong>heterozygous genotype</strong> (dosage&nbsp;=&nbsp;1), because it is the most ambiguous under
@@ -382,10 +349,10 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 
 			{/* Prediction Error Analysis */}
 			{predictionErrors != null && (
-				<div style={{ marginTop: '2rem' }}>
-					<h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Prediction Error Analysis</h2>
+				<div className="section-top">
+					<h2 className="section-heading">Prediction Error Analysis</h2>
 					{nerdsMode ? (
-						<p style={{ marginTop: 0, marginBottom: '0.75rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+						<p className="description-text">
 							Exhaustive list of every site × individual pair where the model's argmax prediction did not match the ground-truth dosage
 							label. Each row shows the individual ID, the genomic site identifier, the predicted dosage class (0, 1, or 2), and the
 							true dosage. Errors are recorded after Phase 3 evaluation on the held-out test split only — training and validation errors
@@ -395,7 +362,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							count are shown below.
 						</p>
 					) : (
-						<p style={{ marginTop: 0, marginBottom: '0.75rem', lineHeight: '1.6', opacity: 0.85, fontSize: '0.9rem' }}>
+						<p className="description-text">
 							This table lists every single genotype call where the model got it wrong — the individual, the genomic site, what the
 							model predicted, and what the true answer actually was. It only covers the final held-out test group, so these are
 							mistakes the model made on people it had never seen before. Scrolling through this table can help spot patterns: for
@@ -404,7 +371,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							the model with less information to work from.
 						</p>
 					)}
-					<p style={{ marginTop: 0, marginBottom: '0.75rem', opacity: 0.8, fontSize: '0.875rem' }}>
+					<p className="context-text">
 						{predictionErrors.length} error{predictionErrors.length !== 1 ? 's' : ''} across {uniqueErrorSites} site
 						{uniqueErrorSites !== 1 ? 's' : ''}
 					</p>
@@ -462,26 +429,19 @@ function PredictionErrorTable({ errors }: { errors: PredictionError[] }) {
 						{pagedErrors.map((e, ridx) => (
 							<TableRow key={ridx} hover>
 								<TableCell
+									className="sticky-col"
 									sx={{
-										whiteSpace: 'nowrap',
-										position: 'sticky',
-										left: 0,
 										backgroundColor:
 											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
-										zIndex: 9
 									}}
 								>
 									{e.individual}
 								</TableCell>
 								<TableCell sx={{ whiteSpace: 'nowrap' }}>{e.site}</TableCell>
-								<TableCell
-									sx={{ whiteSpace: 'nowrap', color: theme.palette.mode === 'dark' ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}
-								>
+								<TableCell className="cell-predicted">
 									{e.predicted}
 								</TableCell>
-								<TableCell
-									sx={{ whiteSpace: 'nowrap', color: theme.palette.mode === 'dark' ? '#00aa00' : '#2e7d32', fontWeight: 'bold' }}
-								>
+								<TableCell className="cell-actual">
 									{e.actual}
 								</TableCell>
 							</TableRow>

@@ -1,5 +1,4 @@
 import { FormControlLabel, Switch } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 
 type Model = {
@@ -195,27 +194,22 @@ const FALLBACK_INFO = {
 };
 
 export default function ModelDashboard({ model }: ModelDashboardProps) {
-	const theme = useTheme();
-	const isDark = theme.palette.mode === 'dark';
 	const info = MODEL_TYPE_INFO[model.model_type] ?? FALLBACK_INFO;
 	const [statsForNerds, setStatsForNerds] = useState(false);
 	const sizeKey = model.model_name?.toLowerCase() ?? '';
 	const sizeBlurb = MODEL_SIZE_INFO[sizeKey];
 
 	return (
-		<div style={{ marginTop: '1.25rem' }}>
-			<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-				<h3 style={{ margin: 0 }}>Model Dashboard</h3>
+		<div className="dashboard-wrapper">
+			<div className="dashboard-header">
+				<h3 className="heading-flush">Model Dashboard</h3>
 				<FormControlLabel
 					control={
 						<Switch
 							checked={statsForNerds}
 							onChange={(e) => setStatsForNerds(e.target.checked)}
 							size="small"
-							sx={{
-								'& .MuiSwitch-switchBase.Mui-checked': { color: '#452ee4' },
-								'& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#452ee4' }
-							}}
+							className="purple-switch"
 						/>
 					}
 					label="Stats for Nerds"
@@ -225,69 +219,30 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 			</div>
 
 			{/* Identity */}
-			<div
-				style={{
-					display: 'grid',
-					gridTemplateColumns: '1fr 1fr',
-					gap: '1rem',
-					marginBottom: '1.5rem'
-				}}
-			>
-				<div
-					style={{
-						padding: '1rem',
-						borderRadius: '6px',
-						border: `1px solid ${theme.palette.divider}`
-					}}
-				>
-					<p
-						style={{
-							margin: 0,
-							fontSize: '0.75rem',
-							color: theme.palette.text.secondary,
-							textTransform: 'uppercase',
-							letterSpacing: '0.05em'
-						}}
-					>
-						Model Size
-					</p>
-					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>
+			<div className="grid-2col-mb">
+				<div className="info-card">
+					<p className="info-card-label">Model Size</p>
+					<p className="info-card-value">
 						{model.model_name ? model.model_name.charAt(0).toUpperCase() + model.model_name.slice(1) : model.model_name}
 					</p>
 				</div>
-				<div
-					style={{
-						padding: '1rem',
-						borderRadius: '6px',
-						border: `1px solid ${theme.palette.divider}`
-					}}
-				>
-					<p
-						style={{
-							margin: 0,
-							fontSize: '0.75rem',
-							color: theme.palette.text.secondary,
-							textTransform: 'uppercase',
-							letterSpacing: '0.05em'
-						}}
-					>
-						Model Type
-					</p>
-					<p style={{ margin: '0.4rem 0 0 0', fontSize: '1.1rem', fontWeight: 'bold' }}>{info.label}</p>
+				<div className="info-card">
+					<p className="info-card-label">Model Type</p>
+					<p className="info-card-value">{info.label}</p>
 				</div>
 			</div>
 
 			{/* Dataset size blurb */}
 			{sizeBlurb && (
-				<div style={{ marginBottom: '1.5rem' }}>
-					<h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Training Dataset</h3>
-					<p style={{ margin: 0, lineHeight: '1.6', opacity: 0.85 }}>{sizeBlurb.simple}</p>
+				<div className="section-mb">
+					<h3 className="section-heading">Training Dataset</h3>
+					<p className="description-text">{sizeBlurb.simple}</p>
 					{statsForNerds && (
-						<p style={{ margin: '0.75rem 0 0', lineHeight: '1.6', opacity: 0.85, fontFamily: 'monospace', fontSize: '0.9rem' }}>
+						<p className="nerd-text">
 							{sizeBlurb.nerd}
 						</p>
 					)}
-					<p style={{ margin: '0.75rem 0 0', lineHeight: '1.6', opacity: 0.85 }}>
+					<p className="description-text">
 						All data is fully simulated — every individual is a computer-generated person, and their DNA is produced by a genetic
 						simulator called <strong>msprime</strong> that mimics how real inheritance works. Because the simulation controls everything,
 						the true genotype of every person is always known, even for the ones intentionally left out. This is what lets us measure
@@ -297,37 +252,37 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 			)}
 
 			{/* Training pipeline */}
-			<div style={{ marginBottom: '1.5rem' }}>
-				<h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>{statsForNerds ? 'Training Pipeline' : 'How the Model Was Trained'}</h3>
+			<div className="section-mb">
+				<h3 className="section-heading">{statsForNerds ? 'Training Pipeline' : 'How the Model Was Trained'}</h3>
 				{statsForNerds ? (
-					<div style={{ lineHeight: '1.6', opacity: 0.85 }}>
-						<p style={{ margin: '0 0 0.75rem' }}>
+					<div className="description-text">
+						<p className="para-mb-lg">
 							Training follows a 3-phase pipeline applied to three dataset splits derived from the simulation output.
 						</p>
-						<p style={{ margin: '0 0 0.5rem' }}>
+						<p className="para-mb">
 							<strong>Phase 1 — Initial Training:</strong> The model is fit on the training split using the full labelled feature
 							matrix. For each masked individual at each genomic site, the input feature vector is{' '}
 							<code>[mean_dosage_of_k_hop_relatives, fraction_of_relatives_observed, count_of_relatives]</code>, constructed via k-hop
 							relative aggregation over the pedigree graph. The target is allele dosage (0, 1, or 2).
 						</p>
-						<p style={{ margin: '0 0 0.5rem' }}>
+						<p className="para-mb">
 							<strong>Phase 2 — Cross-Validation &amp; Retraining:</strong> The trained model is evaluated on the validation split using
 							5-fold cross-validation (KFold, shuffle=True, random_state=123). Per-fold metrics are averaged to produce a robust
 							estimate of generalisation performance. The model is then retrained from scratch on the combined train + validation data
 							to maximise the information available before final testing.
 						</p>
-						<p style={{ margin: '0 0 0.75rem' }}>
+						<p className="para-mb-lg">
 							<strong>Phase 3 — Final Evaluation:</strong> The retrained model is applied once to a held-out test split that was never
 							seen during training or cross-validation. Metrics reported here (precision, recall, F1, ROC/PR AUC, confusion matrix) are
 							all computed from this final phase.
 						</p>
-						<p style={{ margin: 0 }}>
+						<p className="para-flush">
 							Results are cached per (model_name, model_type, test_dataset) tuple and served from the log on subsequent requests to
 							avoid redundant recomputation.
 						</p>
 					</div>
 				) : (
-					<p style={{ margin: 0, lineHeight: '1.6', opacity: 0.85 }}>
+					<p className="description-text">
 						Before training, a portion of individuals in the dataset were hidden — their genotypes were removed to simulate real-world
 						missing ancestors. The model was then shown only the remaining individuals and asked to learn the relationship between a
 						person's relatives' DNA and their own. Training happened in stages: first on a core set of examples, then validated and
@@ -338,15 +293,15 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 			</div>
 
 			{/* Description */}
-			<div style={{ marginBottom: '1.5rem' }}>
-				<h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>About this Model</h3>
-				<p style={{ margin: 0, lineHeight: '1.6', opacity: 0.85 }}>{statsForNerds ? info.description : info.simple_description}</p>
+			<div className="section-mb">
+				<h3 className="section-heading">About this Model</h3>
+				<p className="description-text">{statsForNerds ? info.description : info.simple_description}</p>
 			</div>
 
 			{/* Strengths */}
-			<div style={{ marginBottom: '1.5rem' }}>
-				<h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Strengths</h3>
-				<ul style={{ margin: 0, paddingLeft: '1.4rem', lineHeight: '1.8', opacity: 0.85 }}>
+			<div className="section-mb">
+				<h3 className="section-heading">Strengths</h3>
+				<ul className="strengths-list">
 					{(statsForNerds ? info.strengths : info.simple_strengths).map((s) => (
 						<li key={s}>{s}</li>
 					))}
@@ -354,27 +309,11 @@ export default function ModelDashboard({ model }: ModelDashboardProps) {
 			</div>
 
 			{/* Use case */}
-			<div
-				style={{
-					padding: '1rem',
-					backgroundColor: isDark ? '#0d1f0d' : '#e8f5e9',
-					borderRadius: '6px',
-					border: `1px solid ${isDark ? '#1e4d1e' : '#66bb6a'}`
-				}}
-			>
-				<p
-					style={{
-						margin: 0,
-						fontSize: '0.75rem',
-						color: isDark ? '#6fcf6f' : '#2e7d32',
-						textTransform: 'uppercase',
-						letterSpacing: '0.05em',
-						marginBottom: '0.4rem'
-					}}
-				>
+			<div className="use-case-box">
+				<p className="use-case-label">
 					{statsForNerds ? 'Recommended Use Case' : 'Best For'}
 				</p>
-				<p style={{ margin: 0, lineHeight: '1.6' }}>{statsForNerds ? info.use_case : info.simple_use_case}</p>
+				<p className="description-text">{statsForNerds ? info.use_case : info.simple_use_case}</p>
 			</div>
 		</div>
 	);

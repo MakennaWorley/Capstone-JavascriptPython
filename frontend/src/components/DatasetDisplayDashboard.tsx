@@ -92,7 +92,6 @@ function clampText(s: string, maxLen = 80): string {
 
 export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, maxPreviewRows = 10 }: DatasetDashboardProps) {
 	const theme = useTheme();
-	const isDark = theme.palette.mode === 'dark';
 	const [loading, setLoading] = useState(false);
 	const [showLoadingProgress, setShowLoadingProgress] = useState(false);
 	const [data, setData] = useState<DashboardState>({});
@@ -280,7 +279,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 	}, [selectedIndId, selectedDataset, apiBase, xApiKey]);
 
 	async function downloadAllDatasetZip() {
-		if (!selectedDataset) return;
+		if (!selectedDataset || loading) return;
 
 		setLoading(true);
 
@@ -321,80 +320,53 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 	}
 
 	return (
-		<div style={{ marginTop: '1.25rem', width: '100%', maxWidth: '1400px', margin: '1.25rem auto 0 auto' }}>
+		<div className="dashboard-wrapper">
 			<LoadingProgress isLoading={showLoadingProgress} message="Fetching your data..." />
 
 			{/* CSV preview - merged view */}
 			{mergedPreview && (
-				<div
-					style={{
-						marginTop: '1rem',
-						padding: '0.9rem',
-						borderRadius: 10,
-						width: '100%',
-						maxWidth: '100%',
-						boxSizing: 'border-box',
-						overflow: 'hidden'
-					}}
-				>
-					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-						<h2 style={{ marginTop: 0 }}>Genotypes</h2>
+			<div className="section-wrapper">
+				<div className="flex-between-mb">
+					<h2 className="section-heading">Genotypes</h2>
 						<Button
 							variant="contained"
 							startIcon={<DownloadIcon />}
 							onClick={downloadAllDatasetZip}
-							disabled={loading || !selectedDataset}
+							disabled={!selectedDataset}
 							size="small"
-							sx={{ backgroundColor: '#452ee4', '&:hover': { backgroundColor: '#241291' } }}
 						>
-							{loading ? 'Preparing…' : 'Download Dataset'}
+							{'Download Dataset'}
 						</Button>
 					</div>
 
-					<p style={{ margin: '0 0 0.75rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
+					<p className="context-text">
 						This table shows the merged genotype data for the selected dataset. Each row is a genomic site and each column is an
 						individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of the
 						alternate allele carried at that site (0, 1, or 2). Cells highlighted in{' '}
-						<span style={{ color: isDark ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>green</span> are <strong>known data</strong> —
+						<span className="text-known">green</span> are <strong>known data</strong> —
 						individuals whose genes were successfully sequenced and are present in the dataset. Cells highlighted in{' '}
-						<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>red</span> are <strong>unknown data</strong> —
+						<span className="text-unknown">red</span> are <strong>unknown data</strong> —
 						individuals intentionally left out to simulate the real-world scenario of individuals who were never sequenced. The models are
 						trained only on the known data and must infer the genotypes of these missing individuals.
 					</p>
 
-					<p style={{ margin: '0 0 0.75rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
+					<p className="context-text">
 						Use the column paginator below to scroll across individuals. Select an individual ID from the family tree section to visualize
 						their pedigree and see how their relatives' genotypes inform the inference.
 					</p>
 
-					<p style={{ margin: '0 0 0.5rem', opacity: 0.75, fontSize: '0.85rem', fontWeight: 'bold' }}>Legend</p>
+					<p className="legend-label">Legend</p>
 
-					<p style={{ marginTop: 0, opacity: 0.8, display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-							<span
-								style={{
-									display: 'inline-block',
-									width: 12,
-									height: 12,
-									borderRadius: 2,
-									backgroundColor: isDark ? '#66bb6a' : '#2e7d32'
-								}}
-							/>
-							<span style={{ color: isDark ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Known</span>
-							<span style={{ opacity: 0.7 }}>= data is known</span>
+					<p className="legend">
+						<span className="legend-item">
+							<span className="legend-square legend-square-known" />
+							<span className="text-known">Known</span>
+							<span className="empty-state">= data is known</span>
 						</span>
-						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-							<span
-								style={{
-									display: 'inline-block',
-									width: 12,
-									height: 12,
-									borderRadius: 2,
-									backgroundColor: isDark ? '#ff6b6b' : '#c62828'
-								}}
-							/>
-							<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Unknown</span>
-							<span style={{ opacity: 0.7 }}>= missing or unobserved</span>
+						<span className="legend-item">
+							<span className="legend-square legend-square-unknown" />
+							<span className="text-unknown">Unknown</span>
+							<span className="empty-state">= missing or unobserved</span>
 						</span>
 					</p>
 					{mergedPreview.headers.length > COLUMNS_PER_PAGE && (
@@ -421,17 +393,8 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 
 			{/* Family tree */}
 			{data.observedCsvRaw && (
-				<div
-					style={{
-						marginTop: '1rem',
-						padding: '0.9rem',
-						borderRadius: 10,
-						width: '100%',
-						boxSizing: 'border-box',
-						overflow: 'hidden'
-					}}
-				>
-					<h2 style={{ marginTop: 0 }}>Family Tree Explorer</h2>
+			<div className="section-wrapper">
+				<h2 className="section-heading">Family Tree Explorer</h2>
 					<TextField
 						select
 						size="small"
@@ -531,14 +494,9 @@ function GenotypeTable({
 					<TableHead>
 						<TableRow>
 							<TableCell
+								className="sticky-col-header"
 								sx={{
-									fontWeight: 'bold',
-									whiteSpace: 'nowrap',
-									position: 'sticky',
-									left: 0,
 									backgroundColor: theme.palette.background.paper,
-									zIndex: 11,
-									minWidth: '100px'
 								}}
 								title={headers[0]}
 							>
@@ -555,14 +513,11 @@ function GenotypeTable({
 						{pagedRows.map((item, ridx) => (
 							<TableRow key={ridx} hover>
 								<TableCell
+									className="sticky-col"
 									sx={{
 										fontWeight: 'bold',
-										whiteSpace: 'nowrap',
-										position: 'sticky',
-										left: 0,
 										backgroundColor:
 											theme.palette.mode === 'dark' ? theme.palette.background.paper : theme.palette.background.default,
-										zIndex: 9
 									}}
 									title={item.displayed[0] ?? ''}
 								>
@@ -573,17 +528,8 @@ function GenotypeTable({
 									return (
 										<TableCell
 											key={colIdx}
-											sx={{
-												whiteSpace: 'nowrap',
-												fontWeight: isKnown ? 'bold' : 'normal',
-												color: isKnown
-													? theme.palette.mode === 'dark'
-														? '#66bb6a'
-														: '#2e7d32'
-													: theme.palette.mode === 'dark'
-														? '#ff6b6b'
-														: '#c62828'
-											}}
+											className={isKnown ? 'cell-known' : 'cell-unknown'}
+											sx={{ whiteSpace: 'nowrap' }}
 											title={item.displayed[colIdx] ?? ''}
 										>
 											{clampText(String(item.displayed[colIdx] ?? ''), 60)}
@@ -610,10 +556,10 @@ function CsvTable({ title, preview, maxRows }: { title: string; preview: CsvPrev
 	const { headers, rows, estimatedTotalRows } = preview;
 
 	return (
-		<div style={{ marginTop: '1rem', padding: '0.9rem', border: '1px solid #ddd', borderRadius: 10 }}>
-			<h4 style={{ marginTop: 0 }}>{title}</h4>
+		<div className="section-wrapper csv-preview-box">
+			<h4 className="section-heading">{title}</h4>
 
-			<p style={{ marginTop: 0, opacity: 0.8 }}>
+			<p className="description-faint">
 				Showing first <b>{Math.min(rows.length, maxRows)}</b>
 				{typeof estimatedTotalRows === 'number' ? (
 					<>
@@ -624,19 +570,14 @@ function CsvTable({ title, preview, maxRows }: { title: string; preview: CsvPrev
 				.
 			</p>
 
-			<div style={{ overflowX: 'auto' }}>
-				<table style={{ borderCollapse: 'collapse', width: '100%' }}>
+			<div className="table-scroll">
+				<table className="csv-table">
 					<thead>
 						<tr>
 							{headers.map((h, idx) => (
 								<th
 									key={idx}
-									style={{
-										textAlign: 'left',
-										borderBottom: '1px solid #ccc',
-										padding: '0.5rem',
-										whiteSpace: 'nowrap'
-									}}
+									className="csv-th"
 									title={h}
 								>
 									{clampText(h, 40)}
@@ -650,11 +591,7 @@ function CsvTable({ title, preview, maxRows }: { title: string; preview: CsvPrev
 								{headers.map((_, cidx) => (
 									<td
 										key={cidx}
-										style={{
-											borderBottom: '1px solid #eee',
-											padding: '0.5rem',
-											whiteSpace: 'nowrap'
-										}}
+										className="csv-td"
 										title={r[cidx] ?? ''}
 									>
 										{clampText(String(r[cidx] ?? ''), 60)}
@@ -664,7 +601,7 @@ function CsvTable({ title, preview, maxRows }: { title: string; preview: CsvPrev
 						))}
 						{rows.length === 0 && (
 							<tr>
-								<td colSpan={headers.length || 1} style={{ padding: '0.5rem', opacity: 0.75 }}>
+								<td colSpan={headers.length || 1} className="empty-state">
 									No rows to display.
 								</td>
 							</tr>
@@ -673,7 +610,7 @@ function CsvTable({ title, preview, maxRows }: { title: string; preview: CsvPrev
 				</table>
 			</div>
 
-			<p style={{ marginBottom: 0, marginTop: '0.75rem', opacity: 0.75 }}>
+			<p className="table-note">
 				Tip: these CSVs are wide (lots of <code>ind_####</code> columns). Horizontal scroll is expected.
 			</p>
 		</div>

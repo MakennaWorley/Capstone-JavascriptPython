@@ -168,7 +168,7 @@ export default function DatasetModelCreationForm({
 	}
 
 	return (
-		<Box component="form" onSubmit={submit} sx={{ display: 'grid', gap: '1.5rem', maxWidth: 720, pt: 2, pb: 2 }}>
+		<Box component="form" onSubmit={submit} className="form-grid">
 			{/* BASIC */}
 			<Box>
 				<Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
@@ -184,27 +184,14 @@ export default function DatasetModelCreationForm({
 						required
 						variant="outlined"
 						size="small"
-						sx={{
-							'& .MuiOutlinedInput-root': {
-								color: 'text.primary',
-								'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
-								'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
-								'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
-							},
-							'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
-							'& .MuiInputLabel-root': { color: 'text.secondary' },
-							'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
-						}}
+						className="purple-text-field"
 					/>
 					<FormControlLabel
 						control={
 							<Checkbox
 								checked={advanced}
 								onChange={(e) => setAdvanced(e.target.checked)}
-								sx={{
-									color: '#452ee4',
-									'&.Mui-checked': { color: '#452ee4' }
-								}}
+								className="purple-checkbox"
 							/>
 						}
 						label="Advanced Settings (scale individuals)"
@@ -217,14 +204,14 @@ export default function DatasetModelCreationForm({
 			{advanced && (
 				<Box>
 					<Typography variant="h6" sx={{ mb: 1, color: 'text.primary' }}>
-						Advanced Settings <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>(optional)</span>
+					Advanced Settings <span className="label-hint">(optional)</span>
 					</Typography>
 					<Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', lineHeight: 1.6 }}>
 						These settings control how large and deep the simulated family is. Larger values produce richer, more realistic data but take
 						longer to generate. The defaults are a good starting point for most experiments.
 					</Typography>
 					<Stack spacing={2}>
-						<Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+						<Box className="grid-2col">
 							<TextField
 								label="Sequence Length"
 								type="number"
@@ -235,17 +222,7 @@ export default function DatasetModelCreationForm({
 								helperText="Number of genomic sites (SNP positions) simulated per individual. More sites = more features for the model, but slower generation. Max 1,000."
 								variant="outlined"
 								size="small"
-								sx={{
-									'& .MuiOutlinedInput-root': {
-										color: 'text.primary',
-										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
-										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
-										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
-									},
-									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
-									'& .MuiInputLabel-root': { color: 'text.secondary' },
-									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
-								}}
+								className="purple-text-field"
 							/>
 							<TextField
 								label="Number of generations"
@@ -257,17 +234,7 @@ export default function DatasetModelCreationForm({
 								helperText="How many parent-to-child generations the family spans. More generations = deeper pedigree structure. Max 10."
 								variant="outlined"
 								size="small"
-								sx={{
-									'& .MuiOutlinedInput-root': {
-										color: 'text.primary',
-										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
-										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
-										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
-									},
-									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
-									'& .MuiInputLabel-root': { color: 'text.secondary' },
-									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
-								}}
+								className="purple-text-field"
 							/>
 							<TextField
 								label="Individuals per generation"
@@ -279,23 +246,13 @@ export default function DatasetModelCreationForm({
 								helperText="How many diploid individuals are simulated in each generation. Combined with generations, this sets the total family size. Total must not exceed 1,000."
 								variant="outlined"
 								size="small"
-								sx={{
-									'& .MuiOutlinedInput-root': {
-										color: 'text.primary',
-										'& fieldset': { borderColor: '#452ee4', borderWidth: '2px' },
-										'&:hover fieldset': { borderColor: '#241291', borderWidth: '2px' },
-										'&.Mui-focused fieldset': { borderColor: '#452ee4', borderWidth: '2px' }
-									},
-									'& .MuiInputBase-input::placeholder': { color: 'text.disabled', opacity: 1 },
-									'& .MuiInputLabel-root': { color: 'text.secondary' },
-									'& .MuiInputLabel-root.Mui-focused': { color: '#452ee4' }
-								}}
+								className="purple-text-field"
 							/>
 						</Box>
 						<Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
 							Total individuals: <strong>{derivedTotal ?? '—'}</strong>{' '}
 							{derivedTotal !== undefined && (
-								<span style={{ marginLeft: '0.5rem', opacity: 0.75 }}>
+								<span className="inline-note">
 									(
 									{derivedTotal <= 250
 										? 'small dataset — fast, good for testing'
@@ -316,13 +273,7 @@ export default function DatasetModelCreationForm({
 				disabled={sending}
 				variant="contained"
 				fullWidth
-				sx={{
-					backgroundColor: '#452ee4',
-					padding: '0.75rem',
-					fontSize: '1rem',
-					'&:hover': { backgroundColor: '#241291' },
-					'&:disabled': { backgroundColor: '#555', color: 'rgba(255, 255, 255, 0.5)' }
-				}}
+				className="form-submit-btn"
 			>
 				{sending ? 'Generating...' : 'Generate Data'}
 			</Button>
@@ -331,22 +282,15 @@ export default function DatasetModelCreationForm({
 
 			{/* STATUS MESSAGE - ERRORS ONLY */}
 			{status && status !== 'Dataset created successfully!' && (
-				<Alert
-					severity="error"
-					sx={{
-						backgroundColor: 'rgba(255, 107, 107, 0.1)',
-						color: '#ff6b6b',
-						border: '1px solid #ff6b6b'
-					}}
-				>
+				<Alert severity="error" className="error-alert">
 					{status}
 				</Alert>
 			)}
 
 			{/* DEBUG JSON OUTPUT */}
 			{debugMode && responseJson && (
-				<Paper sx={{ p: 2, bgcolor: 'background.default', border: '2px solid #452ee4', borderRadius: '4px' }}>
-					<Typography variant="caption" sx={{ color: '#452ee4', display: 'block', mb: 1 }}>
+				<Paper className="debug-output">
+					<Typography variant="caption" className="debug-output-label">
 						Debug: Response
 					</Typography>
 					<Box

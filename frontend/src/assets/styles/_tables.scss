@@ -1,0 +1,101 @@
+@use 'variables' as *;
+
+// ── Data Table: Known / Unknown cell text colors ──
+.cell-known.MuiTableCell-root {
+    font-weight: bold;
+    color: var(--color-known);
+}
+
+.cell-unknown.MuiTableCell-root {
+    font-weight: normal;
+    color: var(--color-unknown);
+}
+
+// ── Sticky first column for wide data tables ──
+.sticky-col {
+    white-space: nowrap;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+}
+
+.sticky-col-header {
+    white-space: nowrap;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    min-width: 100px;
+    font-weight: bold;
+}
+
+// Ensure MUI stickyHeader cells stay above row hovers
+.MuiTableHead-root .MuiTableCell-stickyHeader {
+    z-index: 4;
+}
+
+.sticky-col-header.MuiTableCell-stickyHeader {
+    z-index: 5;
+}
+
+// ── Prediction error table: predicted vs actual cell colors ──
+.cell-predicted {
+    white-space: nowrap;
+    font-weight: bold;
+    color: var(--color-unknown);
+}
+
+.cell-actual {
+    white-space: nowrap;
+    font-weight: bold;
+    color: var(--color-known);
+}
+
+// ── Scrollable table container ──
+.table-scroll {
+    overflow-x: auto;
+}
+
+// ── Plain CSV preview table ──
+.csv-preview-box {
+    border: 1px solid #ddd;
+}
+
+.csv-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.csv-th {
+    text-align: left;
+    border-bottom: 1px solid #ccc;
+    padding: $spacing-sm;
+    white-space: nowrap;
+}
+
+.csv-td {
+    border-bottom: 1px solid #eee;
+    padding: $spacing-sm;
+    white-space: nowrap;
+}
+
+// ── Dark mode image inversion (for matplotlib graphs) ──
+.dark-mode-image {
+    width: 100%;
+    height: auto;
+    border-radius: $radius-sm;
+    cursor: zoom-in;
+}
+
+[data-theme='dark'] .dark-mode-image {
+    filter: invert(1) hue-rotate(180deg);
+}
+
+.dark-mode-image-static {
+    width: 100%;
+    height: auto;
+    border-radius: $radius-sm;
+}
+
+[data-theme='dark'] .dark-mode-image-static {
+    filter: invert(1) hue-rotate(180deg);
+}

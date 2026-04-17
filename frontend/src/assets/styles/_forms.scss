@@ -1,0 +1,90 @@
+@use 'variables' as *;
+
+// ── Purple-bordered TextField (MUI override) ──
+// Applies to text inputs in forms (DatasetModelCreationForm, etc.)
+.purple-text-field {
+    .MuiOutlinedInput-root {
+        fieldset {
+            border-color: $color-primary;
+            border-width: 2px;
+        }
+
+        &:hover fieldset {
+            border-color: $color-primary-dark;
+            border-width: 2px;
+        }
+
+        &.Mui-focused fieldset {
+            border-color: $color-primary;
+            border-width: 2px;
+        }
+    }
+
+    .MuiInputBase-input::placeholder {
+        opacity: 1;
+    }
+
+    .MuiInputLabel-root.Mui-focused {
+        color: $color-primary;
+    }
+}
+
+// ── Purple-bordered Select / Dropdown (MUI override) ──
+// Used in ModelSelector, DatasetSelector
+.purple-select {
+    .MuiOutlinedInput-notchedOutline {
+        border-color: $color-primary;
+        border-width: 2px;
+    }
+
+    &:hover .MuiOutlinedInput-notchedOutline {
+        border-color: $color-primary-dark;
+        border-width: 2px;
+    }
+
+    .Mui-focused .MuiOutlinedInput-notchedOutline {
+        border-color: $color-primary;
+        border-width: 2px;
+    }
+
+    .MuiSvgIcon-root {
+        color: $color-primary;
+    }
+
+    .MuiInputLabel-root.Mui-focused {
+        color: $color-primary;
+    }
+}
+
+// ── Purple Checkbox (MUI override) ──
+.purple-checkbox {
+    &.MuiCheckbox-root {
+        color: $color-primary;
+
+        &.Mui-checked {
+            color: $color-primary;
+        }
+    }
+}
+
+// ── Submit / primary form button disabled state ──
+.form-submit-btn {
+    padding: 0.75rem;
+    font-size: 1rem;
+
+    &.Mui-disabled {
+        background-color: $sidebar-debug-off-bg;
+        color: rgba(255, 255, 255, 0.5);
+    }
+}
+
+// ── Purple Switch (MUI override) ──
+.purple-switch {
+    .MuiSwitch-switchBase.Mui-checked {
+        color: $color-primary;
+    }
+
+    .MuiSwitch-switchBase.Mui-checked+.MuiSwitch-track {
+        background-color: $color-primary;
+    }
+}
