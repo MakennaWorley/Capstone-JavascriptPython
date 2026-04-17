@@ -124,12 +124,27 @@ export default function FamilyTreeVisualization({ data }: Props) {
 
 	return (
 		<div style={{ padding: '1rem', borderRadius: '12px' }}>
-			<h3>
-				Family Tree: {data.dataset} (Focus: {data.focus_id})
-			</h3>
+			<h2>
+				Family Tree: {data.dataset} focusing on individual {data.focus_id}
+			</h2>
+
+			<p style={{ margin: '0 0 0.75rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
+				This diagram shows the immediate family connections for the selected individual. Each circle represents a person
+				in the simulated pedigree. The <strong>vertical axis</strong> corresponds to generation — individuals higher up
+				are older ancestors, while those lower down are descendants. Only direct connections are shown: the parents
+				above and children below the selected individual.
+			</p>
+			<p style={{ margin: '0 0 1rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
+				<span style={{ color: theme.palette.mode === 'dark' ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Green</span> nodes
+				represent individuals whose genotypes were successfully sequenced and are present in the dataset.
+				<span style={{ color: theme.palette.mode === 'dark' ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}> Red</span> nodes
+				represent individuals who were never sequenced — their genotypes are missing and must be inferred by the model
+				using information from their relatives. The <strong>blue</strong> node is the currently selected individual.
+				Hover over any node to inspect its genotype values.
+			</p>
 
 			<div style={{ position: 'relative' }}>
-				<div style={{ overflowX: 'auto' }}>
+				<div style={{ overflowX: 'auto', position: 'relative' }}>
 					<svg
 						width={WIDTH}
 						height={HEIGHT}
@@ -402,51 +417,45 @@ export default function FamilyTreeVisualization({ data }: Props) {
 								</g>
 							);
 						})}
-						{/* Inline tooltip next to hovered node */}
-						{hovered &&
-							(() => {
-								const TW = 180;
-								const TH = 110;
-								const gap = NODE_RADIUS + 14;
-								const rawX = hovered.x + gap + TW > WIDTH ? hovered.x - gap - TW : hovered.x + gap;
-								const rawY = Math.min(Math.max(hovered.y - TH / 2, 4), HEIGHT - TH - 4);
-								return (
-									<foreignObject x={rawX} y={rawY} width={TW} height={TH} style={{ pointerEvents: 'none', overflow: 'visible' }}>
-										<div
-											style={{
-												background: theme.palette.background.paper,
-												border: `1px solid ${theme.palette.divider}`,
-												borderRadius: 6,
-												padding: '6px 10px',
-												boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-												fontSize: '0.75rem',
-												color: theme.palette.text.primary,
-												width: TW
-											}}
-										>
-											<div
-												style={{
-													fontWeight: 'bold',
-													marginBottom: 4,
-													borderBottom: `1px solid ${theme.palette.divider}`,
-													paddingBottom: 3
-												}}
-											>
-												Individual {hovered.node.id}
-											</div>
-											<div style={{ opacity: 0.7, marginBottom: 2 }}>Genotypes (first 20):</div>
-											<div style={{ wordBreak: 'break-all', lineHeight: 1.4 }}>
-												{hovered.node.observed
-													.slice(0, 20)
-													.map((v) => (v === null ? '?' : v))
-													.join(', ')}
-												&hellip;
-											</div>
-										</div>
-									</foreignObject>
-								);
-							})()}
-					</svg>
+</svg>
+					{hovered && (() => {
+						const TW = 180;
+						const TH = 120;
+						const gap = NODE_RADIUS + 14;
+						const rawX = hovered.x + gap + TW > WIDTH ? hovered.x - gap - TW : hovered.x + gap;
+						const rawY = Math.min(Math.max(hovered.y - TH / 2, 4), HEIGHT - TH - 4);
+						return (
+							<div
+								style={{
+									position: 'absolute',
+									left: rawX,
+									top: rawY,
+									width: TW,
+									pointerEvents: 'none',
+									background: theme.palette.background.paper,
+									border: `1px solid ${theme.palette.divider}`,
+									borderRadius: 6,
+									padding: '6px 10px',
+									boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+									fontSize: '0.75rem',
+									color: theme.palette.text.primary,
+									zIndex: 10
+								}}
+							>
+								<div style={{ fontWeight: 'bold', marginBottom: 4, borderBottom: `1px solid ${theme.palette.divider}`, paddingBottom: 3 }}>
+									Individual {hovered.node.id}
+								</div>
+								<div style={{ opacity: 0.7, marginBottom: 2 }}>Genotypes (first 20):</div>
+								<div style={{ wordBreak: 'break-all', lineHeight: 1.4 }}>
+									{hovered.node.observed
+										.slice(0, 20)
+										.map((v) => (v === null ? '?' : v))
+										.join(', ')}
+									&hellip;
+								</div>
+							</div>
+						);
+					})()}
 				</div>
 			</div>
 
@@ -462,7 +471,7 @@ export default function FamilyTreeVisualization({ data }: Props) {
 							border: '2px solid #1d4ed8'
 						}}
 					/>
-					<span style={{ fontWeight: 'bold' }}>Focus individual</span>
+					<span style={{ fontWeight: 'bold' }}>Focused Individual</span>
 				</span>
 				<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
 					<span
@@ -490,9 +499,9 @@ export default function FamilyTreeVisualization({ data }: Props) {
 					/>
 					<span style={{ color: theme.palette.mode === 'dark' ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Unknown genotype</span>
 				</span>
-				<span style={{ opacity: 0.7 }}>Vertical axis = Time. Hover nodes to see genotype vectors.</span>
+				<span style={{ opacity: 0.7 }}>Vertical axis = Time. Click on the nodes to see genotype vectors.</span>
 				<span style={{ opacity: 0.7 }}>
-					Shows direct connections only — parents and children of the selected node. Siblings and mates are not shown.
+					Shows direct connections only — parents and children of the selected node. Siblings and partners are not shown.
 				</span>
 			</p>
 		</div>

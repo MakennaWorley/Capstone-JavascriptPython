@@ -163,8 +163,42 @@ export default function App() {
 						</Box>
 					)}
 
+					<Box sx={{ mb: 2.5 }}>
+						<Typography variant="h2" fontWeight="bold" sx={{ color: darkMode ? '#9d91f5' : '#452ee4', mb: 0.75 }}>
+							Probabilistic Ancestral Inference
+						</Typography>
+						<Typography variant="subtitle1" sx={{ color: 'text.secondary', mb: 1 }}>
+							A research capstone project exploring ancestral genotype reconstruction using <strong>Bayesian Models</strong>, <strong>HMMs</strong>, <strong>DNNs</strong>, and <strong>GNNs</strong>.
+						</Typography>
+						<p style={{ margin: '0.5rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
+							In genetics research, it is common for ancestors to be unsequenced — grandparents or earlier relatives may be deceased,
+							unavailable, or too costly to sequence. Without that data, downstream analyses like disease risk prediction, inheritance
+							tracing, and population history reconstruction become incomplete or impossible. This project tackles that gap computationally.
+						</p>
+						<p style={{ margin: '0.75rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
+							The system uses{' '}
+						<a href="https://pubmed.ncbi.nlm.nih.gov/34897427/" target="_blank" rel="noopener noreferrer" style={{ color: darkMode ? '#9d91f5' : '#452ee4' }}>
+							<strong>msprime</strong>
+						</a>{' '}
+						to simulate realistic diploid populations with explicit multi-generational pedigrees,
+							where every individual's true genotype is known. A configurable fraction of individuals are then masked — their genotypes
+							hidden — to simulate the real-world condition of absent family members. Five inference architectures are trained on the
+							visible data and tasked with recovering the hidden genotypes: a <strong>Bayesian Categorical Model</strong> (PyMC MCMC with
+							hierarchical priors), a <strong>Hidden Markov Model</strong> (hmmlearn, treating each individual as a sequence across
+							genomic sites), a <strong>Deep Neural Network</strong> (PyTorch, with batch normalization and dropout), a{' '}
+							<strong>Graph Neural Network</strong> (PyTorch Geometric, using pedigree structure as the graph), and a{' '}
+							<strong>Multinomial Logistic Regression</strong> baseline (scikit-learn).
+						</p>
+						<p style={{ margin: '0.75rem 0 0', color: 'inherit', opacity: 0.75, fontSize: '0.95rem', lineHeight: 1.7 }}>
+							Each model predicts the <strong>allele dosage</strong> (0, 1, or 2 copies of the alternate allele) for every masked
+							individual at every genomic site. Predictions are then compared against the known ground truth and evaluated using
+							precision, recall, F1-score, ROC and precision-recall curves, confusion matrices, and calibration plots. The goal is not
+							just to build an imputation tool, but to rigorously characterize <strong>when and why</strong> each class of model
+							succeeds or breaks down as data becomes increasingly sparse.
+						</p>
+					</Box>
+
 					<div style={{ marginTop: '1.25rem' }}>
-						<h2>Selection</h2>
 						<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
 							<div>
 								<span style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>Dataset</span>
@@ -216,7 +250,7 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">Dataset Dashboard</Typography>
+								<Typography fontWeight="bold"><h2>Dataset Dashboard</h2></Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} />
@@ -242,7 +276,7 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">Model Dashboard</Typography>
+								<Typography fontWeight="bold"><h2>Model Dashboard</h2></Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelDashboard model={selectedModel} />
@@ -268,7 +302,7 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon sx={{ color: '#452ee4' }} />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">Test Model</Typography>
+								<Typography fontWeight="bold"><h2>Test Model</h2></Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelTrainer

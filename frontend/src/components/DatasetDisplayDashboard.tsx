@@ -338,7 +338,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 					}}
 				>
 					<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-						<h4 style={{ marginTop: 0 }}>Genotypes (preview)</h4>
+						<h2 style={{ marginTop: 0 }}>Genotypes</h2>
 						<Button
 							variant="contained"
 							startIcon={<DownloadIcon />}
@@ -350,6 +350,26 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 							{loading ? 'Preparing…' : 'Download Dataset'}
 						</Button>
 					</div>
+
+					<p style={{ margin: '0 0 0.75rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
+						This table shows the merged genotype data for the selected dataset. Each row is a genomic site and each column is an
+						individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of
+						the alternate allele carried at that site (0, 1, or 2). Cells highlighted in{' '}
+						<span style={{ color: isDark ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>green</span> are{' '}
+						<strong>known data</strong> — individuals whose genes were successfully sequenced and are present in the dataset.
+						Cells highlighted in{' '}
+						<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>red</span> are{' '}
+						<strong>unknown data</strong> — individuals intentionally left out to simulate the real-world scenario of individuals
+						who were never sequenced. The models are trained only on the known data and must infer the genotypes of these
+						missing individuals.
+					</p>
+
+					<p style={{ margin: '0 0 0.75rem', opacity: 0.75, fontSize: '0.9rem', lineHeight: 1.65 }}>
+						Use the column paginator below to scroll across individuals. Select an individual ID from the family tree section
+						to visualize their pedigree and see how their relatives' genotypes inform the inference.
+					</p>
+
+					<p style={{ margin: '0 0 0.5rem', opacity: 0.75, fontSize: '0.85rem', fontWeight: 'bold' }}>Legend</p>
 
 					<p style={{ marginTop: 0, opacity: 0.8, display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
 						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -363,7 +383,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 								}}
 							/>
 							<span style={{ color: isDark ? '#66bb6a' : '#2e7d32', fontWeight: 'bold' }}>Known</span>
-							<span style={{ opacity: 0.7 }}>= observed matches truth</span>
+							<span style={{ opacity: 0.7 }}>= data is known</span>
 						</span>
 						<span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
 							<span
@@ -375,7 +395,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 									backgroundColor: isDark ? '#ff6b6b' : '#c62828'
 								}}
 							/>
-							<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Inferred</span>
+							<span style={{ color: isDark ? '#ff6b6b' : '#c62828', fontWeight: 'bold' }}>Unknown</span>
 							<span style={{ opacity: 0.7 }}>= missing or unobserved</span>
 						</span>
 					</p>
@@ -413,7 +433,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ma
 						overflow: 'hidden'
 					}}
 				>
-					<h4 style={{ marginTop: 0 }}>Family Tree Explorer</h4>
+					<h2 style={{ marginTop: 0 }}>Family Tree Explorer</h2>
 					<TextField
 						select
 						size="small"

@@ -44,3 +44,6 @@ frontend/coverage/
 
 # Windows WSL
 .python-version
+
+capstone.zip
+deploy_to_server.txt

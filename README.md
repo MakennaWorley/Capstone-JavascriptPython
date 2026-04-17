@@ -2,6 +2,22 @@
 
 This repository contains a research framework designed to reconstruct latent states within high-dimensional, hierarchical stochastic datasets. While the project utilizes biological rules for data generation, its primary purpose is benchmarking the robustness of various probabilistic machine-learning architectures under controlled data degradation.
 
+### What This Project Does
+
+In genetics research, it is common to have partial family data — grandparents or earlier ancestors may be unsequenced, deceased, or otherwise unavailable. Without that data, downstream analyses like disease risk prediction, inheritance tracing, and population history reconstruction are limited or impossible.
+
+This project approaches that problem computationally. Rather than relying on a single model, it implements and compares **five distinct inference architectures** — spanning Bayesian statistics, hidden Markov models, deep learning, and graph neural networks — to determine which approaches best recover ground-truth genotypes when varying fractions of the family tree are missing.
+
+The full pipeline is self-contained and reproducible:
+
+1. **Simulate** — `msprime` generates realistic diploid populations with explicit multi-generational pedigrees using a Discrete Time Wright-Fisher model. Because the simulation is fully controlled, every ancestor's true genotype is known.
+2. **Degrade** — Individuals are systematically masked at configurable rates, simulating the real-world condition of absent family members.
+3. **Infer** — Each model is trained on the visible portion of the data and asked to predict the dosage (0, 1, or 2 copies of the alternate allele) for every masked individual at every genomic site.
+4. **Evaluate** — Predictions are compared against the known ground truth using precision, recall, F1, ROC/PR curves, and calibration plots.
+5. **Visualize** — A React dashboard presents dataset summaries, interactive family tree graphs, and per-model evaluation results in real time.
+
+The goal is not simply to build a working imputation tool, but to rigorously characterize **when and why** each class of model succeeds or fails as data becomes increasingly sparse.
+
 ---
 
 ### 🌟 Project Goal
