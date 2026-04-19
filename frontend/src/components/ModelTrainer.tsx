@@ -31,6 +31,8 @@ type ModelTrainerProps = {
 		images: any;
 		predictionErrors: Array<{ individual: string; site: string; predicted: number; actual: number }>;
 	}) => void;
+	nerdMode: boolean;
+	onNerdModeChange: (value: boolean) => void;
 };
 
 type ApiSuccessTest = {
@@ -57,7 +59,7 @@ type ApiError = {
 	message: string;
 };
 
-export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, selectedModel, onTestComplete }: ModelTrainerProps) {
+export default function ModelTrainer({ apiBase, xApiKey, selectedDataset, selectedModel, onTestComplete, nerdMode, onNerdModeChange }: ModelTrainerProps) {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 

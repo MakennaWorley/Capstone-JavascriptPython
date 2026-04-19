@@ -1,5 +1,5 @@
 import DownloadIcon from '@mui/icons-material/Download';
-import { Button, MenuItem, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from '@mui/material';
+import { Button, FormControlLabel, MenuItem, Paper, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FamilyTreeVisualization from './FamilyTreeVisualization.js';
@@ -9,6 +9,8 @@ type DatasetDashboardProps = {
 	apiBase: string;
 	xApiKey: string;
 	selectedDataset: string;
+	nerdMode: boolean;
+	onNerdModeChange: (value: boolean) => void;
 };
 
 type CsvPreview = {
@@ -89,7 +91,7 @@ function clampText(s: string, maxLen = 80): string {
 	return `${s.slice(0, maxLen - 1)}…`;
 }
 
-export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: DatasetDashboardProps) {
+export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, nerdMode, onNerdModeChange }: DatasetDashboardProps) {
 	const theme = useTheme();
 	const [loading, setLoading] = useState(false);
 	const [showLoadingProgress, setShowLoadingProgress] = useState(false);
@@ -97,6 +99,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 	const [selectedIndId, setSelectedIndId] = useState<string>('');
 	const [familyTreeData, setFamilyTreeData] = useState<any>(null);
 	const [columnPageIndex, setColumnPageIndex] = useState(0);
+
 	const COLUMNS_PER_PAGE = 10;
 
 	// Cache keyed by `dataset:indId` to avoid redundant backend requests
@@ -324,31 +327,56 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 				<div className="section-wrapper">
 					<div className="flex-between-mb">
 						<h2 className="section-heading">Genotypes</h2>
-						<Button
-							variant="contained"
-							startIcon={<DownloadIcon />}
-							onClick={downloadAllDatasetZip}
-							disabled={!selectedDataset}
-							size="small"
-						>
-							{'Download Dataset'}
-						</Button>
+						<div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+							<Button
+								variant="contained"
+								startIcon={<DownloadIcon />}
+								onClick={downloadAllDatasetZip}
+								disabled={!selectedDataset}
+								size="small"
+							>
+								{'Download Dataset'}
+							</Button>
+							<FormControlLabel
+								control={
+									<Switch checked={nerdMode} onChange={(e) => onNerdModeChange(e.target.checked)} size="small" className="purple-switch" />
+								}
+								label="Stats for Nerds"
+								labelPlacement="start"
+								sx={{ margin: 0, gap: '0.4rem', '& .MuiFormControlLabel-label': { fontSize: '0.82rem', color: 'text.secondary' } }}
+							/>
+						</div>
 					</div>
 
-					<p className="context-text">
-						This table shows the merged genotype data for the selected dataset. Each row is a genomic site and each column is an
-						individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of the
-						alternate allele carried at that site (0, 1, or 2). Cells highlighted in <span className="text-known">green</span> are{' '}
-						<strong>known data</strong> — individuals whose genes were successfully sequenced and are present in the dataset. Cells
-						highlighted in <span className="text-unknown">red</span> are <strong>unknown data</strong> — individuals intentionally left
-						out to simulate the real-world scenario of individuals who were never sequenced. The models are trained only on the known data
-						and must infer the genotypes of these missing individuals.
-					</p>
-
-					<p className="context-text">
-						Use the column paginator below to scroll across individuals. Select an individual ID from the family tree section to visualize
-						their pedigree and see how their relatives' genotypes inform the inference.
-					</p>
+					{!nerdMode ? (
+						<>
+							<p className="context-text">
+								This table shows the genetic data for your dataset. Each row is a location in the genome, and each column is a person 
+								in the family. The numbers show how many copies of a particular genetic variant each person has (0, 1, or 2).
+							</p>
+							<p className="context-text">
+								Cells highlighted in <span className="text-known">green</span> are <strong>known</strong> — people whose genetics were 
+								included in the dataset. Cells highlighted in <span className="text-unknown">red</span> are <strong>unknown</strong> — 
+								people whose genetics are hidden so the models can try to predict them.
+							</p>
+						</>
+					) : (
+						<>
+							<p className="context-text">
+								This table shows the merged genotype data for the selected dataset. Each row is a genomic site and each column is an
+								individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of the
+								alternate allele carried at that site (0, 1, or 2). Cells highlighted in <span className="text-known">green</span> are{' '}
+								<strong>known data</strong> — individuals whose genes were successfully sequenced and are present in the dataset. Cells
+								highlighted in <span className="text-unknown">red</span> are <strong>unknown data</strong> — individuals intentionally left
+								out to simulate the real-world scenario of individuals who were never sequenced. The models are trained only on the known data
+								and must infer the genotypes of these missing individuals.
+							</p>
+							<p className="context-text">
+								Use the column paginator below to scroll across individuals. Select an individual ID from the family tree section to visualize
+								their pedigree and see how their relatives' genotypes inform the inference.
+							</p>
+						</>
+					)}
 
 					<p className="legend-label">Legend</p>
 
@@ -405,7 +433,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset }: 
 							</MenuItem>
 						))}
 					</TextField>
-					{familyTreeData && <FamilyTreeVisualization data={familyTreeData} />}
+					{familyTreeData && <FamilyTreeVisualization data={familyTreeData} nerdMode={nerdMode} onNerdModeChange={onNerdModeChange} />}
 				</div>
 			)}
 		</div>
