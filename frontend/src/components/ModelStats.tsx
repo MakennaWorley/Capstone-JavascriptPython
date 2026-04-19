@@ -151,7 +151,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 					{nerdMode ? (
 						<>
 							<p className="context-text">
-								The metrics above summarise performance across the held-out test set. Accuracy is inflated under class imbalance; Balanced Accuracy and Macro AUC are more trustworthy. F1 Macro penalises the model for missing rare dosage classes; F1 Weighted reflects real-world frequency distribution. All values are between 0 and 1, reported as percentages.
+								The metrics above summarize performance across the held-out test set. Accuracy is inflated under class imbalance; Balanced Accuracy and Macro AUC are more trustworthy. F1 Macro penalizes the model for missing rare dosage classes; F1 Weighted reflects real-world frequency distribution. All values are between 0 and 1, reported as percentages.
 							</p>
 							<p className="context-text">
 								The model predicts unordered allele dosage — how many copies of the variant each individual carries. This is why there are exactly three possibilities: 0, 1, or 2 copies. If order mattered — distinguishing which allele came from which parent — there would be six permutations; but dosage ignores parentage order. Random guessing on three equiprobable classes achieves about 33% accuracy.
@@ -219,7 +219,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 									<>
 										<p className="context-text">
 											A 3×3 matrix where rows index the true dosage class and columns index the predicted class. Diagonal cells
-											(top-left → bottom-right) are correct classifications; all off-diagonal cells are errors. Cell colour
+											(top-left → bottom-right) are correct classifications; all off-diagonal cells are errors. Cell color
 											intensity (saturation) is proportional to count, making systematic biases immediately visible.
 										</p>
 										<p className="context-text">
@@ -287,7 +287,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 								<>
 									<p className="context-text">
 										A 3×3 matrix where rows index the true dosage class and columns index the predicted class. Diagonal cells
-										(top-left → bottom-right) are correct classifications; all off-diagonal cells are errors. Cell colour
+									(top-left → bottom-right) are correct classifications; all off-diagonal cells are errors. Cell color
 										intensity (saturation) is proportional to count, making systematic biases immediately visible.
 									</p>
 									<p className="context-text">
