@@ -11,6 +11,9 @@
 @use 'legends';
 @use 'loading';
 @use 'family-tree';
+@use 'dataset-display-dashboard';
+@use 'model-dashboard';
+@use 'model-stats';
 
 :root {
 	font-family: Arial, sans-serif;

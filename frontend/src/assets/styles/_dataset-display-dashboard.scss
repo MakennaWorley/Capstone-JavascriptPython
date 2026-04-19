@@ -1,0 +1,8 @@
+@use 'variables' as *;
+
+// ── Header section with download button ──
+.dataset-header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}

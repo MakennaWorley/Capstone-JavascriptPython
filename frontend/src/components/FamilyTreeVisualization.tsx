@@ -127,8 +127,8 @@ export default function FamilyTreeVisualization({ data, nerdMode, onNerdModeChan
 
 	return (
 		<div className="family-tree">
-			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-				<h2 style={{ margin: 0 }}>
+			<div className="family-tree-header">
+				<h2 className="family-tree-title">
 					Family Tree: {data.dataset} focusing on individual {data.focus_id}
 				</h2>
 				<FormControlLabel

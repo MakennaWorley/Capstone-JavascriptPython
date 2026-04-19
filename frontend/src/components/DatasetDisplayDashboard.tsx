@@ -1,5 +1,5 @@
 import DownloadIcon from '@mui/icons-material/Download';
-import { Button, FormControlLabel, MenuItem, Paper, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from '@mui/material';
+import { Button, MenuItem, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import FamilyTreeVisualization from './FamilyTreeVisualization.js';
@@ -327,7 +327,7 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ne
 				<div className="section-wrapper">
 					<div className="flex-between-mb">
 						<h2 className="section-heading">Genotypes</h2>
-						<div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+						<div className="dataset-header-actions">
 							<Button
 								variant="contained"
 								startIcon={<DownloadIcon />}
@@ -337,14 +337,6 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ne
 							>
 								{'Download Dataset'}
 							</Button>
-							<FormControlLabel
-								control={
-									<Switch checked={nerdMode} onChange={(e) => onNerdModeChange(e.target.checked)} size="small" className="purple-switch" />
-								}
-								label="Stats for Nerds"
-								labelPlacement="start"
-								sx={{ margin: 0, gap: '0.4rem', '& .MuiFormControlLabel-label': { fontSize: '0.82rem', color: 'text.secondary' } }}
-							/>
 						</div>
 					</div>
 

@@ -1,11 +1,10 @@
+import CloseIcon from '@mui/icons-material/Close';
 import {
 	Dialog,
 	DialogContent,
 	DialogTitle,
-	FormControlLabel,
 	IconButton,
 	Paper,
-	Switch,
 	Table,
 	TableBody,
 	TableCell,
@@ -110,16 +109,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 			{/* Metrics table */}
 			{metricRows.length > 0 && (
 				<div className="section-mb-xl">
-					<div className="flex-between-mb-lg">
-						<h2 className="heading-flush">Test Metrics</h2>
-						<FormControlLabel
-							control={
-								<Switch checked={nerdMode} onChange={(e) => onNerdModeChange(e.target.checked)} size="small" className="purple-switch" />
-							}
-							label="Stats for Nerds"
-							sx={{ mr: 0, '& .MuiFormControlLabel-label': { fontSize: '0.85rem', opacity: 0.8 } }}
-						/>
-					</div>
+					<h2 className="heading-flush">Test Metrics</h2>
 					<TableContainer>
 						<Table size="small">
 							<TableHead>
@@ -259,8 +249,8 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 			<Dialog open={modalGraph !== null} onClose={() => setModalGraph(null)} maxWidth="lg" fullWidth className="graph-modal">
 				<DialogTitle className="graph-modal-title">
 					{modalGraph === 'test' ? 'Test Performance' : 'Confusion Matrix'}
-					<IconButton onClick={() => setModalGraph(null)} size="small" aria-label="close" className="graph-modal-close">
-						✕
+					<IconButton onClick={() => setModalGraph(null)} aria-label="close" className="graph-modal-close">
+						<CloseIcon />
 					</IconButton>
 				</DialogTitle>
 				<DialogContent dividers>
@@ -288,8 +278,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							<img
 								src={`data:image/png;base64,${images?.graph_test_base64}`}
 								alt="Test Performance Graph"
-								className="dark-mode-image-static"
-								style={{ maxWidth: '100%', height: 'auto', display: 'block' }}
+							className="dark-mode-image-static graph-image-fullwidth"
 							/>
 						</>
 					) : (
@@ -312,7 +301,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 									This grid shows what the model predicted (columns) versus what was actually true (rows). Numbers along the diagonal (top-left to bottom-right) are correct predictions. Off-diagonal numbers are mistakes. The darker (more saturated) a cell, the more predictions landed there. A good model will have dark cells only along the diagonal and faded cells everywhere else.
 								</p>
 							)}
-								<img src={`data:image/png;base64,${images?.graph_cm_base64}`} alt="Confusion Matrix" className="dark-mode-image-static" style={{ maxWidth: '100%', height: 'auto', display: 'block' }} />
+								<img src={`data:image/png;base64,${images?.graph_cm_base64}`} alt="Confusion Matrix" className="dark-mode-image-static graph-image-fullwidth" />
 						</>
 					)}
 				</DialogContent>

@@ -69,6 +69,26 @@
     }
 }
 
+.sidebar-btn-nerd-on.MuiListItemButton-root {
+    border-radius: $radius-lg;
+    background-color: $color-primary;
+    color: white;
+
+    &:hover {
+        background-color: $color-primary-dark;
+    }
+}
+
+.sidebar-btn-nerd-off.MuiListItemButton-root {
+    border-radius: $radius-lg;
+    background-color: $sidebar-debug-off-bg;
+    color: white;
+
+    &:hover {
+        background-color: $sidebar-debug-off-hover;
+    }
+}
+
 // ── Toggle button (menu/close) ──
 .sidebar-toggle {
     &.MuiIconButton-root {
@@ -83,6 +103,22 @@
             background-color: $color-primary-bg;
         }
     }
+}
+
+// ── Internal toggle button (inside sidebar) ──
+.sidebar-toggle-internal.MuiIconButton-root {
+    color: $color-primary;
+    border: 4px solid $color-primary;
+
+    &:hover {
+        background-color: $color-primary-bg;
+    }
+
+    background-color: $sidebar-bg-dark;
+}
+
+[data-theme='light'] .sidebar-toggle-internal.MuiIconButton-root {
+    background-color: $sidebar-bg-light;
 }
 
 [data-theme='dark'] .sidebar-toggle.MuiIconButton-root {

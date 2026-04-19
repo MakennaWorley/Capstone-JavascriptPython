@@ -6,6 +6,18 @@
     border-radius: $radius-xl;
 }
 
+// ── Tree header section ──
+.family-tree-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.family-tree-title {
+    margin: 0;
+}
+
 // ── Tooltip on hover ──
 .tree-tooltip {
     position: absolute;

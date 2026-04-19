@@ -144,6 +144,8 @@ export default function App() {
 					onThemeToggle={() => setDarkModeOverride(!darkMode)}
 					debugMode={debugMode}
 					onDebugToggle={() => setDebugMode(!debugMode)}
+					nerdMode={nerdMode}
+					onNerdModeChange={setNerdMode}
 					onCreateDataset={() => setShowCreateDatasetModal(true)}
 				/>
 

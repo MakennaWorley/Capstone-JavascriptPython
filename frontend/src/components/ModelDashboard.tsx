@@ -1,4 +1,3 @@
-import { FormControlLabel, Switch } from '@mui/material';
 
 type Model = {
 	model_name: string;
@@ -21,7 +20,7 @@ function renderTextWithVarHighlight(text: string, isNerdMode: boolean): (string 
 		// Check if it's a variable name (contains underscore or is a technical term)
 		if (/^[a-z_][a-z0-9_]*$/.test(part) && (part.includes('_') || ['softmax', 'dropout', 'normalization', 'CUDA', 'BFGS'].includes(part))) {
 			return (
-				<code key={idx} className="nerd-text" style={{ backgroundColor: 'transparent', padding: 0 }}>
+				<code key={idx} className="nerd-text nerd-code">
 					{part}
 				</code>
 			);
@@ -222,14 +221,6 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 		<div className="dashboard-wrapper">
 			<div className="dashboard-header">
 				<h3 className="heading-flush">Model Dashboard</h3>
-				<FormControlLabel
-					control={
-						<Switch checked={nerdMode} onChange={(e) => onNerdModeChange(e.target.checked)} size="small" className="purple-switch" />
-					}
-					label="Stats for Nerds"
-					labelPlacement="start"
-					sx={{ margin: 0, gap: '0.4rem', '& .MuiFormControlLabel-label': { fontSize: '0.82rem', color: 'text.secondary' } }}
-				/>
 			</div>
 
 			{/* Identity */}
@@ -258,13 +249,13 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 					return (
 						<>
 							<div className="nerd-text">
-								<ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
+							<ul className="nerd-stats-list">
 									{stats.map((stat) => (
 										<li key={stat}>{stat}</li>
 									))}
 								</ul>
 							</div>
-							{description && <p style={{ margin: '0.5rem 0' }} className="context-text">{description}</p>}
+							{description && <p className="nerd-description-para context-text">{description}</p>}
 						</>
 					);
 				})()}
