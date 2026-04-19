@@ -128,9 +128,9 @@ export default function FamilyTreeVisualization({ data, nerdMode, onNerdModeChan
 	return (
 		<div className="family-tree">
 			<div className="family-tree-header">
-				<h2 className="family-tree-title">
+				<h3 className="family-tree-title">
 					Family Tree: {data.dataset} focusing on individual {data.focus_id}
-				</h2>
+				</h3>
 				<FormControlLabel
 					control={<Switch checked={nerdMode} onChange={(e) => onNerdModeChange(e.target.checked)} />}
 					label="Stats for Nerds"

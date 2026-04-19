@@ -219,7 +219,7 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 	return (
 		<div className="dashboard-wrapper">
 			<div className="dashboard-header">
-				<h3 className="heading-flush">Model Dashboard</h3>
+				<h2 className="heading-flush">Model Dashboard</h2>
 			</div>
 
 			{/* Identity */}
@@ -239,7 +239,7 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 			{/* Dataset size blurb */}
 			{sizeBlurb && (
 				<div className="section-mb">
-					<h3 className="section-heading">Training Dataset</h3>
+					<h2 className="section-heading">Training Dataset</h2>
 					<p className="context-text">{sizeBlurb.simple}</p>
 					{nerdMode &&
 						(() => {
@@ -264,7 +264,7 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 
 			{/* Training pipeline */}
 			<div className="section-mb">
-				<h3 className="section-heading">{nerdMode ? 'Training Pipeline' : 'How the Model Was Trained'}</h3>
+				<h2 className="section-heading">{nerdMode ? 'Training Pipeline' : 'How the Model Was Trained'}</h2>
 				{nerdMode ? (
 					<>
 						<p className="context-text">
@@ -302,7 +302,7 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 
 			{/* Description */}
 			<div className="section-mb">
-				<h3 className="section-heading">About this Model</h3>
+				<h2 className="section-heading">About this Model</h2>
 				{(() => {
 					const text = nerdMode ? info.description : info.simple_description;
 					// Split on periods followed by space, then render as separate paragraphs
@@ -321,7 +321,7 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 
 			{/* Strengths */}
 			<div className="section-mb">
-				<h3 className="section-heading">Strengths</h3>
+				<h2 className="section-heading">Strengths</h2>
 				<ul className="strengths-list context-text">
 					{(nerdMode ? info.strengths : info.simple_strengths).map((s) => (
 						<li key={s}>{s}</li>
@@ -331,7 +331,7 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 
 			{/* Use case */}
 			<div className="use-case-box">
-				<p className="use-case-label">{nerdMode ? 'Recommended Use Case' : 'Best For'}</p>
+				<h2 className="use-case-label">{nerdMode ? 'Recommended Use Case' : 'Best For'}</h2>
 				<p className="context-text">{nerdMode ? info.use_case : info.simple_use_case}</p>
 			</div>
 		</div>

@@ -35,6 +35,14 @@
     background-color: #000000 !important;
     border-left: 4px solid $color-primary;
     border-right: 4px solid $color-primary;
+
+    h3 {
+        font-size: 1.5em;
+        font-weight: 600;
+        line-height: 1;
+        margin: 0;
+        flex: 1;
+    }
 }
 
 [data-theme='light'] .create-dialog-title {
@@ -86,6 +94,14 @@
     background-color: #000000 !important;
     border-left: 4px solid $color-primary;
     border-right: 4px solid $color-primary;
+
+    h3 {
+        font-size: 1.5em;
+        font-weight: 600;
+        line-height: 1;
+        margin: 0;
+        flex: 1;
+    }
 }
 
 [data-theme='light'] .graph-modal-title {

@@ -192,7 +192,7 @@ export default function DatasetModelCreationForm({
 
 			{/* BASIC */}
 			<Box>
-				<h2 className="section-heading">Basic Settings</h2>
+				<h4 className="section-heading">Basic Settings</h4>
 				<Stack spacing={2}>
 					<TextField
 						label="Dataset name (alphanumeric, no spaces)"
@@ -215,9 +215,9 @@ export default function DatasetModelCreationForm({
 			{/* ADVANCED */}
 			{advanced && (
 				<Box>
-					<h2 className="section-heading">
+					<h4 className="section-heading">
 						Advanced Settings <span className="label-hint">(optional)</span>
-					</h2>
+					</h4>
 					<p className="context-text">
 						These settings control how large and deep the simulated family is. Larger values produce richer, more realistic data but take
 						longer to generate. The defaults are a good starting point for most experiments.

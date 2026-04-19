@@ -109,7 +109,6 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 			{/* Metrics table */}
 			{metricRows.length > 0 && (
 				<div className="section-mb-xl">
-					<h2 className="heading-flush">Test Metrics</h2>
 					<TableContainer>
 						<Table size="small">
 							<TableHead>
@@ -141,6 +140,16 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							</TableBody>
 						</Table>
 					</TableContainer>
+				</div>
+			)}
+
+			{/* Raw JSON dump — debug only */}
+			{debugMode && testMetrics && (
+				<div className="section-mb-xl">
+					<h4>Raw Response</h4>
+					<div className="debug-output">
+						<pre>{JSON.stringify(testMetrics, null, 2)}</pre>
+					</div>
 				</div>
 			)}
 
@@ -193,11 +202,11 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 			{/* Graphs Section */}
 			{images && (images.graph_test_base64 || images.graph_cm_base64) && (
 				<div className="section-mb-xl">
-					<h1>Performance Graphs</h1>
+					<h2>Performance Graphs</h2>
 					<div className="graphs-grid">
 						{images.graph_test_base64 && (
 							<div>
-								<h2 className="section-heading">Test Performance</h2>
+								<h3 className="section-heading">ROC & PR Graphs</h3>
 								{nerdMode ? (
 									<>
 										<p className="context-text">
@@ -238,7 +247,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 								)}
 								<img
 									src={`data:image/png;base64,${images.graph_test_base64}`}
-									alt="Test Performance Graph"
+									alt="ROC & PR Graphs"
 									onClick={() => setModalGraph('test')}
 									className="dark-mode-image"
 								/>
@@ -246,7 +255,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 						)}
 						{images.graph_cm_base64 && (
 							<div>
-								<h2 className="section-heading">Confusion Matrix</h2>
+								<h3 className="section-heading">Confusion Matrix</h3>
 								{nerdMode ? (
 									<>
 										<p className="context-text">
@@ -284,7 +293,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 			{/* Graph modal */}
 			<Dialog open={modalGraph !== null} onClose={() => setModalGraph(null)} maxWidth="lg" fullWidth className="graph-modal">
 				<DialogTitle className="graph-modal-title">
-					{modalGraph === 'test' ? 'Test Performance' : 'Confusion Matrix'}
+					<h3>{modalGraph === 'test' ? 'ROC & PR Graphs' : 'Confusion Matrix'}</h3>
 					<IconButton onClick={() => setModalGraph(null)} aria-label="close" className="graph-modal-close">
 						<CloseIcon />
 					</IconButton>
@@ -332,7 +341,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							)}
 							<img
 								src={`data:image/png;base64,${images?.graph_test_base64}`}
-								alt="Test Performance Graph"
+								alt="ROC & PR Graphs"
 								className="dark-mode-image-static graph-image-fullwidth"
 							/>
 						</>
@@ -370,20 +379,10 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 				</DialogContent>
 			</Dialog>
 
-			{/* Raw JSON dump — debug only */}
-			{debugMode && testMetrics && (
-				<div className="section-mb-xl">
-					<h4>Raw Response</h4>
-					<div className="debug-output">
-						<pre>{JSON.stringify(testMetrics, null, 2)}</pre>
-					</div>
-				</div>
-			)}
-
 			{/* Context: why results look the way they do */}
 			{testMetrics && (
 				<div className="section-top mb-sm">
-					<h2 className="section-heading">Understanding the Results</h2>
+					<h3 className="section-heading">Understanding the Results</h3>
 					{nerdMode ? (
 						<>
 							<p className="context-text">
@@ -433,7 +432,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 			{/* Prediction Error Analysis */}
 			{predictionErrors != null && (
 				<div className="section-top">
-					<h2 className="section-heading">Prediction Error Analysis</h2>
+					<h3 className="section-heading">Prediction Error Analysis</h3>
 					{nerdMode ? (
 						<>
 							<p className="context-text">

@@ -270,7 +270,7 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography variant="h6" fontWeight="bold">
+								<Typography variant="h3" fontWeight="bold">
 									Dataset Dashboard
 								</Typography>
 							</AccordionSummary>
@@ -298,7 +298,9 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">Model Dashboard</Typography>
+								<Typography variant="h3" fontWeight="bold">
+									Model Dashboard
+								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelDashboard model={selectedModel} nerdMode={nerdMode} onNerdModeChange={setNerdMode} />
@@ -332,7 +334,9 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">Test Model</Typography>
+								<Typography variant="h3" fontWeight="bold">
+									Test Model
+								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelTrainer
@@ -367,7 +371,7 @@ export default function App() {
 							borderColor: 'divider'
 						}}
 					>
-						<Typography variant="body2" sx={{ color: 'text.secondary' }}>
+						<Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
 							&copy; {new Date().getFullYear()}{' '}
 							<Box
 								component="a"
@@ -413,7 +417,7 @@ export default function App() {
 					}}
 				>
 					<DialogTitle className="create-dialog-title">
-						Create Dataset
+						<h3>Create Dataset</h3>
 						<IconButton onClick={() => setShowCreateDatasetModal(false)} aria-label="Close" className="create-dialog-close">
 							<CloseIcon />
 						</IconButton>
