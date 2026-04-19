@@ -128,3 +128,13 @@
 [data-theme='dark'] .dark-mode-image {
     filter: invert(1) hue-rotate(180deg) brightness(1.1);
 }
+
+.dark-mode-image-static {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+[data-theme='dark'] .dark-mode-image-static {
+    filter: invert(1) hue-rotate(180deg) brightness(1.1);
+}

@@ -1,3 +1,4 @@
+import { FormControlLabel, Switch } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 
@@ -23,9 +24,11 @@ type FamilyTreeData = {
 
 type Props = {
 	data: FamilyTreeData;
+	nerdMode: boolean;
+	onNerdModeChange: (value: boolean) => void;
 };
 
-export default function FamilyTreeVisualization({ data }: Props) {
+export default function FamilyTreeVisualization({ data, nerdMode, onNerdModeChange }: Props) {
 	const [hoveredNode, setHoveredNode] = useState<number | null>(null);
 	const theme = useTheme();
 
@@ -124,21 +127,48 @@ export default function FamilyTreeVisualization({ data }: Props) {
 
 	return (
 		<div className="family-tree">
-			<h2>
-				Family Tree: {data.dataset} focusing on individual {data.focus_id}
-			</h2>
+			<div className="family-tree-header">
+				<h3 className="family-tree-title">
+					Family Tree: {data.dataset} focusing on individual {data.focus_id}
+				</h3>
+				<FormControlLabel
+					control={<Switch checked={nerdMode} onChange={(e) => onNerdModeChange(e.target.checked)} />}
+					label="Stats for Nerds"
+				/>
+			</div>
 
 			<p className="context-text">
-				This diagram shows the immediate family connections for the selected individual. Each circle represents a person in the simulated
-				pedigree. The <strong>vertical axis</strong> corresponds to generation — individuals higher up are older ancestors, while those lower
-				down are descendants. Only direct connections are shown: the parents above and children below the selected individual.
+				{nerdMode ? (
+					<>
+						This diagram visualizes the immediate family pedigree for the selected individual. Each circle is a node representing a person
+						in the simulated family tree. The <strong>vertical axis</strong> encodes generation time — ancestors with higher temporal
+						coordinates appear higher on the plot; descendants appear lower. Only direct parent-child edges are rendered; the genealogical
+						relationships are inferred from the temporal ordering of nodes.
+					</>
+				) : (
+					<>
+						This diagram shows the family tree for the selected individual. Each circle represents a person. The{' '}
+						<strong>vertical position</strong> shows the generational gaps — family members higher up are older ancestors, while those
+						lower down are their descendants. You can see the direct family relationships: parents above, children below.
+					</>
+				)}
 			</p>
 			<p className="context-text">
-				<span className="text-known">Green</span> nodes represent individuals whose genotypes were successfully sequenced and are present in
-				the dataset.
-				<span className="text-unknown"> Red</span> nodes represent individuals who were never sequenced — their genotypes are missing and must
-				be inferred by the model using information from their relatives. The <strong>blue</strong> node is the currently selected individual.
-				Hover over any node to inspect its genotype values.
+				{nerdMode ? (
+					<>
+						<span className="text-known">Green</span> nodes represent individuals with successfully called genotypes present in the
+						dataset. <span className="text-unknown">Red</span> nodes represent individuals with missing genotype data; their genetic
+						states must be inferred by the model using information propagated from sequenced relatives. The <strong>blue</strong> node
+						highlights the currently selected focus individual. Hover over any node to inspect its genotype vector.
+					</>
+				) : (
+					<>
+						<span className="text-known">Green</span> circles represent people whose genetic information is known.{' '}
+						<span className="text-unknown">Red</span> circles represent people whose genetic information is unknown — the model tries to
+						figure it out based on their family members' information. The <strong>blue</strong> circle is the person you selected. Hover
+						over any circle to see their information.
+					</>
+				)}
 			</p>
 
 			<div className="tree-svg-wrapper">
@@ -453,9 +483,13 @@ export default function FamilyTreeVisualization({ data }: Props) {
 					<span className="legend-circle legend-circle-unknown" />
 					<span className="text-unknown">Unknown genotype</span>
 				</span>
-				<span className="empty-state">Vertical axis = Time. Click on the nodes to see genotype vectors.</span>
 				<span className="empty-state">
-					Shows direct connections only — parents and children of the selected node. Siblings and partners are not shown.
+					Vertical axis = Time. Click on the nodes to see their {nerdMode ? 'genotype vectors' : 'genotypes'}.
+				</span>
+				<span className="empty-state">
+					{nerdMode
+						? 'Shows direct connections only (parent-child edges inferred from temporal ordering). Siblings, marital ties, and collateral relatives are omitted.'
+						: 'Shows direct connections only — parents and children of the selected node. Siblings and partners are not shown.'}
 				</span>
 			</p>
 		</div>

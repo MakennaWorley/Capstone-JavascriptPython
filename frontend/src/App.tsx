@@ -61,6 +61,7 @@ export default function App() {
 	const [snackbarOpen, setSnackbarOpen] = useState(false);
 	const [snackbarMessage, setSnackbarMessage] = useState('');
 	const [panelOpen, setPanelOpen] = useState({ dataset: true, model: true, test: true });
+	const [nerdMode, setNerdMode] = useState(false);
 	const testAccordionRef = useRef<HTMLDivElement>(null);
 	const systemPrefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 	const [darkModeOverride, setDarkModeOverride] = useState<boolean | null>(null);
@@ -143,6 +144,8 @@ export default function App() {
 					onThemeToggle={() => setDarkModeOverride(!darkMode)}
 					debugMode={debugMode}
 					onDebugToggle={() => setDebugMode(!debugMode)}
+					nerdMode={nerdMode}
+					onNerdModeChange={setNerdMode}
 					onCreateDataset={() => setShowCreateDatasetModal(true)}
 				/>
 
@@ -199,7 +202,7 @@ export default function App() {
 						</Typography>
 						<Typography variant="subtitle1" sx={{ color: 'text.secondary', mb: 1 }}>
 							A research capstone project exploring ancestral genotype reconstruction using <strong>Bayesian Models</strong>,{' '}
-							<strong>HMMs</strong>, <strong>DNNs</strong>, and <strong>GNNs</strong>.
+							<strong>HMMs</strong>, <strong>DNNs</strong>, and <strong>GNNs</strong> by Makenna Worley.
 						</Typography>
 						<p className="context-text">
 							<strong>Stochastic</strong> — involving random probability and unpredictability where future states cannot be precisely
@@ -207,31 +210,27 @@ export default function App() {
 							due to cost, sample degradation, or ethical constraints.
 						</p>
 						<p className="context-text">
-							In genetics research, it is common for ancestors to be unsequenced — grandparents or earlier relatives may be deceased,
-							unavailable, or too costly to sequence. These gaps in family trees limit our ability to reconstruct inheritance patterns,
-							predict hereditary traits, and model population history. If we simply ignore these gaps, our analysis becomes biased and
-							our understanding of family inheritance patterns falls apart. This project tackles that gap computationally.
+							The core question: can we predict the genetics of individuals further up the family tree? You might remember Mendelian
+							genetics from high school biology — Punnett squares showing how traits inherit from parents to children. But those squares
+							assume we know the parents' genetics. Usually, we have genetic data from children and their parents, but we are missing
+							information about grandparents and earlier ancestors. This project explores whether different machine learning models can
+							work backward and fill in those missing pieces.
 						</p>
 						<p className="context-text">
 							The system uses{' '}
 							<a href="https://pubmed.ncbi.nlm.nih.gov/34897427/" target="_blank" rel="noopener noreferrer" className="text-accent">
 								<strong>msprime</strong>
 							</a>{' '}
-							to simulate realistic diploid populations with explicit multi-generational pedigrees, where every individual's true
-							genotype is known. A configurable fraction of individuals are then masked — their genotypes hidden — to simulate the
-							real-world condition of absent family members. Five inference architectures are trained on the visible data and tasked
-							with recovering the hidden genotypes: a <strong>Bayesian Categorical Model</strong> (PyMC MCMC with hierarchical priors),
-							a <strong>Hidden Markov Model</strong> (hmmlearn, treating each individual as a sequence across genomic sites), a{' '}
-							<strong>Deep Neural Network</strong> (PyTorch, with batch normalization and dropout), a{' '}
-							<strong>Graph Neural Network</strong> (PyTorch Geometric, using pedigree structure as the graph), and a{' '}
-							<strong>Multinomial Logistic Regression</strong> baseline (scikit-learn).
+							to simulate realistic families with known genetic data for everyone. Then, we hide the genetics of some ancestors
+							(simulating missing data) and train five different models to predict those hidden genetics from the visible data. The
+							models are: a <strong>Bayesian Model</strong>, a <strong>Hidden Markov Model</strong>, a{' '}
+							<strong>Deep Neural Network</strong>, a <strong>Graph Neural Network</strong>, and <strong>Logistic Regression</strong> as
+							a baseline.
 						</p>
 						<p className="context-text">
-							Each model predicts the <strong>allele dosage</strong> (0, 1, or 2 copies of the alternate allele) for every masked
-							individual at every genomic site. Predictions are then compared against the known ground truth and evaluated using
-							precision, recall, F1-score, ROC and precision-recall curves, confusion matrices, and calibration plots. The goal is not
-							just to build an imputation tool, but to rigorously characterize <strong>when and why</strong> each class of model
-							succeeds or breaks down as data becomes increasingly sparse.
+							Each model predicts the <strong>allele dosage</strong> (how many copies of a genetic variant someone has: 0, 1, or 2) for
+							each hidden ancestor at each location in the genome. We then compare these predictions to the true values and measure how
+							well each model performs.
 						</p>
 					</Box>
 
@@ -271,12 +270,18 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography variant="h6" fontWeight="bold">
-									<h2>Dataset Dashboard</h2>
+								<Typography variant="h3" fontWeight="bold">
+									Dataset Dashboard
 								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
-								<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} />
+								<DatasetDashboard
+									apiBase={API_BASE}
+									xApiKey={API_KEY}
+									selectedDataset={selectedDataset}
+									nerdMode={nerdMode}
+									onNerdModeChange={setNerdMode}
+								/>
 							</AccordionDetails>
 						</Accordion>
 					)}
@@ -293,12 +298,12 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">
-									<h2>Model Dashboard</h2>
+								<Typography variant="h3" fontWeight="bold">
+									Model Dashboard
 								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
-								<ModelDashboard model={selectedModel} />
+								<ModelDashboard model={selectedModel} nerdMode={nerdMode} onNerdModeChange={setNerdMode} />
 							</AccordionDetails>
 						</Accordion>
 					)}
@@ -329,8 +334,8 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">
-									<h2>Test Model</h2>
+								<Typography variant="h3" fontWeight="bold">
+									Test Model
 								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
@@ -340,6 +345,8 @@ export default function App() {
 									selectedDataset={selectedDataset}
 									selectedModel={selectedModel}
 									onTestComplete={setTestResults}
+									nerdMode={nerdMode}
+									onNerdModeChange={setNerdMode}
 								/>
 								<ModelStats
 									paths={(testResults?.paths as any) || null}
@@ -347,6 +354,8 @@ export default function App() {
 									images={testResults?.images || null}
 									predictionErrors={testResults?.predictionErrors ?? null}
 									debugMode={debugMode}
+									nerdMode={nerdMode}
+									onNerdModeChange={setNerdMode}
 								/>
 							</AccordionDetails>
 						</Accordion>
@@ -362,7 +371,7 @@ export default function App() {
 							borderColor: 'divider'
 						}}
 					>
-						<Typography variant="body2" sx={{ color: 'text.secondary' }}>
+						<Typography variant="subtitle2" sx={{ color: 'text.secondary' }}>
 							&copy; {new Date().getFullYear()}{' '}
 							<Box
 								component="a"
@@ -408,7 +417,7 @@ export default function App() {
 					}}
 				>
 					<DialogTitle className="create-dialog-title">
-						Create Dataset
+						<h3>Create Dataset</h3>
 						<IconButton onClick={() => setShowCreateDatasetModal(false)} aria-label="Close" className="create-dialog-close">
 							<CloseIcon />
 						</IconButton>

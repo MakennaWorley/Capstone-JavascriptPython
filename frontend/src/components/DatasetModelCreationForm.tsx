@@ -192,9 +192,7 @@ export default function DatasetModelCreationForm({
 
 			{/* BASIC */}
 			<Box>
-				<Typography variant="h6" className="form-section-heading">
-					Basic Settings
-				</Typography>
+				<h4 className="section-heading">Basic Settings</h4>
 				<Stack spacing={2}>
 					<TextField
 						label="Dataset name (alphanumeric, no spaces)"
@@ -210,7 +208,6 @@ export default function DatasetModelCreationForm({
 					<FormControlLabel
 						control={<Checkbox checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} className="purple-checkbox" />}
 						label="Advanced Settings (scale individuals)"
-						className="form-label"
 					/>
 				</Stack>
 			</Box>
@@ -218,13 +215,13 @@ export default function DatasetModelCreationForm({
 			{/* ADVANCED */}
 			{advanced && (
 				<Box>
-					<Typography variant="h6" className="form-section-heading">
+					<h4 className="section-heading">
 						Advanced Settings <span className="label-hint">(optional)</span>
-					</Typography>
-					<Typography variant="body2" className="form-section-description">
+					</h4>
+					<p className="context-text">
 						These settings control how large and deep the simulated family is. Larger values produce richer, more realistic data but take
 						longer to generate. The defaults are a good starting point for most experiments.
-					</Typography>
+					</p>
 					<Stack spacing={2} className="form-fields-stack">
 						<Box className="grid-2col">
 							<TextField
@@ -264,7 +261,7 @@ export default function DatasetModelCreationForm({
 								className="purple-text-field"
 							/>
 						</Box>
-						<Typography variant="body2" className="form-total-individuals">
+						<p className="context-text">
 							Total individuals: <strong>{derivedTotal ?? '—'}</strong>{' '}
 							{derivedTotal !== undefined && (
 								<span className="inline-note">
@@ -277,7 +274,7 @@ export default function DatasetModelCreationForm({
 									)
 								</span>
 							)}{' '}
-						</Typography>
+						</p>
 					</Stack>
 				</Box>
 			)}

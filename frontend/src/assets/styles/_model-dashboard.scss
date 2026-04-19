@@ -1,0 +1,18 @@
+@use 'variables' as *;
+
+// ── Code element with nerd mode styling ──
+.nerd-code {
+    background-color: transparent;
+    padding: 0;
+}
+
+// ── Statistics list in nerd mode ──
+.nerd-stats-list {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+// ── Description paragraph in nerd mode ──
+.nerd-description-para {
+    margin: 0.5rem 0;
+}
