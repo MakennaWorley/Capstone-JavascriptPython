@@ -11,6 +11,25 @@ type ModelDashboardProps = {
 	onNerdModeChange: (value: boolean) => void;
 };
 
+// Helper function to render text with variable names highlighted in nerd mode
+function renderTextWithVarHighlight(text: string, isNerdMode: boolean): (string | JSX.Element)[] {
+	if (!isNerdMode) return [text];
+	
+	// Split on variable patterns (snake_case) and wrap them in <code> with nerd-text class
+	const parts = text.split(/(\b[a-z_][a-z0-9_]*\b)/g);
+	return parts.map((part, idx) => {
+		// Check if it's a variable name (contains underscore or is a technical term)
+		if (/^[a-z_][a-z0-9_]*$/.test(part) && (part.includes('_') || ['softmax', 'dropout', 'normalization', 'CUDA', 'BFGS'].includes(part))) {
+			return (
+				<code key={idx} className="nerd-text" style={{ backgroundColor: 'transparent', padding: 0 }}>
+					{part}
+				</code>
+			);
+		}
+		return part;
+	});
+}
+
 const MODEL_TYPE_INFO: Record<
 	string,
 	{
@@ -292,7 +311,20 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 		{/* Description */}
 			<div className="section-mb">
 				<h3 className="section-heading">About this Model</h3>
-				<p className="context-text">{nerdMode ? info.description : info.simple_description}</p>
+				{(() => {
+					const text = nerdMode ? info.description : info.simple_description;
+					// Split on periods followed by space, then render as separate paragraphs
+					const sentences = text.split(/(?<=[.!?])\s+/);
+					return sentences.length > 2 ? (
+						sentences.map((sentence, idx) => (
+							<p key={idx} className="context-text">
+								{renderTextWithVarHighlight(sentence, nerdMode)}
+							</p>
+						))
+					) : (
+						<p className="context-text">{renderTextWithVarHighlight(text, nerdMode)}</p>
+					);
+				})()}
 			</div>
 
 			{/* Strengths */}

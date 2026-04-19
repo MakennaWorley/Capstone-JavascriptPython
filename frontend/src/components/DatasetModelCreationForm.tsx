@@ -192,9 +192,9 @@ export default function DatasetModelCreationForm({
 
 			{/* BASIC */}
 			<Box>
-				<Typography variant="h6" className="form-section-heading">
+				<h2 className="section-heading">
 					Basic Settings
-				</Typography>
+				</h2>
 				<Stack spacing={2}>
 					<TextField
 						label="Dataset name (alphanumeric, no spaces)"
@@ -210,7 +210,6 @@ export default function DatasetModelCreationForm({
 					<FormControlLabel
 						control={<Checkbox checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} className="purple-checkbox" />}
 						label="Advanced Settings (scale individuals)"
-						className="form-label"
 					/>
 				</Stack>
 			</Box>
@@ -218,13 +217,13 @@ export default function DatasetModelCreationForm({
 			{/* ADVANCED */}
 			{advanced && (
 				<Box>
-					<Typography variant="h6" className="form-section-heading">
+					<h2 className="section-heading">
 						Advanced Settings <span className="label-hint">(optional)</span>
-					</Typography>
-					<Typography variant="body2" className="form-section-description">
+					</h2>
+					<p className="context-text">
 						These settings control how large and deep the simulated family is. Larger values produce richer, more realistic data but take
 						longer to generate. The defaults are a good starting point for most experiments.
-					</Typography>
+					</p>
 					<Stack spacing={2} className="form-fields-stack">
 						<Box className="grid-2col">
 							<TextField
@@ -264,20 +263,20 @@ export default function DatasetModelCreationForm({
 								className="purple-text-field"
 							/>
 						</Box>
-						<Typography variant="body2" className="form-total-individuals">
-							Total individuals: <strong>{derivedTotal ?? '—'}</strong>{' '}
-							{derivedTotal !== undefined && (
-								<span className="inline-note">
-									(
-									{derivedTotal <= 250
-										? 'small dataset — fast, good for testing'
-										: derivedTotal <= 1000
-											? 'medium dataset — balanced speed and coverage'
-											: 'large dataset — may take a while to generate'}
-									)
-								</span>
-							)}{' '}
-						</Typography>
+					<p className="context-text">
+						Total individuals: <strong>{derivedTotal ?? '—'}</strong>{' '}
+						{derivedTotal !== undefined && (
+							<span className="inline-note">
+								(
+								{derivedTotal <= 250
+									? 'small dataset — fast, good for testing'
+									: derivedTotal <= 1000
+										? 'medium dataset — balanced speed and coverage'
+										: 'large dataset — may take a while to generate'}
+								)
+							</span>
+						)}{' '}
+					</p>
 					</Stack>
 				</Box>
 			)}
