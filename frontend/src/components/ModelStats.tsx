@@ -51,7 +51,7 @@ const METRIC_DESCRIPTIONS: Record<string, string> = {
 	auc_macro:
 		"Measures how good the model is at ranking the right answer above the wrong ones. Score of 1.0 is perfect, 0.5 means it's just guessing randomly. Anything above 0.85 is good. This is a trustworthy metric because the model can't fake it by picking one answer more often.",
 	f1_macro:
-		"A balanced score that checks if the model is both right when it makes a guess (accuracy) and finding the cases that actually exist (coverage). It penalizes the model for missing rare cases or being wrong often. Good scores are above 0.75.",
+		'A balanced score that checks if the model is both right when it makes a guess (accuracy) and finding the cases that actually exist (coverage). It penalizes the model for missing rare cases or being wrong often. Good scores are above 0.75.',
 	f1_weighted:
 		"Similar to the F1 above, but accounts for the fact that some answers show up way more often than others in real data. This is what you'd see in everyday use. Compare this with F1 Macro to see if the model handles rare cases well."
 };
@@ -151,31 +151,44 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 					{nerdMode ? (
 						<>
 							<p className="context-text">
-								The metrics above summarize performance across the held-out test set. Accuracy is inflated under class imbalance; Balanced Accuracy and Macro AUC are more trustworthy. F1 Macro penalizes the model for missing rare dosage classes; F1 Weighted reflects real-world frequency distribution. All values are between 0 and 1, reported as percentages.
+								The metrics above summarize performance across the held-out test set. Accuracy is inflated under class imbalance;
+								Balanced Accuracy and Macro AUC are more trustworthy. F1 Macro penalizes the model for missing rare dosage classes; F1
+								Weighted reflects real-world frequency distribution. All values are between 0 and 1, reported as percentages.
 							</p>
 							<p className="context-text">
-								The model predicts unordered allele dosage — how many copies of the variant each individual carries. This is why there are exactly three possibilities: 0, 1, or 2 copies. If order mattered — distinguishing which allele came from which parent — there would be six permutations; but dosage ignores parentage order. Random guessing on three equiprobable classes achieves about 33% accuracy.
+								The model predicts unordered allele dosage — how many copies of the variant each individual carries. This is why there
+								are exactly three possibilities: 0, 1, or 2 copies. If order mattered — distinguishing which allele came from which
+								parent — there would be six permutations; but dosage ignores parentage order. Random guessing on three equiprobable
+								classes achieves about 33% accuracy.
 							</p>
 							<p className="context-text">
-								Our best models roughly double this baseline, reaching 60–70% accuracy. A well-performing model typically achieves ≥85% Balanced Accuracy and ≥0.85 Macro AUC. Performance degrades sharply as dataset scale increases: the signal from relatives weakens as pedigree connectivity becomes sparse. A score of 40–70% is still a success — it means the model exploits real signal from pedigree structure, not just memorising the modal class.
+								Our best models roughly double this baseline, reaching 60–70% accuracy. A well-performing model typically achieves
+								≥85% Balanced Accuracy and ≥0.85 Macro AUC. Performance degrades sharply as dataset scale increases: the signal from
+								relatives weakens as pedigree connectivity becomes sparse. A score of 40–70% is still a success — it means the model
+								exploits real signal from pedigree structure, not just memorising the modal class.
 							</p>
 						</>
 					) : (
 						<>
 							<p className="context-text">
-								These numbers measure how well the model did on people and sites it had never seen before. Accuracy tells you the percentage right, but can be misleading if some answers are way more common. Balanced Accuracy and Macro AUC are fairer — they treat all three possible answers equally.
+								These numbers measure how well the model did on people and sites it had never seen before. Accuracy tells you the
+								percentage right, but can be misleading if some answers are way more common. Balanced Accuracy and Macro AUC are
+								fairer — they treat all three possible answers equally.
 							</p>
 							<p className="context-text">
-								Reconstructing someone's genetics from distant relatives is genuinely hard. The model guesses one of three possible answers: 0, 1, or 2 copies of a genetic variant. Random guessing gets about 1 out of 3 (33%) right. Our best models roughly double that, reaching 60–70% accuracy.
+								Reconstructing someone's genetics from distant relatives is genuinely hard. The model guesses one of three possible
+								answers: 0, 1, or 2 copies of a genetic variant. Random guessing gets about 1 out of 3 (33%) right. Our best models
+								roughly double that, reaching 60–70% accuracy.
 							</p>
 							<p className="context-text">
-								They struggle when the data becomes sparse, like a detective who can't solve a case with zero clues. A score of 40–70% is still a success — it means the model is finding real patterns in the pedigree, not just cheating by always guessing the most common answer.
+								They struggle when the data becomes sparse, like a detective who can't solve a case with zero clues. A score of 40–70%
+								is still a success — it means the model is finding real patterns in the pedigree, not just cheating by always guessing
+								the most common answer.
 							</p>
 						</>
 					)}
 				</div>
 			)}
-
 
 			{/* Graphs Section */}
 			{images && (images.graph_test_base64 || images.graph_cm_base64) && (
@@ -185,23 +198,42 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 						{images.graph_test_base64 && (
 							<div>
 								<h2 className="section-heading">Test Performance</h2>
-							{nerdMode ? (
+								{nerdMode ? (
 									<>
 										<p className="context-text">
-											Side-by-side one-vs-rest curves for all three dosage classes (0 = homozygous reference, 1 = heterozygous, 2 = homozygous alt).
+											Side-by-side one-vs-rest curves for all three dosage classes (0 = homozygous reference, 1 = heterozygous,
+											2 = homozygous alt).
 										</p>
 										<p className="context-text">
-											<strong>Left — ROC curve:</strong> True Positive Rate (sensitivity) vs False Positive Rate (1 − specificity) as the classification threshold is swept from 1 → 0. The dashed diagonal is the random-chance baseline (AUC = 0.5). The legend reports per-class AUC; the macro average of these three values is the <em>Macro AUC</em> in the metrics table.
+											<strong>Left — ROC curve:</strong> True Positive Rate (sensitivity) vs False Positive Rate (1 −
+											specificity) as the classification threshold is swept from 1 → 0. The dashed diagonal is the random-chance
+											baseline (AUC = 0.5). The legend reports per-class AUC; the macro average of these three values is the{' '}
+											<em>Macro AUC</em> in the metrics table.
 										</p>
 										<p className="context-text">
-											<strong>Right — Precision-Recall curve:</strong> Precision (positive predictive value) vs Recall (sensitivity) at each threshold. More informative than ROC under severe class imbalance because it is not influenced by the large number of true negatives. A curve that stays high across the full recall range indicates the model is both accurate and thorough. A high-precision / low-recall curve means the model only predicts a class when very confident but misses many true positives.
+											<strong>Right — Precision-Recall curve:</strong> Precision (positive predictive value) vs Recall
+											(sensitivity) at each threshold. More informative than ROC under severe class imbalance because it is not
+											influenced by the large number of true negatives. A curve that stays high across the full recall range
+											indicates the model is both accurate and thorough. A high-precision / low-recall curve means the model
+											only predicts a class when very confident but misses many true positives.
 										</p>
 									</>
 								) : (
 									<>
-										<p className="context-text">Two charts showing how well the model ranks dosage 0, 1, and 2. One chart per dosage class.</p>
-										<p className="context-text"><strong>Left (ROC curve):</strong> Each line traces a trade-off — how many correct predictions the model gets (vertical) versus how many false alarms (horizontal). A line that hugs the top-left corner is ideal. The dashed diagonal line is what random guessing would look like. The AUC number (0.5 = random, 1.0 = perfect) summarizes how far the line is from that diagonal.</p>
-										<p className="context-text"><strong>Right (Precision-Recall curve):</strong> Shows the balance between being precise when you speak (precision) and catching all the real cases (recall). A line that stays high across the whole width means the model is both accurate and thorough for that dosage.</p>
+										<p className="context-text">
+											Two charts showing how well the model ranks dosage 0, 1, and 2. One chart per dosage class.
+										</p>
+										<p className="context-text">
+											<strong>Left (ROC curve):</strong> Each line traces a trade-off — how many correct predictions the model
+											gets (vertical) versus how many false alarms (horizontal). A line that hugs the top-left corner is ideal.
+											The dashed diagonal line is what random guessing would look like. The AUC number (0.5 = random, 1.0 =
+											perfect) summarizes how far the line is from that diagonal.
+										</p>
+										<p className="context-text">
+											<strong>Right (Precision-Recall curve):</strong> Shows the balance between being precise when you speak
+											(precision) and catching all the real cases (recall). A line that stays high across the whole width means
+											the model is both accurate and thorough for that dosage.
+										</p>
 									</>
 								)}
 								<img
@@ -215,7 +247,7 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 						{images.graph_cm_base64 && (
 							<div>
 								<h2 className="section-heading">Confusion Matrix</h2>
-							{nerdMode ? (
+								{nerdMode ? (
 									<>
 										<p className="context-text">
 											A 3×3 matrix where rows index the true dosage class and columns index the predicted class. Diagonal cells
@@ -223,14 +255,18 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 											intensity (saturation) is proportional to count, making systematic biases immediately visible.
 										</p>
 										<p className="context-text">
-											Common failure modes: high counts in row 0 / col 1 or row 1 / col 0 indicate heterozygote confusion with homozygous reference; high
-											counts in row 1 / col 2 or row 2 / col 1 indicate adjacent-dosage confusion around the heterozygous class. A
-											well-calibrated model will have a strongly diagonal matrix with near-zero off-diagonal counts.
+											Common failure modes: high counts in row 0 / col 1 or row 1 / col 0 indicate heterozygote confusion with
+											homozygous reference; high counts in row 1 / col 2 or row 2 / col 1 indicate adjacent-dosage confusion
+											around the heterozygous class. A well-calibrated model will have a strongly diagonal matrix with near-zero
+											off-diagonal counts.
 										</p>
 									</>
 								) : (
-								<p className="context-text">
-									This grid shows what the model predicted (columns) versus what was actually true (rows). Numbers along the diagonal (top-left to bottom-right) are correct predictions. Off-diagonal numbers are mistakes. The more contrast with the background (more saturated) a cell, the more predictions landed there. A good model will have very saturated cells only along the diagonal and faded cells everywhere else.
+									<p className="context-text">
+										This grid shows what the model predicted (columns) versus what was actually true (rows). Numbers along the
+										diagonal (top-left to bottom-right) are correct predictions. Off-diagonal numbers are mistakes. The more
+										contrast with the background (more saturated) a cell, the more predictions landed there. A good model will
+										have very saturated cells only along the diagonal and faded cells everywhere else.
 									</p>
 								)}
 								<img
@@ -259,26 +295,45 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 							{nerdMode ? (
 								<>
 									<p className="context-text">
-										Side-by-side one-vs-rest curves for all three dosage classes (0 = homozygous reference, 1 = heterozygous, 2 = homozygous alt).
+										Side-by-side one-vs-rest curves for all three dosage classes (0 = homozygous reference, 1 = heterozygous, 2 =
+										homozygous alt).
 									</p>
 									<p className="context-text">
-										<strong>Left — ROC curve:</strong> True Positive Rate (sensitivity) vs False Positive Rate (1 − specificity) as the classification threshold is swept from 1 → 0. The dashed diagonal is the random-chance baseline (AUC = 0.5). The legend reports per-class AUC; the macro average of these three values is the <em>Macro AUC</em> in the metrics table.
+										<strong>Left — ROC curve:</strong> True Positive Rate (sensitivity) vs False Positive Rate (1 − specificity)
+										as the classification threshold is swept from 1 → 0. The dashed diagonal is the random-chance baseline (AUC =
+										0.5). The legend reports per-class AUC; the macro average of these three values is the <em>Macro AUC</em> in
+										the metrics table.
 									</p>
 									<p className="context-text">
-										<strong>Right — Precision-Recall curve:</strong> Precision (positive predictive value) vs Recall (sensitivity) at each threshold. More informative than ROC under severe class imbalance because it is not influenced by the large number of true negatives. A curve that stays high across the full recall range indicates the model is both accurate and thorough. A high-precision / low-recall curve means the model only predicts a class when very confident but misses many true positives.
+										<strong>Right — Precision-Recall curve:</strong> Precision (positive predictive value) vs Recall (sensitivity)
+										at each threshold. More informative than ROC under severe class imbalance because it is not influenced by the
+										large number of true negatives. A curve that stays high across the full recall range indicates the model is
+										both accurate and thorough. A high-precision / low-recall curve means the model only predicts a class when
+										very confident but misses many true positives.
 									</p>
 								</>
 							) : (
 								<>
-									<p className="context-text">Two charts showing how well the model ranks dosage 0, 1, and 2. One chart per dosage class.</p>
-									<p className="context-text"><strong>Left (ROC curve):</strong> Each line traces a trade-off — how many correct predictions the model gets (vertical) versus how many false alarms (horizontal). A line that hugs the top-left corner is ideal. The dashed diagonal line is what random guessing would look like. The AUC number (0.5 = random, 1.0 = perfect) summarizes how far the line is from that diagonal.</p>
-									<p className="context-text"><strong>Right (Precision-Recall curve):</strong> Shows the balance between being precise when you speak (precision) and catching all the real cases (recall). A line that stays high across the whole width means the model is both accurate and thorough for that dosage.</p>
+									<p className="context-text">
+										Two charts showing how well the model ranks dosage 0, 1, and 2. One chart per dosage class.
+									</p>
+									<p className="context-text">
+										<strong>Left (ROC curve):</strong> Each line traces a trade-off — how many correct predictions the model gets
+										(vertical) versus how many false alarms (horizontal). A line that hugs the top-left corner is ideal. The
+										dashed diagonal line is what random guessing would look like. The AUC number (0.5 = random, 1.0 = perfect)
+										summarizes how far the line is from that diagonal.
+									</p>
+									<p className="context-text">
+										<strong>Right (Precision-Recall curve):</strong> Shows the balance between being precise when you speak
+										(precision) and catching all the real cases (recall). A line that stays high across the whole width means the
+										model is both accurate and thorough for that dosage.
+									</p>
 								</>
 							)}
 							<img
 								src={`data:image/png;base64,${images?.graph_test_base64}`}
 								alt="Test Performance Graph"
-							className="dark-mode-image-static graph-image-fullwidth"
+								className="dark-mode-image-static graph-image-fullwidth"
 							/>
 						</>
 					) : (
@@ -287,21 +342,29 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 								<>
 									<p className="context-text">
 										A 3×3 matrix where rows index the true dosage class and columns index the predicted class. Diagonal cells
-									(top-left → bottom-right) are correct classifications; all off-diagonal cells are errors. Cell color
-										intensity (saturation) is proportional to count, making systematic biases immediately visible.
+										(top-left → bottom-right) are correct classifications; all off-diagonal cells are errors. Cell color intensity
+										(saturation) is proportional to count, making systematic biases immediately visible.
 									</p>
 									<p className="context-text">
-										Common failure modes: high counts in row 0 / col 1 or row 1 / col 0 indicate heterozygote confusion with homozygous reference; high
-										counts in row 1 / col 2 or row 2 / col 1 indicate adjacent-dosage confusion around the heterozygous class. A
-										well-calibrated model will have a strongly diagonal matrix with near-zero off-diagonal counts.
+										Common failure modes: high counts in row 0 / col 1 or row 1 / col 0 indicate heterozygote confusion with
+										homozygous reference; high counts in row 1 / col 2 or row 2 / col 1 indicate adjacent-dosage confusion around
+										the heterozygous class. A well-calibrated model will have a strongly diagonal matrix with near-zero
+										off-diagonal counts.
 									</p>
 								</>
 							) : (
 								<p className="context-text">
-									This grid shows what the model predicted (columns) versus what was actually true (rows). Numbers along the diagonal (top-left to bottom-right) are correct predictions. Off-diagonal numbers are mistakes. The darker (more saturated) a cell, the more predictions landed there. A good model will have dark cells only along the diagonal and faded cells everywhere else.
+									This grid shows what the model predicted (columns) versus what was actually true (rows). Numbers along the
+									diagonal (top-left to bottom-right) are correct predictions. Off-diagonal numbers are mistakes. The darker (more
+									saturated) a cell, the more predictions landed there. A good model will have dark cells only along the diagonal
+									and faded cells everywhere else.
 								</p>
 							)}
-								<img src={`data:image/png;base64,${images?.graph_cm_base64}`} alt="Confusion Matrix" className="dark-mode-image-static graph-image-fullwidth" />
+							<img
+								src={`data:image/png;base64,${images?.graph_cm_base64}`}
+								alt="Confusion Matrix"
+								className="dark-mode-image-static graph-image-fullwidth"
+							/>
 						</>
 					)}
 				</DialogContent>
@@ -324,25 +387,43 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 					{nerdMode ? (
 						<>
 							<p className="context-text">
-								<strong>Methodology:</strong> Test set evaluation uses held-out individuals from the simulated population with genotypes masked at evaluation time. The model reconstructs dosage values conditioned on pedigree structure and other individuals' genotypes, effectively performing approximate Bayesian inference on the haploid space. This setup isolates the contribution of relational information (kinship coefficients) independent of allele frequency priors.
+								<strong>Methodology:</strong> Test set evaluation uses held-out individuals from the simulated population with
+								genotypes masked at evaluation time. The model reconstructs dosage values conditioned on pedigree structure and other
+								individuals' genotypes, effectively performing approximate Bayesian inference on the haploid space. This setup
+								isolates the contribution of relational information (kinship coefficients) independent of allele frequency priors.
 							</p>
 							<p className="context-text">
-								<strong>Information-Theoretic Interpretation:</strong> Model performance significantly exceeds null baseline (33% accuracy), confirming that identity-by-descent (IBD) sharing patterns contain substantial mutual information about genotypes. Accuracy degradation with dataset size reflects decreasing per-individual information density — larger populations increase sparsity in the pedigree context relative to parameter count, reducing inference capacity.
+								<strong>Information-Theoretic Interpretation:</strong> Model performance significantly exceeds null baseline (33%
+								accuracy), confirming that identity-by-descent (IBD) sharing patterns contain substantial mutual information about
+								genotypes. Accuracy degradation with dataset size reflects decreasing per-individual information density — larger
+								populations increase sparsity in the pedigree context relative to parameter count, reducing inference capacity.
 							</p>
 							<p className="context-text para-flush">
-								<strong>Heterozygote Classification Challenge:</strong> Dosage = 1 exhibits highest misclassification rate due to symmetric decision boundaries in latent space relative to homozygous classes. Marginal accuracy ranges from ~63% (smallest dataset) to 17–37% (larger datasets). Bayesian models achieve best heterozygote recall but suffer from exponential computational complexity; neural architectures provide better scalability via learned sufficient statistics.
+								<strong>Heterozygote Classification Challenge:</strong> Dosage = 1 exhibits highest misclassification rate due to
+								symmetric decision boundaries in latent space relative to homozygous classes. Marginal accuracy ranges from ~63%
+								(smallest dataset) to 17–37% (larger datasets). Bayesian models achieve best heterozygote recall but suffer from
+								exponential computational complexity; neural architectures provide better scalability via learned sufficient
+								statistics.
 							</p>
 						</>
 					) : (
 						<>
 							<p className="context-text">
-								<strong>How We Tested It:</strong> We created a simulated dataset where we knew the true answers. We hid some people's genotypes (pretending they were missing family members) and asked the model to figure out what they should be based on their relatives' DNA. This setup mimics the real-world problem: reconstructing someone's genetics from distant relatives.
+								<strong>How We Tested It:</strong> We created a simulated dataset where we knew the true answers. We hid some people's
+								genotypes (pretending they were missing family members) and asked the model to figure out what they should be based on
+								their relatives' DNA. This setup mimics the real-world problem: reconstructing someone's genetics from distant
+								relatives.
 							</p>
 							<p className="context-text">
-								<strong>The Big Picture:</strong> The fact that the model performs better than random guessing shows that pedigree structure contains real, usable information. Even when many ancestors are missing, the remaining relatives provide enough clues for the model to make educated guesses. But as the dataset gets larger and more complex, there's less information per person — and accuracy drops.
+								<strong>The Big Picture:</strong> The fact that the model performs better than random guessing shows that pedigree
+								structure contains real, usable information. Even when many ancestors are missing, the remaining relatives provide
+								enough clues for the model to make educated guesses. But as the dataset gets larger and more complex, there's less
+								information per person — and accuracy drops.
 							</p>
 							<p className="context-text para-flush">
-								<strong>What Was Hardest:</strong> The heterozygous genotype (dosage = 1) was always the toughest to predict because it looks similar to nearby genotypes. On the smallest dataset, accuracy hovered around 63%, but it fell to 17–37% on larger datasets. The Bayesian model did best but is very slow to compute.
+								<strong>What Was Hardest:</strong> The heterozygous genotype (dosage = 1) was always the toughest to predict because
+								it looks similar to nearby genotypes. On the smallest dataset, accuracy hovered around 63%, but it fell to 17–37% on
+								larger datasets. The Bayesian model did best but is very slow to compute.
 							</p>
 						</>
 					)}
@@ -356,19 +437,25 @@ export default function ModelStats({ paths, testMetrics, images, debugMode = fal
 					{nerdMode ? (
 						<>
 							<p className="context-text">
-								False positives and false negatives from the holdout test set. Errors are stratified across the three dosage classes — homozygous classes (0, 2) typically exhibit lower error rates due to imbalance-driven learning pressure, while heterozygous errors (dosage = 1) are systematically overrepresented. Each row reports [individual ID, genomic site, predicted dosage, true dosage].
+								False positives and false negatives from the holdout test set. Errors are stratified across the three dosage classes —
+								homozygous classes (0, 2) typically exhibit lower error rates due to imbalance-driven learning pressure, while
+								heterozygous errors (dosage = 1) are systematically overrepresented. Each row reports [individual ID, genomic site,
+								predicted dosage, true dosage].
 							</p>
 							<p className="context-text">
-								Patterns indicate failure modes: (1) Site-level clustering suggests a genomic region with poor local pedigree context or high linkage disequilibrium that disrupts imputation; (2) Individual-level clustering indicates sparse kinship (few relatives), weak signal-to-noise ratio, or potential upstream data quality issues (e.g., Mendelian inconsistencies). Cross-reference errors against kinship matrices and site-level annotations to distinguish systematic bias from stochastic misclassification.
+								Patterns indicate failure modes: (1) Site-level clustering suggests a genomic region with poor local pedigree context
+								or high linkage disequilibrium that disrupts imputation; (2) Individual-level clustering indicates sparse kinship (few
+								relatives), weak signal-to-noise ratio, or potential upstream data quality issues (e.g., Mendelian inconsistencies).
+								Cross-reference errors against kinship matrices and site-level annotations to distinguish systematic bias from
+								stochastic misclassification.
 							</p>
 						</>
 					) : (
 						<>
+							<p className="context-text">This table shows every mistake the model made on the test data.</p>
 							<p className="context-text">
-								This table shows every mistake the model made on the test data.
-							</p>
-							<p className="context-text">
-								Look for patterns: if the same genomic location keeps appearing, the model consistently gets that position wrong. If the same person appears multiple times, they probably had fewer relatives to learn from.
+								Look for patterns: if the same genomic location keeps appearing, the model consistently gets that position wrong. If
+								the same person appears multiple times, they probably had fewer relatives to learn from.
 							</p>
 						</>
 					)}

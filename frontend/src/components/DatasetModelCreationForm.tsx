@@ -192,9 +192,7 @@ export default function DatasetModelCreationForm({
 
 			{/* BASIC */}
 			<Box>
-				<h2 className="section-heading">
-					Basic Settings
-				</h2>
+				<h2 className="section-heading">Basic Settings</h2>
 				<Stack spacing={2}>
 					<TextField
 						label="Dataset name (alphanumeric, no spaces)"
@@ -263,20 +261,20 @@ export default function DatasetModelCreationForm({
 								className="purple-text-field"
 							/>
 						</Box>
-					<p className="context-text">
-						Total individuals: <strong>{derivedTotal ?? '—'}</strong>{' '}
-						{derivedTotal !== undefined && (
-							<span className="inline-note">
-								(
-								{derivedTotal <= 250
-									? 'small dataset — fast, good for testing'
-									: derivedTotal <= 1000
-										? 'medium dataset — balanced speed and coverage'
-										: 'large dataset — may take a while to generate'}
-								)
-							</span>
-						)}{' '}
-					</p>
+						<p className="context-text">
+							Total individuals: <strong>{derivedTotal ?? '—'}</strong>{' '}
+							{derivedTotal !== undefined && (
+								<span className="inline-note">
+									(
+									{derivedTotal <= 250
+										? 'small dataset — fast, good for testing'
+										: derivedTotal <= 1000
+											? 'medium dataset — balanced speed and coverage'
+											: 'large dataset — may take a while to generate'}
+									)
+								</span>
+							)}{' '}
+						</p>
 					</Stack>
 				</Box>
 			)}

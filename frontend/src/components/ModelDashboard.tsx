@@ -1,4 +1,3 @@
-
 type Model = {
 	model_name: string;
 	model_type: string;
@@ -13,7 +12,7 @@ type ModelDashboardProps = {
 // Helper function to render text with variable names highlighted in nerd mode
 function renderTextWithVarHighlight(text: string, isNerdMode: boolean): (string | JSX.Element)[] {
 	if (!isNerdMode) return [text];
-	
+
 	// Split on variable patterns (snake_case) and wrap them in <code> with nerd-text class
 	const parts = text.split(/(\b[a-z_][a-z0-9_]*\b)/g);
 	return parts.map((part, idx) => {
@@ -46,14 +45,14 @@ const MODEL_TYPE_INFO: Record<
 		simple_description:
 			"Like teaching a kid to recognize patterns. The more examples you show it, the better it gets. If you show it pictures of thousands of families and say 'this gene pattern goes with this type of genetics,' it eventually learns to spot those patterns on its own. The downside: it needs a lot of examples to work well, and it takes longer to train. But when you have tons of data, it's the most powerful option.",
 		simple_strengths: [
-			'Figures out what matters on its own — you don\'t have to tell it',
+			"Figures out what matters on its own — you don't have to tell it",
 			'Gets better the more examples it sees',
 			'Can handle thousands of genes at once',
-			'Doesn\'t memorize the examples as much',
+			"Doesn't memorize the examples as much",
 			'Runs faster on a graphics card'
 		],
 		simple_use_case:
-			'Pick this when you have a huge amount of data — thousands of people and thousands of genes. The more data you give it, the more accurately it can predict. If you\'re patient and want the best accuracy possible, use this one. Don\'t use it if your dataset is small.',
+			"Pick this when you have a huge amount of data — thousands of people and thousands of genes. The more data you give it, the more accurately it can predict. If you're patient and want the best accuracy possible, use this one. Don't use it if your dataset is small.",
 		description:
 			'A fully connected feedforward neural network (PyTorch) trained to predict per-site allele dosage (0, 1, 2) for masked individuals. The architecture stacks three hidden layers (256 → 128 → 64 neurons), each followed by batch normalization and ReLU activation. Residual (skip) connections are added between compatible layer widths to mitigate vanishing gradients. Dropout (p=0.3) is applied during training for regularization. The output layer uses softmax over three classes. Input features are constructed via k-hop relative aggregation over the pedigree graph: for each masked individual at each genomic site, the feature vector is [mean_dosage_of_k_hop_relatives, fraction_of_relatives_observed, count_of_relatives]. Training uses cross-entropy loss with class weights inversely proportional to class frequency to handle dosage imbalance. Optimized with Adam; early stopping monitors validation loss with patience of 10 epochs. Supports CUDA and Apple Metal (MPS) acceleration.',
 		strengths: [
@@ -76,11 +75,11 @@ const MODEL_TYPE_INFO: Record<
 			'You can see the exact reason for every guess',
 			'Trains in just seconds',
 			'Works fine with tiny datasets',
-			'If fancier models can\'t beat this, they\'re not worth using',
+			"If fancier models can't beat this, they're not worth using",
 			'Super easy to explain to anyone'
 		],
 		simple_use_case:
-			'Always try this first. If you want to quickly figure out whether genetics are predictable, run this. It\'s perfect when you need to explain things to someone without a technical background. On small datasets, it often works as well as complicated models. Use it to compare all other models against.',
+			"Always try this first. If you want to quickly figure out whether genetics are predictable, run this. It's perfect when you need to explain things to someone without a technical background. On small datasets, it often works as well as complicated models. Use it to compare all other models against.",
 		description:
 			"A multinomial logistic regression classifier (scikit-learn) that models P(dosage | features) via softmax over three output classes (0, 1, 2). Input features are the same k-hop pedigree aggregation vectors used by other models: [mean_dosage_of_relatives, fraction_observed, count_relatives] per genomic site per masked individual. The model learns one weight vector per class, solved via the L-BFGS multinomial solver with L2 regularisation (C=1.0). Class weights are set to 'balanced' to compensate for dosage distribution skew. Because the decision boundary is a hyperplane in feature space, each coefficient has a direct interpretation: a positive weight on mean_dosage_of_relatives for dosage class 2 means that higher average relative dosage increases the log-odds of predicting class 2. This is the only model in the benchmark that provides this level of interpretability without post-hoc analysis.",
 		strengths: [
@@ -133,7 +132,7 @@ const MODEL_TYPE_INFO: Record<
 			'Works with families of any size'
 		],
 		simple_use_case:
-			'Use this when you have lots of family information. If your data has parents, grandparents, and other relatives of the people you\'re trying to predict, this will outperform others because it uses those connections. Works best with medium to large datasets with deep family trees.',
+			"Use this when you have lots of family information. If your data has parents, grandparents, and other relatives of the people you're trying to predict, this will outperform others because it uses those connections. Works best with medium to large datasets with deep family trees.",
 		description:
 			'A graph convolutional network (PyTorch Geometric) that constructs a feature-correlation graph from the input data and applies message-passing convolutions to aggregate genetic signals across connected individuals. Each individual is a node; edges are drawn between individuals whose feature vectors exceed a Pearson correlation threshold (default 0.5), encoding genetic similarity independently of pedigree topology. Node features are the same k-hop pedigree aggregation vectors used by other models. The architecture stacks three GraphConv layers (256 → 128 → 64 hidden dimensions) with ReLU activations, followed by global mean pooling to produce a graph-level embedding passed through a linear classifier. Trained with cross-entropy loss and Adam. Supports mini-batch training via PyTorch Geometric DataLoader for memory-efficient handling of large pedigrees. GPU-accelerated.',
 		strengths: [
@@ -154,13 +153,13 @@ const MODEL_TYPE_INFO: Record<
 			"Most models give one answer: 'You have type 1.' This one gives the full picture: 'You probably have type 1 (70%), might have type 0 (25%), unlikely to have type 2 (5%).' It doesn't just guess — it shows the odds. That makes it honest about what it doesn't know. And it works surprisingly well even with very little data.",
 		simple_strengths: [
 			'Shows odds instead of just one guess',
-			'Honest about what it doesn\'t know — admits uncertainty',
+			"Honest about what it doesn't know — admits uncertainty",
 			'Works well even with tiny datasets',
 			'Can use what you already know about genes',
 			'Most reliable when a wrong answer is serious'
 		],
 		simple_use_case:
-			'Pick this when you need to trust the model. You always know how confident it is, and it admits when it\'s unsure. Best for small datasets or when a wrong answer could matter. Takes longer to train, but that extra caution is worth it when the stakes are high.',
+			"Pick this when you need to trust the model. You always know how confident it is, and it admits when it's unsure. Best for small datasets or when a wrong answer could matter. Takes longer to train, but that extra caution is worth it when the stakes are high.",
 		description:
 			'A fully Bayesian multinomial logistic regression model implemented in PyMC and sampled via the No-U-Turn Sampler (NUTS) with JAX as the computational backend. Rather than optimising a single point estimate of model weights, NUTS draws samples from the full joint posterior P(weights | data) using Hamiltonian Monte Carlo dynamics. Priors are placed over all weight matrices: Normal(0, 1) for feature weights and Normal(0, 0.5) for per-generation group-level intercepts (hierarchical structure). The likelihood is a categorical distribution parameterised by softmax over three dosage classes. By default the model runs 4 parallel chains with 1,000 tuning steps and 500 draw steps each, producing 2,000 posterior samples. At inference time, predictions are made by averaging the softmax outputs across all posterior samples, yielding calibrated class probabilities. Convergence is assessed via R-hat (target < 1.01) and effective sample size (ESS) diagnostics computed by ArviZ.',
 		strengths: [
@@ -242,28 +241,29 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 				<div className="section-mb">
 					<h3 className="section-heading">Training Dataset</h3>
 					<p className="context-text">{sizeBlurb.simple}</p>
-				{nerdMode && (() => {
-					const parts = sizeBlurb.nerd.split('.');
-					const stats = parts[0].split('·').map((s) => s.trim());
-					const description = parts.slice(1).join('.').trim();
-					return (
-						<>
-							<div className="nerd-text">
-							<ul className="nerd-stats-list">
-									{stats.map((stat) => (
-										<li key={stat}>{stat}</li>
-									))}
-								</ul>
-							</div>
-							{description && <p className="nerd-description-para context-text">{description}</p>}
-						</>
-					);
-				})()}
-			</div>
-		)}
+					{nerdMode &&
+						(() => {
+							const parts = sizeBlurb.nerd.split('.');
+							const stats = parts[0].split('·').map((s) => s.trim());
+							const description = parts.slice(1).join('.').trim();
+							return (
+								<>
+									<div className="nerd-text">
+										<ul className="nerd-stats-list">
+											{stats.map((stat) => (
+												<li key={stat}>{stat}</li>
+											))}
+										</ul>
+									</div>
+									{description && <p className="nerd-description-para context-text">{description}</p>}
+								</>
+							);
+						})()}
+				</div>
+			)}
 
-		{/* Training pipeline */}
-		<div className="section-mb">
+			{/* Training pipeline */}
+			<div className="section-mb">
 				<h3 className="section-heading">{nerdMode ? 'Training Pipeline' : 'How the Model Was Trained'}</h3>
 				{nerdMode ? (
 					<>
@@ -294,12 +294,13 @@ export default function ModelDashboard({ model, nerdMode, onNerdModeChange }: Mo
 					</>
 				) : (
 					<p className="context-text">
-						We hid some people in the dataset and told the model to predict their genetics based on their family. The model learned from the people we showed it, then made guesses about the hidden people. We checked those guesses against the real answers.
+						We hid some people in the dataset and told the model to predict their genetics based on their family. The model learned from
+						the people we showed it, then made guesses about the hidden people. We checked those guesses against the real answers.
 					</p>
 				)}
-		</div>
+			</div>
 
-		{/* Description */}
+			{/* Description */}
 			<div className="section-mb">
 				<h3 className="section-heading">About this Model</h3>
 				{(() => {

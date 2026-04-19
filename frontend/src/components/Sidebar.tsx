@@ -42,7 +42,11 @@ export default function Sidebar({ darkMode, onThemeToggle, debugMode, onDebugTog
 			<Box component="nav" aria-label="Main navigation" sx={{ overflow: 'auto', display: 'flex', flexDirection: 'column', flex: 1 }}>
 				{/* Toggle Button at top of sidebar */}
 				<Box sx={{ display: 'flex', justifyContent: open ? 'flex-end' : 'center', pt: 1, px: open ? 1 : 0 }}>
-					<IconButton onClick={() => setOpen(!open)} aria-label={open ? 'Close navigation' : 'Open navigation'} className="sidebar-toggle-internal">
+					<IconButton
+						onClick={() => setOpen(!open)}
+						aria-label={open ? 'Close navigation' : 'Open navigation'}
+						className="sidebar-toggle-internal"
+					>
 						{open ? <CloseIcon /> : <MenuIcon />}
 					</IconButton>
 				</Box>

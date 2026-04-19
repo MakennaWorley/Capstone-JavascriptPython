@@ -343,12 +343,12 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ne
 					{!nerdMode ? (
 						<>
 							<p className="context-text">
-								This table shows the genetic data for your dataset. Each row is a location in the genome, and each column is a person 
+								This table shows the genetic data for your dataset. Each row is a location in the genome, and each column is a person
 								in the family. The numbers show how many copies of a particular genetic variant each person has (0, 1, or 2).
 							</p>
 							<p className="context-text">
-								Cells highlighted in <span className="text-known">green</span> are <strong>known</strong> — people whose genetics were 
-								included in the dataset. Cells highlighted in <span className="text-unknown">red</span> are <strong>unknown</strong> — 
+								Cells highlighted in <span className="text-known">green</span> are <strong>known</strong> — people whose genetics were
+								included in the dataset. Cells highlighted in <span className="text-unknown">red</span> are <strong>unknown</strong> —
 								people whose genetics are hidden so the models can try to predict them.
 							</p>
 						</>
@@ -356,18 +356,19 @@ export default function DatasetDashboard({ apiBase, xApiKey, selectedDataset, ne
 						<>
 							<p className="context-text">
 								This table shows the merged genotype data for the selected dataset. Each row is a genomic site and each column is an
-								individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of the
-								alternate allele carried at that site (0, 1, or 2).
+								individual in the simulated population. The values represent <strong>allele dosage</strong> — the number of copies of
+								the alternate allele carried at that site (0, 1, or 2).
 							</p>
 							<p className="context-text">
-								Cells highlighted in <span className="text-known">green</span> are <strong>known data</strong> — individuals whose genes were 
-								successfully sequenced and are present in the dataset. Cells highlighted in <span className="text-unknown">red</span> are{' '}
-								<strong>unknown data</strong> — individuals intentionally left out to simulate the real-world scenario of individuals who were never sequenced.
+								Cells highlighted in <span className="text-known">green</span> are <strong>known data</strong> — individuals whose
+								genes were successfully sequenced and are present in the dataset. Cells highlighted in{' '}
+								<span className="text-unknown">red</span> are <strong>unknown data</strong> — individuals intentionally left out to
+								simulate the real-world scenario of individuals who were never sequenced.
 							</p>
 							<p className="context-text">
-								The models are trained only on the known data and must infer the genotypes of the missing (red) individuals. Use the column paginator 
-								below to scroll across individuals. Select an individual ID from the family tree section to visualize their pedigree and see how their 
-								relatives' genotypes inform the inference.
+								The models are trained only on the known data and must infer the genotypes of the missing (red) individuals. Use the
+								column paginator below to scroll across individuals. Select an individual ID from the family tree section to visualize
+								their pedigree and see how their relatives' genotypes inform the inference.
 							</p>
 						</>
 					)}

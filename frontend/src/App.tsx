@@ -210,25 +210,27 @@ export default function App() {
 							due to cost, sample degradation, or ethical constraints.
 						</p>
 						<p className="context-text">
-							The core question: can we predict the genetics of individuals further up the family tree? You might remember Mendelian genetics from high school biology — 
-							Punnett squares showing how traits inherit from parents to children. But those squares assume we know the parents' genetics. 
-							Usually, we have genetic data from children and their parents, but we are missing information about grandparents and earlier ancestors. 
-							This project explores whether different machine learning models can work backward and fill in those missing pieces.
+							The core question: can we predict the genetics of individuals further up the family tree? You might remember Mendelian
+							genetics from high school biology — Punnett squares showing how traits inherit from parents to children. But those squares
+							assume we know the parents' genetics. Usually, we have genetic data from children and their parents, but we are missing
+							information about grandparents and earlier ancestors. This project explores whether different machine learning models can
+							work backward and fill in those missing pieces.
 						</p>
 						<p className="context-text">
 							The system uses{' '}
 							<a href="https://pubmed.ncbi.nlm.nih.gov/34897427/" target="_blank" rel="noopener noreferrer" className="text-accent">
 								<strong>msprime</strong>
 							</a>{' '}
-							to simulate realistic families with known genetic data for everyone. Then, we hide the genetics of some ancestors 
-							(simulating missing data) and train five different models to predict those hidden genetics from the visible data. 
-							The models are: a <strong>Bayesian Model</strong>, a <strong>Hidden Markov Model</strong>, a <strong>Deep Neural Network</strong>, 
-							a <strong>Graph Neural Network</strong>, and <strong>Logistic Regression</strong> as a baseline.
+							to simulate realistic families with known genetic data for everyone. Then, we hide the genetics of some ancestors
+							(simulating missing data) and train five different models to predict those hidden genetics from the visible data. The
+							models are: a <strong>Bayesian Model</strong>, a <strong>Hidden Markov Model</strong>, a{' '}
+							<strong>Deep Neural Network</strong>, a <strong>Graph Neural Network</strong>, and <strong>Logistic Regression</strong> as
+							a baseline.
 						</p>
 						<p className="context-text">
-							Each model predicts the <strong>allele dosage</strong> (how many copies of a genetic variant someone has: 0, 1, or 2) for 
-							each hidden ancestor at each location in the genome. We then compare these predictions to the true values and measure 
-							how well each model performs.
+							Each model predicts the <strong>allele dosage</strong> (how many copies of a genetic variant someone has: 0, 1, or 2) for
+							each hidden ancestor at each location in the genome. We then compare these predictions to the true values and measure how
+							well each model performs.
 						</p>
 					</Box>
 
@@ -269,11 +271,17 @@ export default function App() {
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
 								<Typography variant="h6" fontWeight="bold">
-								Dataset Dashboard
+									Dataset Dashboard
 								</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
-								<DatasetDashboard apiBase={API_BASE} xApiKey={API_KEY} selectedDataset={selectedDataset} nerdMode={nerdMode} onNerdModeChange={setNerdMode} />
+								<DatasetDashboard
+									apiBase={API_BASE}
+									xApiKey={API_KEY}
+									selectedDataset={selectedDataset}
+									nerdMode={nerdMode}
+									onNerdModeChange={setNerdMode}
+								/>
 							</AccordionDetails>
 						</Accordion>
 					)}
@@ -290,9 +298,7 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">
-								Model Dashboard
-								</Typography>
+								<Typography fontWeight="bold">Model Dashboard</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelDashboard model={selectedModel} nerdMode={nerdMode} onNerdModeChange={setNerdMode} />
@@ -326,9 +332,7 @@ export default function App() {
 								expandIcon={<ExpandMoreIcon />}
 								sx={{ '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': { transform: 'rotate(180deg)' } }}
 							>
-								<Typography fontWeight="bold">
-								Test Model
-								</Typography>
+								<Typography fontWeight="bold">Test Model</Typography>
 							</AccordionSummary>
 							<AccordionDetails sx={{ pt: 0 }}>
 								<ModelTrainer
@@ -345,8 +349,10 @@ export default function App() {
 									testMetrics={testResults?.testMetrics || null}
 									images={testResults?.images || null}
 									predictionErrors={testResults?.predictionErrors ?? null}
-									debugMode={debugMode}								nerdMode={nerdMode}
-								onNerdModeChange={setNerdMode}								/>
+									debugMode={debugMode}
+									nerdMode={nerdMode}
+									onNerdModeChange={setNerdMode}
+								/>
 							</AccordionDetails>
 						</Accordion>
 					)}
